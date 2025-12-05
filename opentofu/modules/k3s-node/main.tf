@@ -64,9 +64,6 @@ resource "proxmox_vm_qemu" "k3s_node" {
   ${var.ssh_public_key}
   EOF
 
-  # Cloud-init user config
-  cicustom = "user=local:snippets/${var.node_name}-user-data.yml"
-
   # Set description based on node type
   description = var.node_type == "master" ? "K3s Master Node" : "K3s Worker Node"
 

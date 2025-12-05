@@ -19,6 +19,7 @@ sudo DEBIAN_FRONTEND=noninteractive apt-get upgrade -y
 # Install additional useful packages
 echo "Installing additional packages..."
 sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    openssh-server \
     software-properties-common \
     apt-transport-https \
     python3-pip \
@@ -26,6 +27,12 @@ sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
     unzip \
     tree \
     ncdu
+
+# Ensure SSH server is enabled and started
+echo "Configuring SSH server..."
+sudo systemctl enable ssh
+sudo systemctl start ssh
+
 
 # Configure cloud-init for template usage
 echo "Configuring cloud-init..."
