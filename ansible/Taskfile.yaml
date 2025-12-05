@@ -3,13 +3,12 @@
 version: "3"
 
 vars:
-  ANSIBLE_DIR: "{{.ROOT_DIR}}/ansible"
-  INVENTORY_FILE: "{{.ANSIBLE_DIR}}/inventory/hosts.yml"
+  INVENTORY_FILE: "{{.ROOT_DIR}}/ansible/inventory/hosts.yml"
 
 tasks:
   ping:
     desc: Test Ansible connectivity to all hosts
-    dir: "{{.ANSIBLE_DIR}}"
+    dir: ansible
     cmds:
       - ansible all -i {{.INVENTORY_FILE}} -m ping
     preconditions:
@@ -18,20 +17,20 @@ tasks:
 
   setup:
     desc: Install Ansible requirements (roles, collections)
-    dir: "{{.ANSIBLE_DIR}}"
+    dir: ansible
     cmds:
       - test -f requirements.yml && ansible-galaxy install -r requirements.yml || echo "No requirements.yml found"
       - test -f requirements.yml && ansible-galaxy collection install -r requirements.yml || echo "No collections to install"
 
   check:
     desc: Run Ansible playbook in check mode (dry-run)
-    dir: "{{.ANSIBLE_DIR}}"
+    dir: ansible
     cmds:
       - ansible-playbook -i {{.INVENTORY_FILE}} site.yml --check
 
   run:
     desc: Run Ansible playbooks to configure cluster
-    dir: "{{.ANSIBLE_DIR}}"
+    dir: ansible
     cmds:
       - ansible-playbook -i {{.INVENTORY_FILE}} site.yml
     preconditions:
@@ -40,31 +39,31 @@ tasks:
 
   run-tags:
     desc: Run Ansible playbook with specific tags
-    dir: "{{.ANSIBLE_DIR}}"
+    dir: ansible
     cmds:
       - ansible-playbook -i {{.INVENTORY_FILE}} site.yml --tags={{.CLI_ARGS}}
 
   run-playbook:
     desc: Run a specific playbook (provide path as CLI_ARGS)
-    dir: "{{.ANSIBLE_DIR}}"
+    dir: ansible
     cmds:
       - ansible-playbook -i {{.INVENTORY_FILE}} {{.CLI_ARGS}}
 
   list-hosts:
     desc: List all hosts in inventory
-    dir: "{{.ANSIBLE_DIR}}"
+    dir: ansible
     cmds:
       - ansible-inventory -i {{.INVENTORY_FILE}} --list
 
   list-tasks:
     desc: List all tasks that would be executed
-    dir: "{{.ANSIBLE_DIR}}"
+    dir: ansible
     cmds:
       - ansible-playbook -i {{.INVENTORY_FILE}} site.yml --list-tasks
 
   get-kubeconfig:
     desc: Fetch kubeconfig from master node
-    dir: "{{.ANSIBLE_DIR}}"
+    dir: ansible
     cmds:
       - |
         ansible k3s_master -i {{.INVENTORY_FILE}} -m fetch \
