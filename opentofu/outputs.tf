@@ -20,16 +20,7 @@ output "k3s_worker_ids" {
   value       = module.k3s_worker[*].vm_id
 }
 
-# Pi-hole Outputs
-output "pihole_ip" {
-  description = "Pi-hole VM IP address"
-  value       = var.enable_pihole ? module.pihole[0].ip_address : null
-}
 
-output "pihole_id" {
-  description = "Pi-hole VM ID"
-  value       = var.enable_pihole ? module.pihole[0].vm_id : null
-}
 
 # Cluster Summary
 output "cluster_summary" {
@@ -47,11 +38,6 @@ output "cluster_summary" {
         id   = worker.vm_id
       }
     ]
-    pihole = var.enable_pihole ? {
-      name = module.pihole[0].vm_name
-      ip   = module.pihole[0].ip_address
-      id   = module.pihole[0].vm_id
-    } : null
   }
 }
 
@@ -61,7 +47,6 @@ output "ansible_inventory_data" {
   value = {
     k3s_master  = module.k3s_master.ansible_host
     k3s_workers = module.k3s_worker[*].ansible_host
-    pihole      = var.enable_pihole ? module.pihole[0].ansible_host : null
   }
   sensitive = false
 }

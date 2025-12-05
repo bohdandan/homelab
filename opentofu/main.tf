@@ -36,23 +36,3 @@ module "k3s_worker" {
   nameserver   = var.nameserver
   searchdomain = var.searchdomain
 }
-
-# Pi-hole DNS Server (optional, controlled by enable_pihole)
-module "pihole" {
-  source = "./modules/pihole-vm"
-  count  = var.enable_pihole ? 1 : 0
-
-  vm_name        = var.pihole_vm_name
-  proxmox_node   = var.proxmox_node
-  vm_template    = var.vm_template
-  vm_storage     = var.vm_storage
-  ssh_public_key = var.ssh_public_key
-
-  cpu_cores = var.pihole_cpu_cores
-  memory    = var.pihole_memory
-  disk_size = var.pihole_disk_size
-
-  static_ip  = var.pihole_static_ip
-  gateway    = var.pihole_gateway
-  nameserver = var.pihole_nameserver
-}
