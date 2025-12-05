@@ -1,0 +1,46 @@
+---
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+version: "3"
+
+vars:
+  PACKER_DIR: "{{.ROOT_DIR}}/packer"
+  PACKER_TEMPLATE: "ubuntu-noble.pkr.hcl"
+
+tasks:
+  init:
+    desc: Initialize Packer plugins
+    cmds:
+      - cd {{.PACKER_DIR}} && packer init .
+
+  validate:
+    desc: Validate Packer template
+    deps: [init]
+    cmds:
+      - |
+        cd {{.PACKER_DIR}} && packer validate \
+          -var="proxmox_api_url=${PROXMOX_API_URL:-https://localhost:8006/api2/json}" \
+          -var="proxmox_api_token_id=${PROXMOX_API_TOKEN_ID:-dummy@pam!dummy}" \
+          -var="proxmox_api_token_secret=${PROXMOX_API_TOKEN_SECRET:-dummy-secret}" \
+          .
+
+  build:
+    desc: Build VM template in Proxmox
+    deps: [validate]
+    env:
+      PROXMOX_API_URL: "https://{{.PROXMOX_HOST}}:8006/api2/json"
+      PROXMOX_API_TOKEN_ID: '{{.PROXMOX_API_TOKEN_ID | default "terraform@pve!opentofu"}}'
+      PROXMOX_API_TOKEN_SECRET: "{{.PROXMOX_API_TOKEN_SECRET}}"
+      PROXMOX_NODE: '{{.PROXMOX_NODE | default "pve"}}'
+    cmds:
+      - |
+        cd {{.PACKER_DIR}} && packer build \
+          -var="proxmox_api_url=$PROXMOX_API_URL" \
+          -var="proxmox_api_token_id=$PROXMOX_API_TOKEN_ID" \
+          -var="proxmox_api_token_secret=$PROXMOX_API_TOKEN_SECRET" \
+          -var="proxmox_node=$PROXMOX_NODE" \
+          .
+    preconditions:
+      - msg: "PROXMOX_HOST is not set in .env"
+        sh: "test -n '{{.PROXMOX_HOST}}'"
+      - msg: "PROXMOX_API_TOKEN_SECRET is not set in .env"
+        sh: "test -n '{{.PROXMOX_API_TOKEN_SECRET}}'"

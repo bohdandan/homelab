@@ -1,0 +1,83 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+version: "3"
+
+vars:
+  # Binaries
+  PYTHON_BIN: python3
+  # Directories
+  ANSIBLE_DIR: "{{.ROOT_DIR}}/ansible"
+  OPENTOFU_DIR: "{{.ROOT_DIR}}/opentofu"
+  KUBERNETES_DIR: "{{.ROOT_DIR}}/k8s"
+  SCRIPTS_DIR: "{{.ROOT_DIR}}/scripts"
+
+  # Files
+  AGE_FILE: "{{.ROOT_DIR}}/age.key"
+  BOOTSTRAP_CONFIG_FILE: "{{.ROOT_DIR}}/config.yaml"
+  KUBECONFIG_FILE: "{{.ROOT_DIR}}/kubeconfig"
+  PIP_REQUIREMENTS_FILE: "{{.ROOT_DIR}}/requirements.txt"
+
+includes:
+  workstation:
+    taskfile: workstation/Taskfile.yaml
+    aliases: ["ws"]
+  packer:
+    taskfile: packer/Taskfile.yaml
+    aliases: ["pk"]
+  opentofu:
+    taskfile: opentofu/Taskfile.yaml
+    aliases: ["tf", "tofu"]
+  ansible:
+    taskfile: ansible/Taskfile.yaml
+    aliases: ["ans"]
+  gitops:
+    taskfile: gitops/Taskfile.yaml
+    aliases: ["argo"]
+
+dotenv: [".env"]
+
+tasks:
+  default: task -l
+
+  bootstrap:
+    desc: "🚀 Complete homelab deployment from scratch"
+    cmds:
+      - echo "========================================"
+      - echo "  Homelab Infrastructure Deployment"
+      - echo "========================================"
+      - echo ""
+      - 'echo "Step 1/4: Building VM template with Packer..."'
+      - task: packer:build
+      - echo ""
+      - 'echo "Step 2/4: Provisioning VMs with OpenTofu..."'
+      - task: opentofu:apply
+      - echo ""
+      - 'echo "Step 3/4: Configuring cluster with Ansible..."'
+      - sleep 30 # Wait for VMs to be fully ready
+      - task: ansible:run
+      - echo ""
+      - 'echo "Step 4/4: Bootstrapping GitOps..."'
+      - task: ansible:get-kubeconfig
+      - task: gitops:bootstrap
+      - echo ""
+      - echo "========================================"
+      - echo "  ✅ Homelab Deployment Complete!"
+      - echo "========================================"
+      - echo ""
+      - echo "Access your services:"
+      - 'echo "  - Homepage Dashboard: https://dashboard.homelab.local"'
+      - 'echo "  - ArgoCD: task gitops:login"'
+      - 'echo "  - Grafana: kubectl port-forward -n monitoring svc/kube-prometheus-stack-grafana 3000:80"'
+      - echo ""
+      - echo "Deployment takes 10-15 minutes to fully sync all applications."
+      - task: gitops:status
+
+  destroy:
+    desc: "⚠️  Destroy entire homelab infrastructure"
+    prompt: "This will destroy all VMs and data. Are you sure?"
+    cmds:
+      - task: opentofu:destroy-confirm
+      - echo "✅ Infrastructure destroyed"
+
+  check:
+    desc: Lint and Format with precommit
+    cmd: pre-commit run --all-files
