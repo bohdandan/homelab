@@ -29,9 +29,10 @@ sudo ln -s /etc/machine-id /var/lib/dbus/machine-id
 echo "Clearing cloud-init state..."
 sudo cloud-init clean --logs --seed
 
-# Remove SSH host keys (will be regenerated on first boot)
-echo "Removing SSH host keys..."
-sudo rm -f /etc/ssh/ssh_host_*
+# NOTE: SSH host keys are kept in the template
+# Cloud-init or firstboot scripts should regenerate them if needed
+# Keeping them allows SSH to work immediately on cloned VMs
+
 
 # Clear bash history
 echo "Clearing bash history..."
