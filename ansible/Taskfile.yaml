@@ -1,0 +1,73 @@
+---
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+version: "3"
+
+vars:
+  ANSIBLE_DIR: "{{.ROOT_DIR}}/ansible"
+  INVENTORY_FILE: "{{.ANSIBLE_DIR}}/inventory/hosts.yml"
+
+tasks:
+  ping:
+    desc: Test Ansible connectivity to all hosts
+    dir: "{{.ANSIBLE_DIR}}"
+    cmds:
+      - ansible all -i {{.INVENTORY_FILE}} -m ping
+    preconditions:
+      - msg: "Inventory file not found at {{.INVENTORY_FILE}}"
+        sh: "test -f {{.INVENTORY_FILE}}"
+
+  setup:
+    desc: Install Ansible requirements (roles, collections)
+    dir: "{{.ANSIBLE_DIR}}"
+    cmds:
+      - test -f requirements.yml && ansible-galaxy install -r requirements.yml || echo "No requirements.yml found"
+      - test -f requirements.yml && ansible-galaxy collection install -r requirements.yml || echo "No collections to install"
+
+  check:
+    desc: Run Ansible playbook in check mode (dry-run)
+    dir: "{{.ANSIBLE_DIR}}"
+    cmds:
+      - ansible-playbook -i {{.INVENTORY_FILE}} site.yml --check
+
+  run:
+    desc: Run Ansible playbooks to configure cluster
+    dir: "{{.ANSIBLE_DIR}}"
+    cmds:
+      - ansible-playbook -i {{.INVENTORY_FILE}} site.yml
+    preconditions:
+      - msg: "Inventory file not found. Run 'task opentofu:apply' first"
+        sh: "test -f {{.INVENTORY_FILE}}"
+
+  run-tags:
+    desc: Run Ansible playbook with specific tags
+    dir: "{{.ANSIBLE_DIR}}"
+    cmds:
+      - ansible-playbook -i {{.INVENTORY_FILE}} site.yml --tags={{.CLI_ARGS}}
+
+  run-playbook:
+    desc: Run a specific playbook (provide path as CLI_ARGS)
+    dir: "{{.ANSIBLE_DIR}}"
+    cmds:
+      - ansible-playbook -i {{.INVENTORY_FILE}} {{.CLI_ARGS}}
+
+  list-hosts:
+    desc: List all hosts in inventory
+    dir: "{{.ANSIBLE_DIR}}"
+    cmds:
+      - ansible-inventory -i {{.INVENTORY_FILE}} --list
+
+  list-tasks:
+    desc: List all tasks that would be executed
+    dir: "{{.ANSIBLE_DIR}}"
+    cmds:
+      - ansible-playbook -i {{.INVENTORY_FILE}} site.yml --list-tasks
+
+  get-kubeconfig:
+    desc: Fetch kubeconfig from master node
+    dir: "{{.ANSIBLE_DIR}}"
+    cmds:
+      - |
+        ansible k3s_master -i {{.INVENTORY_FILE}} -m fetch \
+          -a "src=/etc/rancher/k3s/k3s.yaml dest={{.ROOT_DIR}}/kubeconfig flat=yes"
+        sed -i.bak 's/127.0.0.1/k3s-master/g' {{.ROOT_DIR}}/kubeconfig
+        echo "Kubeconfig saved to {{.ROOT_DIR}}/kubeconfig"

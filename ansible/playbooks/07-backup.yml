@@ -1,0 +1,77 @@
+---
+# Backup System Playbook (Velero with Restic)
+
+- name: Install Velero
+  hosts: k3s_master
+  become: true
+  gather_facts: true
+
+  vars:
+    velero_version: v1.12.3
+
+  tasks:
+    - name: Create velero namespace
+      command: kubectl create namespace velero
+      ignore_errors: yes
+
+    - name: Download Velero CLI
+      get_url:
+        url: "https://github.com/vmware-tanzu/velero/releases/download/{{ velero_version }}/velero-{{ velero_version }}-linux-amd64.tar.gz"
+        dest: /tmp/velero.tar.gz
+
+    - name: Extract Velero CLI
+      unarchive:
+        src: /tmp/velero.tar.gz
+        dest: /tmp/
+        remote_src: yes
+
+    - name: Install Velero CLI
+      copy:
+        src: "/tmp/velero-{{ velero_version }}-linux-amd64/velero"
+        dest: /usr/local/bin/velero
+        mode: "0755"
+        remote_src: yes
+
+    - name: Create backup storage directory
+      file:
+        path: /mnt/backup/velero
+        state: directory
+        mode: "0755"
+
+    - name: Install Velero server
+      shell: |
+        velero install \
+          --provider aws \
+          --plugins velero/velero-plugin-for-aws:v1.8.0 \
+          --bucket velero-backups \
+          --backup-location-config region=minio,s3ForcePathStyle="true",s3Url=http://minio.homelab.local:9000 \
+          --use-node-agent \
+          --use-volume-snapshots=false
+      args:
+        creates: /home/ubuntu/.velero-installed
+
+    - name: Mark Velero as installed
+      file:
+        path: /home/ubuntu/.velero-installed
+        state: touch
+
+    - name: Create daily backup schedule
+      command: |
+        velero schedule create daily-backup \
+          --schedule="0 2 * * *" \
+          --ttl 720h0m0s
+      ignore_errors: yes
+
+    - name: Display Velero info
+      debug:
+        msg: |
+          ✅ Velero installed!
+
+          Note: Configure S3-compatible storage (MinIO or external) for backups
+          Backup schedules:
+            - daily-backup: 2 AM daily, 30-day retention
+
+          Commands:
+            - velero backup create test-backup
+            - velero backup get
+            - velero restore create --from-backup test-backup

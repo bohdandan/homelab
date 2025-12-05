@@ -1,0 +1,50 @@
+---
+# Main Ansible Playbook for Homelab Cluster Setup
+# This orchestrates the complete K3s cluster deployment
+
+# Phase 1: Base OS Configuration
+- name: Configure Base Operating System
+  import_playbook: playbooks/00-base-os.yml
+
+# Phase 2: K3s Cluster Installation
+- name: Deploy K3s Cluster
+  import_playbook: playbooks/01-k3s-cluster.yml
+
+# Phase 3: Storage Setup
+- name: Configure Storage
+  import_playbook: playbooks/02-storage.yml
+
+# Phase 4: Networking (MetalLB + Ingress)
+- name: Configure Cluster Networking
+  import_playbook: playbooks/03-networking.yml
+
+# Phase 5: Security (cert-manager)
+- name: Configure Security
+  import_playbook: playbooks/04-security.yml
+
+# Phase 6: Monitoring Stack
+- name: Deploy Monitoring
+  import_playbook: playbooks/05-monitoring.yml
+
+# Phase 7: GitOps (ArgoCD)
+- name: Deploy GitOps
+  import_playbook: playbooks/06-gitops.yml
+
+# Phase 8: Backup System
+- name: Configure Backups
+  import_playbook: playbooks/07-backup.yml
+
+# Final: Display Cluster Information
+- name: Cluster Deployment Complete
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Display completion message
+      debug:
+        msg: |
+          ✅ Homelab cluster deployment complete!
+
+          Next steps:
+          1. Get kubeconfig: task ansible:get-kubeconfig
+          2. Access ArgoCD: kubectl -n argocd get secret argocd-initial-admin-secret
+          3. Deploy applications via GitOps

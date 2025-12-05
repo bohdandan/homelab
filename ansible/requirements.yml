@@ -1,0 +1,10 @@
+# Ansible Requirements
+# Collections and roles needed for homelab deployment
+
+collections:
+  - name: community.general
+    version: ">=8.0.0"
+  - name: kubernetes.core
+    version: ">=3.0.0"
+# Note: K3s installation is handled via shell scripts
+# No external roles required for this setup

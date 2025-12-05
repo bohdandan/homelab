@@ -1,0 +1,96 @@
+---
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+version: "3"
+
+vars:
+  TOFU_DIR: "{{.OPENTOFU_DIR}}"
+
+tasks:
+  init:
+    desc: Initialize OpenTofu
+    dir: "{{.TOFU_DIR}}"
+    cmds:
+      - tofu init
+    sources:
+      - "{{.TOFU_DIR}}/*.tf"
+
+  plan:
+    desc: Plan OpenTofu changes
+    dir: "{{.TOFU_DIR}}"
+    deps: [init]
+    cmds:
+      - tofu plan
+    preconditions:
+      - msg: "terraform.tfvars not found. Run 'task proxmox:setup' first"
+        sh: "test -f {{.TOFU_DIR}}/terraform.tfvars"
+
+  apply:
+    desc: Apply OpenTofu changes to create K8s cluster VMs
+    dir: "{{.TOFU_DIR}}"
+    deps: [init]
+    cmds:
+      - tofu apply -auto-approve
+    preconditions:
+      - msg: "terraform.tfvars not found. Run 'task proxmox:setup' first"
+        sh: "test -f {{.TOFU_DIR}}/terraform.tfvars"
+
+  destroy:
+    desc: Destroy K8s cluster VMs
+    dir: "{{.TOFU_DIR}}"
+    cmds:
+      - tofu destroy -auto-approve
+    preconditions:
+      - msg: "Are you sure you want to destroy the cluster? This cannot be undone!"
+        sh: "false"
+
+  destroy-confirm:
+    desc: Destroy K8s cluster VMs (with confirmation bypass)
+    dir: "{{.TOFU_DIR}}"
+    cmds:
+      - tofu destroy -auto-approve
+
+  output:
+    desc: Show OpenTofu outputs (VM IPs)
+    dir: "{{.TOFU_DIR}}"
+    cmds:
+      - tofu output
+
+  show:
+    desc: Show current OpenTofu state
+    dir: "{{.TOFU_DIR}}"
+    cmds:
+      - tofu show
+
+  validate:
+    desc: Validate OpenTofu configuration
+    dir: "{{.TOFU_DIR}}"
+    cmds:
+      - tofu validate
+
+  fmt:
+    desc: Format OpenTofu files
+    dir: "{{.TOFU_DIR}}"
+    cmds:
+      - tofu fmt
+
+  refresh:
+    desc: Refresh OpenTofu state
+    dir: "{{.TOFU_DIR}}"
+    cmds:
+      - tofu refresh
+
+  create_vms:
+    desc: Create VM
+    dir: "{{.TOFU_DIR}}"
+    deps: [init]
+    cmds:
+      - tofu apply -auto-approve
+    preconditions:
+      - msg: "terraform.tfvars not found. Run 'task proxmox:setup' first"
+        sh: "test -f {{.TOFU_DIR}}/terraform.tfvars"
+
+  destroy_vms:
+    desc: Destroy VM
+    dir: "{{.TOFU_DIR}}"
+    cmds:
+      - tofu destroy -auto-approve

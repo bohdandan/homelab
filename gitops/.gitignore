@@ -1,0 +1,10 @@
+# .gitignore additions for gitops directory
+
+# Sensitive files
+secrets/*.yaml
+*.enc.yaml
+
+# Local development
+.DS_Store
+*.swp
+*~

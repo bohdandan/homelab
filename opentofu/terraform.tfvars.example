@@ -1,0 +1,45 @@
+# Proxmox Connection
+proxmox_api_url          = "https://192.168.1.100:8006/api2/json"
+proxmox_api_token_id     = "terraform@pve!opentofu"
+proxmox_api_token_secret = "your-secret-token-here"
+
+# Proxmox Configuration
+proxmox_node = "pve"
+vm_template  = "ubuntu-noble-template"  # Created by Packer
+vm_storage   = "local-lvm"
+
+# SSH Configuration
+ssh_public_key = <<-EOT
+ssh-rsa AAAAB3... your-public-key-here
+EOT
+
+# K3s Master Configuration
+k3s_master_name       = "k3s-master"
+k3s_master_cpu_cores  = 4
+k3s_master_memory     = 8192
+k3s_master_disk_size  = 100
+
+# K3s Worker Configuration
+worker_count             = 1  # Set to 0 for single-node cluster
+k3s_worker_name_prefix   = "k3s-worker"
+k3s_worker_cpu_cores     = 4
+k3s_worker_memory        = 8192
+k3s_worker_disk_size     = 100
+
+# Pi-hole Configuration (optional)
+enable_pihole      = false  # Set to true to deploy Pi-hole VM
+pihole_vm_name     = "pihole"
+pihole_cpu_cores   = 2
+pihole_memory      = 2048
+pihole_disk_size   = 20
+pihole_static_ip   = ""  # e.g., "192.168.1.10/24" or leave empty for DHCP
+pihole_gateway     = ""  # e.g., "192.168.1.1"
+pihole_nameserver  = "8.8.8.8"
+
+# Network Configuration
+nameserver   = "8.8.8.8"
+searchdomain = "local"
+
+# Cluster Configuration
+k3s_cluster_token = ""  # Auto-generated if empty
+metallb_ip_range  = "192.168.1.200-192.168.1.220"  # Adjust for your network"

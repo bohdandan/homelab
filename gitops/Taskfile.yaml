@@ -1,0 +1,44 @@
+---
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+version: "3"
+
+vars:
+  GITOPS_DIR: "{{.ROOT_DIR}}/gitops"
+
+tasks:
+  bootstrap:
+    desc: Bootstrap ArgoCD with root application
+    dir: "{{.ROOT_DIR}}"
+    cmds:
+      - kubectl apply -f {{.GITOPS_DIR}}/bootstrap/root-app.yaml
+      - echo "✅ ArgoCD bootstrap application created"
+      - echo "Applications will sync automatically from Git"
+
+  sync:
+    desc: Force sync all ArgoCD applications
+    cmds:
+      - |
+        for app in $(kubectl get applications -n argocd -o name); do
+          kubectl patch $app -n argocd -p '{"operation":{"initiatedBy":{"username":"admin"},"syncOptions":null}}' --type=merge
+        done
+      - argocd app sync --all
+
+  status:
+    desc: Check status of all ArgoCD applications
+    cmds:
+      - kubectl get applications -n argocd
+      - argocd app list
+
+  login:
+    desc: Get ArgoCD admin password
+    cmds:
+      - |
+        echo "ArgoCD Admin Password:"
+        kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+        echo ""
+
+  ui:
+    desc: Port-forward to ArgoCD UI
+    cmds:
+      - echo "ArgoCD UI will be available at https://localhost:8080"
+      - kubectl port-forward svc/argocd-server -n argocd 8080:443

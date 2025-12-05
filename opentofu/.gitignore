@@ -1,0 +1,12 @@
+# OpenTofu / Terraform
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.backup
+*.tfstate.*.backup
+terraform.tfvars
+.terraformrc
+terraform.rc
+
+# Generated files
+.k3s-token

@@ -1,0 +1,27 @@
+---
+# Storage Configuration Playbook
+
+- name: Configure Kubernetes Storage
+  hosts: k3s_master
+  become: true
+  gather_facts: true
+
+  tasks:
+    - name: Ensure local-path-provisioner is installed
+      command: kubectl get storageclass local-path
+      register: storage_class_check
+      ignore_errors: yes
+
+    - name: Set local-path as default StorageClass
+      command: |
+        kubectl patch storageclass local-path \
+          -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+      when: storage_class_check.rc == 0
+
+    - name: Verify default StorageClass
+      command: kubectl get storageclass
+      register: storage_classes
+
+    - name: Display StorageClasses
+      debug:
+        var: storage_classes.stdout_lines

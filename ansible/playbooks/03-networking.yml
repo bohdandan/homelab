@@ -1,0 +1,104 @@
+---
+# Networking Configuration Playbook (MetalLB + Ingress-NGINX)
+
+- name: Install MetalLB
+  hosts: k3s_master
+  become: true
+  gather_facts: true
+
+  vars:
+    metallb_version: v0.14.3
+    metallb_ip_range: "{{ hostvars['localhost']['metallb_ip_range'] }}"
+
+  tasks:
+    - name: Apply MetalLB manifest
+      command: kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/{{ metallb_version }}/config/manifests/metallb-native.yaml
+      register: metallb_install
+
+    - name: Wait for MetalLB controller to be ready
+      command: kubectl wait --namespace metallb-system --for=condition=ready pod --selector=app=metallb --timeout=180s
+      retries: 3
+      delay: 10
+
+    - name: Create MetalLB IPAddressPool
+      copy:
+        content: |
+          apiVersion: metallb.io/v1beta1
+          kind: IPAddressPool
+          metadata:
+            name: homelab-pool
+            namespace: metallb-system
+          spec:
+            addresses:
+            - {{ metallb_ip_range }}
+        dest: /tmp/metallb-pool.yaml
+
+    - name: Apply IPAddressPool
+      command: kubectl apply -f /tmp/metallb-pool.yaml
+
+    - name: Create MetalLB L2Advertisement
+      copy:
+        content: |
+          apiVersion: metallb.io/v1beta1
+          kind: L2Advertisement
+          metadata:
+            name: homelab-l2
+            namespace: metallb-system
+          spec:
+            ipAddressPools:
+            - homelab-pool
+        dest: /tmp/metallb-l2.yaml
+
+    - name: Apply L2Advertisement
+      command: kubectl apply -f /tmp/metallb-l2.yaml
+
+    - name: Verify MetalLB installation
+      command: kubectl get pods -n metallb-system
+      register: metallb_pods
+
+    - name: Display MetalLB pods
+      debug:
+        var: metallb_pods.stdout_lines
+
+- name: Install Ingress-NGINX
+  hosts: k3s_master
+  become: true
+  gather_facts: true
+
+  tasks:
+    - name: Add Ingress-NGINX Helm repo
+      command: helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+
+    - name: Update Helm repos
+      command: helm repo update
+
+    - name: Install Ingress-NGINX via Helm
+      command: |
+        helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
+          --namespace ingress-nginx \
+          --create-namespace \
+          --set controller.service.type=LoadBalancer \
+          --set controller.watchIngressWithout ClassOnly=false \
+          --set controller.ingressClassResource.default=true \
+          --wait
+      register: ingress_install
+
+    - name: Wait for Ingress-NGINX to get LoadBalancer IP
+      shell: |
+        kubectl get svc ingress-nginx-controller -n ingress-nginx -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
+      register: ingress_ip
+      until: ingress_ip.stdout != ""
+      retries: 30
+      delay: 10
+
+    - name: Display Ingress-NGINX LoadBalancer IP
+      debug:
+        msg: "Ingress-NGINX LoadBalancer IP: {{ ingress_ip.stdout }}"
+
+    - name: Verify Ingress-NGINX installation
+      command: kubectl get pods -n ingress-nginx
+      register: ingress_pods
+
+    - name: Display Ingress-NGINX pods
+      debug:
+        var: ingress_pods.stdout_lines

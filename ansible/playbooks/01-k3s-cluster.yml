@@ -1,0 +1,129 @@
+---
+# K3s Cluster Installation Playbook
+
+- name: Install K3s Master
+  hosts: k3s_master
+  become: true
+  gather_facts: true
+
+  vars:
+    k3s_version: "{{ hostvars['localhost']['k3s_version'] | default('v1.28.5+k3s1') }}"
+    k3s_token: "{{ hostvars['localhost']['k3s_token'] }}"
+
+  tasks:
+    - name: Download K3s installation script
+      get_url:
+        url: https://get.k3s.io
+        dest: /tmp/k3s-install.sh
+        mode: "0755"
+
+    - name: Install K3s server (master)
+      shell: |
+        INSTALL_K3S_VERSION="{{ k3s_version }}" \
+        K3S_TOKEN="{{ k3s_token }}" \
+        INSTALL_K3S_EXEC="server \
+          --disable traefik \
+          --disable servicelb \
+          --write-kubeconfig-mode 644 \
+          --tls-san {{ ansible_default_ipv4.address }} \
+          --node-name {{ inventory_hostname }}" \
+        /tmp/k3s-install.sh
+      args:
+        creates: /usr/local/bin/k3s
+
+    - name: Wait for K3s to be ready
+      wait_for:
+        path: /etc/rancher/k3s/k3s.yaml
+        state: present
+        timeout: 60
+
+    - name: Get K3s node token
+      slurp:
+        src: /var/lib/rancher/k3s/server/node-token
+      register: k3s_node_token
+
+    - name: Save node token for workers
+      set_fact:
+        k3s_node_token_value: "{{ k3s_node_token.content | b64decode | trim }}"
+
+    - name: Create .kube directory for ubuntu user
+      file:
+        path: /home/ubuntu/.kube
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+        mode: "0755"
+
+    - name: Copy kubeconfig for ubuntu user
+      copy:
+        src: /etc/rancher/k3s/k3s.yaml
+        dest: /home/ubuntu/.kube/config
+        remote_src: yes
+        owner: ubuntu
+        group: ubuntu
+        mode: "0600"
+
+    - name: Replace localhost with master IP in kubeconfig
+      replace:
+        path: /home/ubuntu/.kube/config
+        regexp: '127\.0\.0\.1'
+        replace: "{{ ansible_default_ipv4.address }}"
+
+- name: Install K3s Workers
+  hosts: k3s_worker
+  become: true
+  gather_facts: true
+
+  vars:
+    k3s_version: "{{ hostvars['localhost']['k3s_version'] | default('v1.28.5+k3s1') }}"
+    k3s_node_token: "{{ hostvars[groups['k3s_master'][0]]['k3s_node_token_value'] }}"
+    k3s_master_ip: "{{ hostvars[groups['k3s_master'][0]]['ansible_default_ipv4']['address'] }}"
+
+  tasks:
+    - name: Download K3s installation script
+      get_url:
+        url: https://get.k3s.io
+        dest: /tmp/k3s-install.sh
+        mode: "0755"
+
+    - name: Install K3s agent (worker)
+      shell: |
+        INSTALL_K3S_VERSION="{{ k3s_version }}" \
+        K3S_URL="https://{{ k3s_master_ip }}:6443" \
+        K3S_TOKEN="{{ k3s_node_token }}" \
+        INSTALL_K3S_EXEC="agent \
+          --node-name {{ inventory_hostname }}" \
+        /tmp/k3s-install.sh
+      args:
+        creates: /usr/local/bin/k3s
+
+    - name: Label worker node
+      delegate_to: "{{ groups['k3s_master'][0] }}"
+      command: kubectl label node {{ inventory_hostname }} node-role.kubernetes.io/worker=worker
+      when: inventory_hostname in groups['k3s_worker']
+      ignore_errors: yes
+
+- name: Verify K3s Cluster
+  hosts: k3s_master
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: Wait for all nodes to be ready
+      command: kubectl get nodes
+      register: nodes_output
+      until: nodes_output.stdout.find("NotReady") == -1
+      retries: 30
+      delay: 10
+
+    - name: Display cluster nodes
+      debug:
+        var: nodes_output.stdout_lines
+
+    - name: Get cluster info
+      command: kubectl cluster-info
+      register: cluster_info
+
+    - name: Display cluster info
+      debug:
+        var: cluster_info.stdout_lines
