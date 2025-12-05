@@ -29,9 +29,3 @@ all:
               node_type: worker
 %{ endfor ~}
               
-%{ if pihole != null ~}
-    pihole:
-      hosts:
-        ${pihole.name}:
-          ansible_host: ${pihole.ansible_host}
-%{ endif ~}

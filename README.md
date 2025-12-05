@@ -20,8 +20,7 @@ graph TB
     subgraph Proxmox[Proxmox VE - Beelink SER8]
         subgraph VMs[Virtual Machines]
             Master[K3s Master<br/>4 CPU / 8GB RAM]
-            Worker[K3s Worker<br/>4 CPU / 8GB RAM]
-            PiHole[Pi-hole<br/>2 CPU / 2GB RAM<br/>Optional]
+            Worker[K3s Worker<br/>4 CPU / 8GB RAM<br/>Optional]
         end
         Template[Ubuntu 24.04 Template<br/>Built by Packer]
     end
@@ -96,8 +95,7 @@ homelab/
 ├── opentofu/                  # Infrastructure provisioning
 │   ├── main.tf                # Root configuration
 │   ├── modules/
-│   │   ├── k3s-node/          # K3s node module
-│   │   └── pihole-vm/         # Pi-hole module
+│   │   └── k3s-node/          # K3s node module
 │   └── templates/             # Ansible inventory template
 ├── ansible/                   # Configuration management
 │   ├── site.yml               # Main playbook
@@ -195,9 +193,6 @@ k3s_master_memory    = 8192
 k3s_master_disk_size = 100
 
 worker_count = 1  # Set to 0 for single-node cluster
-
-# Optional Pi-hole
-enable_pihole = false
 ```
 
 ## 💾 Backup & Restore
@@ -267,7 +262,6 @@ task gitops:sync
 **Resource Allocation**
 - K3s Master: 4 CPU / 8GB RAM / 100GB disk
 - K3s Worker: 4 CPU / 8GB RAM / 100GB disk (optional)
-- Pi-hole: 2 CPU / 2GB RAM / 20GB disk (optional)
 
 ## 📝 License
 

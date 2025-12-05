@@ -57,9 +57,6 @@ k3s_master_memory    = 8192
 
 # Single-node or multi-node
 worker_count = 1  # 0 for single-node
-
-# Optional Pi-hole
-enable_pihole = false
 ```
 
 ### 4. Deploy Everything

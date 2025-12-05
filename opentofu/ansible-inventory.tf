@@ -14,7 +14,6 @@ resource "local_file" "ansible_inventory" {
       }
     ]
 
-    pihole           = null # Pi-hole removed
     k3s_token        = var.k3s_cluster_token != "" ? var.k3s_cluster_token : random_password.k3s_token.result
     metallb_ip_range = var.metallb_ip_range
   })
