@@ -4,7 +4,7 @@ terraform {
   required_providers {
     proxmox = {
       source  = "telmate/proxmox"
-      version = "~> 2.9"
+      version = "3.0.2-rc06"
     }
   }
 }
@@ -19,25 +19,31 @@ resource "proxmox_vm_qemu" "k3s_node" {
   agent   = 1
   os_type = "cloud-init"
 
-  # CPU Configuration
-  cores   = var.cpu_cores
-  sockets = 1
-  cpu     = "host"
+  cpu {
+    cores   = var.cpu_cores
+    sockets = 1
+    type    = "host"
+  }
 
   memory   = var.memory
   scsihw   = "virtio-scsi-pci"
   bootdisk = "scsi0"
 
   # Disk Configuration
-  disk {
-    type    = "scsi"
-    storage = var.vm_storage
-    size    = var.disk_size
-    slot    = 0
+  disks {
+    scsi {
+      scsi0 {
+        disk {
+          size    = var.disk_size
+          storage = var.vm_storage
+        }
+      }
+    }
   }
 
   # Network Configuration
   network {
+    id     = 0
     model  = "virtio"
     bridge = "vmbr0"
   }
@@ -60,6 +66,9 @@ resource "proxmox_vm_qemu" "k3s_node" {
 
   # Cloud-init user config
   cicustom = "user=local:snippets/${var.node_name}-user-data.yml"
+
+  # Set description based on node type
+  description = var.node_type == "master" ? "K3s Master Node" : "K3s Worker Node"
 
   # Tags
   tags = join(";", [
