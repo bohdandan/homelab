@@ -30,7 +30,15 @@ echo "Clearing cloud-init state..."
 sudo rm -rf /var/lib/cloud/instance
 sudo rm -rf /var/lib/cloud/instances/*
 sudo rm -rf /var/log/cloud-init*
+# Remove any disabled semaphore files
+sudo rm -f /etc/cloud/cloud-init.disabled
+sudo rm -f /var/lib/cloud/data/disabled
 # DO NOT run 'cloud-init clean' as it disables cloud-init completely
+
+# Explicitly enable cloud-init for first boot
+echo "Re-enabling cloud-init for cloned VMs..."
+sudo touch /etc/cloud/cloud.cfg.d/99-enable-cloud-init.cfg
+sudo systemctl enable cloud-init cloud-config cloud-final
 
 
 # NOTE: SSH host keys are kept in the template
