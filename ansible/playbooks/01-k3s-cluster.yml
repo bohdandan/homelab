@@ -99,9 +99,9 @@
 
     - name: Label worker node
       delegate_to: "{{ groups['k3s_master'][0] }}"
-      command: kubectl label node {{ inventory_hostname }} node-role.kubernetes.io/worker=worker
+      ansible.builtin.command: kubectl label node {{ inventory_hostname }} node-role.kubernetes.io/worker=worker
       when: inventory_hostname in groups['k3s_worker']
-      ignore_errors: yes
+      ignore_errors: true
 
 - name: Verify K3s Cluster
   hosts: k3s_master
