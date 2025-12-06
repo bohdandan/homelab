@@ -68,5 +68,7 @@ tasks:
       - |
         ansible k3s_master -i {{.INVENTORY_FILE}} -m fetch \
           -a "src=/etc/rancher/k3s/k3s.yaml dest={{.ROOT_DIR}}/kubeconfig flat=yes"
-        sed -i.bak 's/127.0.0.1/k3s-master/g' {{.ROOT_DIR}}/kubeconfig
-        echo "Kubeconfig saved to {{.ROOT_DIR}}/kubeconfig"
+        MASTER_IP=$(grep -A1 'k3s-master:' {{.INVENTORY_FILE}} | grep ansible_host | awk -F': ' '{print $2}')
+        sed -i.bak "s/127.0.0.1/$MASTER_IP/g" {{.ROOT_DIR}}/kubeconfig
+        rm -f {{.ROOT_DIR}}/kubeconfig.bak
+        echo "Kubeconfig saved to {{.ROOT_DIR}}/kubeconfig (server: $MASTER_IP)"
