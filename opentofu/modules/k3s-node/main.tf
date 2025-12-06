@@ -39,6 +39,13 @@ resource "proxmox_vm_qemu" "k3s_node" {
         }
       }
     }
+    ide {
+      ide2 {
+        cloudinit {
+          storage = var.vm_storage
+        }
+      }
+    }
   }
 
   # Network Configuration
