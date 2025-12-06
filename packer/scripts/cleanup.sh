@@ -25,9 +25,13 @@ sudo truncate -s 0 /etc/machine-id
 sudo rm -f /var/lib/dbus/machine-id
 sudo ln -s /etc/machine-id /var/lib/dbus/machine-id
 
-# Clear cloud-init state
+# Clear cloud-init state but keep it enabled for cloned VMs
 echo "Clearing cloud-init state..."
-sudo cloud-init clean --logs --seed
+sudo rm -rf /var/lib/cloud/instance
+sudo rm -rf /var/lib/cloud/instances/*
+sudo rm -rf /var/log/cloud-init*
+# DO NOT run 'cloud-init clean' as it disables cloud-init completely
+
 
 # NOTE: SSH host keys are kept in the template
 # Cloud-init or firstboot scripts should regenerate them if needed
