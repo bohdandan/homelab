@@ -66,8 +66,14 @@
   gather_facts: true
 
   tasks:
+    - name: Install Helm
+      ansible.builtin.shell: |
+        curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+      args:
+        creates: /usr/local/bin/helm
+
     - name: Add Ingress-NGINX Helm repo
-      command: helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+      ansible.builtin.command: helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
 
     - name: Update Helm repos
       command: helm repo update
