@@ -75,14 +75,14 @@
   gather_facts: true
 
   tasks:
-    - name: Get master node facts
+    - name: Get master node info from inventory
       ansible.builtin.set_fact:
-        master_ip: "{{ hostvars[groups['k3s_master'][0]]['k3s_master_ip'] }}"
+        master_ip: "{{ hostvars[groups['k3s_master'][0]]['ansible_host'] }}"
         master_token: "{{ hostvars[groups['k3s_master'][0]]['k3s_node_token_value'] }}"
 
     - name: Debug - show master connection info
       ansible.builtin.debug:
-        msg: "Connecting to K3s master at https://{{ master_ip }}:6443"
+        msg: "Connecting to K3s master at https://{{ master_ip }}:6443 with token {{ master_token[:20] }}..."
 
     - name: Download K3s installation script
       ansible.builtin.get_url:
@@ -92,12 +92,10 @@
 
     - name: Install K3s agent (worker)
       ansible.builtin.shell: |
-        INSTALL_K3S_VERSION="{{ k3s_version }}" \
-        K3S_URL="https://{{ master_ip }}:6443" \
-        K3S_TOKEN="{{ master_token }}" \
-        INSTALL_K3S_EXEC="agent \
-          --node-name {{ inventory_hostname }}" \
-        /tmp/k3s-install.sh
+        export INSTALL_K3S_VERSION="{{ k3s_version }}"
+        export K3S_URL="https://{{ master_ip }}:6443"
+        export K3S_TOKEN="{{ master_token }}"
+        /tmp/k3s-install.sh agent --node-name {{ inventory_hostname }}
       args:
         creates: /usr/local/bin/k3s
 
