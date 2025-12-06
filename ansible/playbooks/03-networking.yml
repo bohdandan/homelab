@@ -8,7 +8,7 @@
 
   vars:
     metallb_version: v0.14.3
-    metallb_ip_range: "{{ hostvars['localhost']['metallb_ip_range'] }}"
+    # metallb_ip_range comes from k3s_cluster group vars in inventory
 
   tasks:
     - name: Apply MetalLB manifest
