@@ -47,8 +47,45 @@
         enabled: yes
 
     - name: Set timezone to UTC
-      timezone:
+      ansible.builtin.timezone:
         name: UTC
+
+    - name: Configure UFW firewall for K3s
+      block:
+        - name: Allow SSH
+          community.general.ufw:
+            rule: allow
+            port: "22"
+            proto: tcp
+
+        - name: Allow K3s API Server
+          community.general.ufw:
+            rule: allow
+            port: "6443"
+            proto: tcp
+
+        - name: Allow Kubelet
+          community.general.ufw:
+            rule: allow
+            port: "10250"
+            proto: tcp
+
+        - name: Allow Flannel VXLAN
+          community.general.ufw:
+            rule: allow
+            port: "8472"
+            proto: udp
+
+        - name: Allow etcd
+          community.general.ufw:
+            rule: allow
+            port: "2379:2380"
+            proto: tcp
+
+        - name: Disable UFW (K3s manages iptables)
+          community.general.ufw:
+            state: disabled
+      when: ansible_facts['os_family'] == "Debian"
 
     - name: Disable swap
       shell: |
