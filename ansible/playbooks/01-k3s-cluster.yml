@@ -6,10 +6,6 @@
   become: true
   gather_facts: true
 
-  vars:
-    k3s_version: "{{ k3s_version | default('v1.28.5+k3s1') }}"
-    cluster_token: "{{ k3s_token }}"
-
   tasks:
     - name: Download K3s installation script
       get_url:
@@ -20,7 +16,7 @@
     - name: Install K3s server (master)
       shell: |
         INSTALL_K3S_VERSION="{{ k3s_version }}" \
-        K3S_TOKEN="{{ cluster_token }}" \
+        K3S_TOKEN="{{ k3s_token }}" \
         INSTALL_K3S_EXEC="server \
           --disable traefik \
           --disable servicelb \
@@ -74,11 +70,6 @@
   become: true
   gather_facts: true
 
-  vars:
-    k3s_version: "{{ k3s_version | default('v1.28.5+k3s1') }}"
-    k3s_node_token: "{{ hostvars[groups['k3s_master'][0]]['k3s_node_token_value'] }}"
-    k3s_master_ip: "{{ hostvars[groups['k3s_master'][0]]['ansible_default_ipv4']['address'] }}"
-
   tasks:
     - name: Download K3s installation script
       get_url:
@@ -89,8 +80,8 @@
     - name: Install K3s agent (worker)
       shell: |
         INSTALL_K3S_VERSION="{{ k3s_version }}" \
-        K3S_URL="https://{{ k3s_master_ip }}:6443" \
-        K3S_TOKEN="{{ k3s_node_token }}" \
+        K3S_URL="https://{{ hostvars[groups['k3s_master'][0]]['ansible_default_ipv4']['address'] }}:6443" \
+        K3S_TOKEN="{{ hostvars[groups['k3s_master'][0]]['k3s_node_token_value'] }}" \
         INSTALL_K3S_EXEC="agent \
           --node-name {{ inventory_hostname }}" \
         /tmp/k3s-install.sh
