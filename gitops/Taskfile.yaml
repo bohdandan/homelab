@@ -4,6 +4,10 @@ version: "3"
 
 vars:
   GITOPS_DIR: "{{.ROOT_DIR}}/gitops"
+  KUBECONFIG: "{{.ROOT_DIR}}/kubeconfig"
+
+env:
+  KUBECONFIG: "{{.KUBECONFIG}}"
 
 tasks:
   bootstrap:
