@@ -50,6 +50,7 @@
         --backup-location-config region=minio,s3ForcePathStyle="true",s3Url=http://minio.homelab.local:9000
         --use-node-agent
         --use-volume-snapshots=false
+        --no-secret
       args:
         creates: /home/ubuntu/.velero-installed
 
