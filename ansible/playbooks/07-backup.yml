@@ -9,61 +9,64 @@
   vars:
     velero_version: v1.12.3
 
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
   tasks:
     - name: Create velero namespace
-      command: kubectl create namespace velero
-      ignore_errors: yes
+      ansible.builtin.command: kubectl create namespace velero
+      ignore_errors: true
 
     - name: Download Velero CLI
-      get_url:
+      ansible.builtin.get_url:
         url: "https://github.com/vmware-tanzu/velero/releases/download/{{ velero_version }}/velero-{{ velero_version }}-linux-amd64.tar.gz"
         dest: /tmp/velero.tar.gz
 
     - name: Extract Velero CLI
-      unarchive:
+      ansible.builtin.unarchive:
         src: /tmp/velero.tar.gz
         dest: /tmp/
         remote_src: yes
 
     - name: Install Velero CLI
-      copy:
+      ansible.builtin.copy:
         src: "/tmp/velero-{{ velero_version }}-linux-amd64/velero"
         dest: /usr/local/bin/velero
         mode: "0755"
         remote_src: yes
 
     - name: Create backup storage directory
-      file:
+      ansible.builtin.file:
         path: /mnt/backup/velero
         state: directory
         mode: "0755"
 
     - name: Install Velero server
-      shell: |
-        velero install \
-          --provider aws \
-          --plugins velero/velero-plugin-for-aws:v1.8.0 \
-          --bucket velero-backups \
-          --backup-location-config region=minio,s3ForcePathStyle="true",s3Url=http://minio.homelab.local:9000 \
-          --use-node-agent \
-          --use-volume-snapshots=false
+      ansible.builtin.shell: >
+        velero install
+        --provider aws
+        --plugins velero/velero-plugin-for-aws:v1.8.0
+        --bucket velero-backups
+        --backup-location-config region=minio,s3ForcePathStyle="true",s3Url=http://minio.homelab.local:9000
+        --use-node-agent
+        --use-volume-snapshots=false
       args:
         creates: /home/ubuntu/.velero-installed
 
     - name: Mark Velero as installed
-      file:
+      ansible.builtin.file:
         path: /home/ubuntu/.velero-installed
         state: touch
 
     - name: Create daily backup schedule
-      command: |
-        velero schedule create daily-backup \
-          --schedule="0 2 * * *" \
-          --ttl 720h0m0s
-      ignore_errors: yes
+      ansible.builtin.shell: >
+        velero schedule create daily-backup
+        --schedule="0 2 * * *"
+        --ttl 720h0m0s
+      ignore_errors: true
 
     - name: Display Velero info
-      debug:
+      ansible.builtin.debug:
         msg: |
           ✅ Velero installed!
 

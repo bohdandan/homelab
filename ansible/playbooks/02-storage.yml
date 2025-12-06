@@ -6,22 +6,25 @@
   become: true
   gather_facts: true
 
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
   tasks:
     - name: Ensure local-path-provisioner is installed
-      command: kubectl get storageclass local-path
+      ansible.builtin.command: kubectl get storageclass local-path
       register: storage_class_check
-      ignore_errors: yes
+      ignore_errors: true
 
     - name: Set local-path as default StorageClass
-      command: |
-        kubectl patch storageclass local-path \
-          -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+      ansible.builtin.shell: >
+        kubectl patch storageclass local-path
+        -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
       when: storage_class_check.rc == 0
 
     - name: Verify default StorageClass
-      command: kubectl get storageclass
+      ansible.builtin.command: kubectl get storageclass
       register: storage_classes
 
     - name: Display StorageClasses
-      debug:
+      ansible.builtin.debug:
         var: storage_classes.stdout_lines

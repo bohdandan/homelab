@@ -9,33 +9,36 @@
   vars:
     cert_manager_version: v1.13.3
 
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
   tasks:
     - name: Create cert-manager namespace
-      command: kubectl create namespace cert-manager
-      ignore_errors: yes
+      ansible.builtin.command: kubectl create namespace cert-manager
+      ignore_errors: true
 
     - name: Install cert-manager CRDs
-      command: |
+      ansible.builtin.command: >
         kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/{{ cert_manager_version }}/cert-manager.crds.yaml
 
     - name: Add Jetstack Helm repo
-      command: helm repo add jetstack https://charts.jetstack.io
+      ansible.builtin.command: helm repo add jetstack https://charts.jetstack.io
 
     - name: Update Helm repos
-      command: helm repo update
+      ansible.builtin.command: helm repo update
 
     - name: Install cert-manager via Helm
-      command: |
-        helm upgrade --install cert-manager jetstack/cert-manager \
-          --namespace cert-manager \
-          --version {{ cert_manager_version }} \
-          --wait
+      ansible.builtin.shell: >
+        helm upgrade --install cert-manager jetstack/cert-manager
+        --namespace cert-manager
+        --version {{ cert_manager_version }}
+        --wait --timeout 5m
 
     - name: Wait for cert-manager to be ready
-      command: kubectl wait --for=condition=ready pod -l app.kubernetes.io/instance=cert-manager -n cert-manager --timeout=180s
+      ansible.builtin.command: kubectl wait --for=condition=ready pod -l app.kubernetes.io/instance=cert-manager -n cert-manager --timeout=180s
 
     - name: Create self-signed ClusterIssuer
-      copy:
+      ansible.builtin.copy:
         content: |
           apiVersion: cert-manager.io/v1
           kind: ClusterIssuer
@@ -46,10 +49,10 @@
         dest: /tmp/selfsigned-issuer.yaml
 
     - name: Apply self-signed ClusterIssuer
-      command: kubectl apply -f /tmp/selfsigned-issuer.yaml
+      ansible.builtin.command: kubectl apply -f /tmp/selfsigned-issuer.yaml
 
     - name: Create Let's Encrypt staging ClusterIssuer
-      copy:
+      ansible.builtin.copy:
         content: |
           apiVersion: cert-manager.io/v1
           kind: ClusterIssuer
@@ -68,20 +71,20 @@
         dest: /tmp/letsencrypt-staging.yaml
 
     - name: Apply Let's Encrypt staging issuer
-      command: kubectl apply -f /tmp/letsencrypt-staging.yaml
+      ansible.builtin.command: kubectl apply -f /tmp/letsencrypt-staging.yaml
 
     - name: Verify cert-manager installation
-      command: kubectl get pods -n cert-manager
+      ansible.builtin.command: kubectl get pods -n cert-manager
       register: cert_manager_pods
 
     - name: Display cert-manager pods
-      debug:
+      ansible.builtin.debug:
         var: cert_manager_pods.stdout_lines
 
     - name: Verify ClusterIssuers
-      command: kubectl get clusterissuers
+      ansible.builtin.command: kubectl get clusterissuers
       register: cluster_issuers
 
     - name: Display ClusterIssuers
-      debug:
+      ansible.builtin.debug:
         var: cluster_issuers.stdout_lines
