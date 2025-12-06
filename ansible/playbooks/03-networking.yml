@@ -74,9 +74,13 @@
 
     - name: Add Ingress-NGINX Helm repo
       ansible.builtin.command: helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
 
     - name: Update Helm repos
-      command: helm repo update
+      ansible.builtin.command: helm repo update
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
 
     - name: Install Ingress-NGINX via Helm
       ansible.builtin.shell: >
@@ -87,6 +91,8 @@
         --set controller.watchIngressWithoutClass=false
         --set controller.ingressClassResource.default=true
         --wait --timeout 5m
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
       register: ingress_install
 
     - name: Wait for Ingress-NGINX to get LoadBalancer IP
