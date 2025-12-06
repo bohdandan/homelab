@@ -79,14 +79,14 @@
       command: helm repo update
 
     - name: Install Ingress-NGINX via Helm
-      command: |
-        helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
-          --namespace ingress-nginx \
-          --create-namespace \
-          --set controller.service.type=LoadBalancer \
-          --set controller.watchIngressWithout ClassOnly=false \
-          --set controller.ingressClassResource.default=true \
-          --wait
+      ansible.builtin.shell: >
+        helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx
+        --namespace ingress-nginx
+        --create-namespace
+        --set controller.service.type=LoadBalancer
+        --set controller.watchIngressWithoutClass=false
+        --set controller.ingressClassResource.default=true
+        --wait --timeout 5m
       register: ingress_install
 
     - name: Wait for Ingress-NGINX to get LoadBalancer IP
