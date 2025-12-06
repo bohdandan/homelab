@@ -12,7 +12,7 @@ spec:
   project: default
 
   source:
-    repoURL: https://github.com/your-username/homelab.git # Update with your repo
+    repoURL: https://github.com/bohdandan/homelab.git
     targetRevision: HEAD
     path: gitops/applications
 
