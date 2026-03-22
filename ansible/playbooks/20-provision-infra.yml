@@ -11,10 +11,8 @@
         that:
           - homelab_effective.secrets.proxmox_api_token_id is defined
           - homelab_effective.secrets.proxmox_api_token_secret is defined
-          - homelab_effective.secrets.cloudflare_api_token is defined
-          - homelab_effective.secrets.cloudflare_account_id is defined
-          - homelab_effective.secrets.cloudflare_zone_id is defined
-        fail_msg: Bootstrap Proxmox and provide Cloudflare secrets before provisioning infrastructure.
+          - homelab_effective.secrets.proxmox_api_token_secret != 'replace-me'
+        fail_msg: Bootstrap Proxmox and provide real Proxmox API credentials before provisioning infrastructure.
 
     - name: Render runtime files
       ansible.builtin.include_tasks: ../tasks/render_runtime_files.yml
@@ -47,6 +45,20 @@
   tasks:
     - name: Load context again
       ansible.builtin.include_tasks: ../tasks/load_context.yml
+
+    - name: Check whether Cloudflare secrets are ready
+      ansible.builtin.set_fact:
+        homelab_cloudflare_secrets_ready: >-
+          {{
+            homelab_effective.secrets.cloudflare_api_token is defined
+            and homelab_effective.secrets.cloudflare_api_token != 'replace-me'
+            and homelab_effective.secrets.cloudflare_account_id is defined
+            and homelab_effective.secrets.cloudflare_account_id != 'replace-me'
+            and homelab_effective.secrets.cloudflare_zone_id is defined
+            and homelab_effective.secrets.cloudflare_zone_id != 'replace-me'
+            and (homelab_effective.secrets.cloudflare_access_allowed_emails | default([]) | length) > 0
+            and (homelab_effective.secrets.cloudflare_access_allowed_emails | first) != 'replace-me@example.com'
+          }}
 
     - name: Initialize Proxmox OpenTofu stack
       ansible.builtin.command:
@@ -82,12 +94,14 @@
         cmd: tofu init
       args:
         chdir: "{{ playbook_dir }}/../../opentofu/cloudflare"
+      when: homelab_cloudflare_secrets_ready | bool
 
     - name: Apply Cloudflare OpenTofu stack
       ansible.builtin.command:
         cmd: tofu apply -auto-approve
       args:
         chdir: "{{ playbook_dir }}/../../opentofu/cloudflare"
+      when: homelab_cloudflare_secrets_ready | bool
 
     - name: Read Cloudflare tunnel token
       ansible.builtin.command:
@@ -95,6 +109,7 @@
       args:
         chdir: "{{ playbook_dir }}/../../opentofu/cloudflare"
       register: cloudflare_tunnel_token
+      when: homelab_cloudflare_secrets_ready | bool
 
     - name: Persist Cloudflare tunnel token to runtime secrets
       ansible.builtin.copy:
@@ -103,3 +118,11 @@
         content: |
           homelab_secrets:
             cloudflare_tunnel_token: "{{ cloudflare_tunnel_token.stdout | trim }}"
+      when: homelab_cloudflare_secrets_ready | bool
+
+    - name: Report skipped Cloudflare provisioning
+      ansible.builtin.debug:
+        msg: >-
+          Skipping Cloudflare provisioning because one or more Cloudflare secrets are still placeholders.
+          Proxmox VM provisioning and generated inventory completed normally.
+      when: not (homelab_cloudflare_secrets_ready | bool)

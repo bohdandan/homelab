@@ -41,3 +41,4 @@
 # Generated artifacts
 *.qcow2
 *.xz
+homelab-secrets-backup-*.zip
