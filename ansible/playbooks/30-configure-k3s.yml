@@ -1,0 +1,246 @@
+---
+- name: Prepare local K3s token
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Load context
+      ansible.builtin.include_tasks: ../tasks/load_context.yml
+
+    - name: Check for existing runtime K3s token
+      ansible.builtin.stat:
+        path: "{{ playbook_dir }}/../runtime/k3s-token"
+      register: runtime_k3s_token
+
+    - name: Generate K3s token
+      ansible.builtin.set_fact:
+        k3s_cluster_token: "{{ lookup('ansible.builtin.password', '/dev/null', length=48, chars=['ascii_letters', 'digits']) }}"
+      when: not runtime_k3s_token.stat.exists
+
+    - name: Read existing K3s token
+      ansible.builtin.slurp:
+        src: "{{ playbook_dir }}/../runtime/k3s-token"
+      register: existing_k3s_token
+      when: runtime_k3s_token.stat.exists
+
+    - name: Set effective K3s token
+      ansible.builtin.set_fact:
+        k3s_cluster_token: "{{ existing_k3s_token.content | b64decode | trim }}"
+      when: runtime_k3s_token.stat.exists
+
+    - name: Persist K3s token locally
+      ansible.builtin.copy:
+        dest: "{{ playbook_dir }}/../runtime/k3s-token"
+        mode: "0600"
+        content: "{{ k3s_cluster_token }}"
+      when: not runtime_k3s_token.stat.exists
+
+- name: Configure base OS for K3s nodes
+  hosts: proxmox
+  gather_facts: false
+  vars:
+    homelab_effective: "{{ hostvars['localhost'].homelab_effective }}"
+    k3s_vm_guests:
+      - name: "{{ groups['k3s_control'][0] }}"
+        vmid: "{{ hostvars[groups['k3s_control'][0]].vmid }}"
+        ip: "{{ hostvars[groups['k3s_control'][0]].ansible_host }}"
+      - name: "{{ groups['k3s_worker'][0] }}"
+        vmid: "{{ hostvars[groups['k3s_worker'][0]].vmid }}"
+        ip: "{{ hostvars[groups['k3s_worker'][0]].ansible_host }}"
+  become: true
+  tasks:
+    - name: Remediate cloned guest cloud-init networking when needed
+      ansible.builtin.include_tasks: ../tasks/remediate_k3s_clone_cloud_init.yml
+      loop: "{{ k3s_vm_guests }}"
+      loop_control:
+        loop_var: k3s_vm
+        label: "{{ k3s_vm.name }}"
+
+- name: Wait for K3s nodes to accept SSH
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Wait for SSH on K3s nodes
+      ansible.builtin.wait_for:
+        host: "{{ hostvars[item].ansible_host }}"
+        port: 22
+        timeout: 300
+        delay: 5
+      loop: "{{ groups['k3s_cluster'] }}"
+      loop_control:
+        label: "{{ item }}"
+
+- name: Configure base OS for K3s nodes
+  hosts: k3s_cluster
+  become: true
+  gather_facts: true
+  vars:
+    homelab_effective: "{{ hostvars['localhost'].homelab_effective }}"
+  tasks:
+    - name: Set hostname
+      ansible.builtin.hostname:
+        name: "{{ inventory_hostname }}"
+
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Upgrade packages
+      ansible.builtin.apt:
+        upgrade: dist
+
+    - name: Install common packages
+      ansible.builtin.apt:
+        name:
+          - curl
+          - git
+          - jq
+          - nfs-common
+          - open-iscsi
+          - python3-pip
+          - vim
+          - wget
+        state: present
+
+    - name: Disable swap immediately
+      ansible.builtin.command: swapoff -a
+      changed_when: false
+
+    - name: Disable swap in fstab
+      ansible.builtin.replace:
+        path: /etc/fstab
+        regexp: '^(.*\sswap\s+.*)$'
+        replace: '# \1'
+
+    - name: Ensure kernel modules load on boot
+      ansible.builtin.copy:
+        dest: /etc/modules-load.d/k3s.conf
+        mode: "0644"
+        content: |
+          overlay
+          br_netfilter
+
+    - name: Load required kernel modules
+      ansible.builtin.modprobe:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - overlay
+        - br_netfilter
+
+    - name: Configure K3s sysctl settings
+      ansible.builtin.copy:
+        dest: /etc/sysctl.d/90-k3s.conf
+        mode: "0644"
+        content: |
+          net.bridge.bridge-nf-call-iptables=1
+          net.bridge.bridge-nf-call-ip6tables=1
+          net.ipv4.ip_forward=1
+
+    - name: Apply sysctl settings
+      ansible.builtin.command: sysctl --system
+      changed_when: false
+
+- name: Install K3s control plane
+  hosts: k3s_control
+  become: true
+  gather_facts: true
+  vars:
+    homelab_effective: "{{ hostvars['localhost'].homelab_effective }}"
+    k3s_token: "{{ hostvars['localhost'].k3s_cluster_token }}"
+  tasks:
+    - name: Download K3s installer
+      ansible.builtin.get_url:
+        url: https://get.k3s.io
+        dest: /tmp/k3s-install.sh
+        mode: "0755"
+
+    - name: Install K3s server
+      ansible.builtin.shell: |
+        INSTALL_K3S_VERSION="{{ homelab_effective.k3s.version }}" \
+        K3S_TOKEN="{{ k3s_token }}" \
+        INSTALL_K3S_EXEC="server --disable servicelb --write-kubeconfig-mode 644 --node-name {{ inventory_hostname }}" \
+        /tmp/k3s-install.sh
+      args:
+        creates: /usr/local/bin/k3s
+
+    - name: Wait for kubeconfig
+      ansible.builtin.wait_for:
+        path: /etc/rancher/k3s/k3s.yaml
+        timeout: 180
+
+    - name: Create kube directory for the SSH user
+      ansible.builtin.file:
+        path: "/home/{{ homelab_effective.ssh.user }}/.kube"
+        state: directory
+        owner: "{{ homelab_effective.ssh.user }}"
+        group: "{{ homelab_effective.ssh.user }}"
+        mode: "0755"
+
+    - name: Copy kubeconfig for the SSH user
+      ansible.builtin.copy:
+        src: /etc/rancher/k3s/k3s.yaml
+        dest: "/home/{{ homelab_effective.ssh.user }}/.kube/config"
+        remote_src: true
+        owner: "{{ homelab_effective.ssh.user }}"
+        group: "{{ homelab_effective.ssh.user }}"
+        mode: "0600"
+
+- name: Install K3s worker
+  hosts: k3s_worker
+  become: true
+  gather_facts: true
+  vars:
+    homelab_effective: "{{ hostvars['localhost'].homelab_effective }}"
+    k3s_token: "{{ hostvars['localhost'].k3s_cluster_token }}"
+    control_ip: "{{ hostvars[groups['k3s_control'][0]].ansible_host }}"
+  tasks:
+    - name: Download K3s installer
+      ansible.builtin.get_url:
+        url: https://get.k3s.io
+        dest: /tmp/k3s-install.sh
+        mode: "0755"
+
+    - name: Install K3s agent
+      ansible.builtin.shell: |
+        INSTALL_K3S_VERSION="{{ homelab_effective.k3s.version }}" \
+        K3S_URL="https://{{ control_ip }}:6443" \
+        K3S_TOKEN="{{ k3s_token }}" \
+        INSTALL_K3S_EXEC="agent --node-name {{ inventory_hostname }}" \
+        /tmp/k3s-install.sh
+      args:
+        creates: /usr/local/bin/k3s-agent
+
+- name: Verify cluster and label stateful worker
+  hosts: k3s_control
+  become: true
+  gather_facts: false
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  tasks:
+    - name: Wait for cluster nodes to be ready
+      ansible.builtin.command: kubectl get nodes
+      register: k3s_nodes
+      retries: 30
+      delay: 10
+      until: >
+        ('NotReady' not in k3s_nodes.stdout)
+        and (groups['k3s_cluster'] | length <= (k3s_nodes.stdout_lines | length - 1))
+
+    - name: Label worker node for stateful workloads
+      ansible.builtin.command:
+        cmd: "kubectl label node {{ groups['k3s_worker'][0] }} homelab.io/stateful=true --overwrite"
+
+    - name: Fetch kubeconfig locally
+      ansible.builtin.fetch:
+        src: /etc/rancher/k3s/k3s.yaml
+        dest: "{{ playbook_dir }}/../runtime/kubeconfig.raw"
+        flat: true
+
+    - name: Rewrite kubeconfig server endpoint locally
+      delegate_to: localhost
+      become: false
+      ansible.builtin.replace:
+        path: "{{ playbook_dir }}/../runtime/kubeconfig.raw"
+        regexp: https://127\.0\.0\.1:6443
+        replace: "https://{{ ansible_host }}:6443"

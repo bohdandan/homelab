@@ -1,0 +1,159 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ homelab_effective.apps.homepage.namespace }}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: homelab-wildcard
+  namespace: {{ homelab_effective.apps.homepage.namespace }}
+spec:
+  secretName: homelab-wildcard-tls
+  issuerRef:
+    kind: ClusterIssuer
+    name: {{ homelab_effective.cert_manager.cluster_issuer_name }}
+  dnsNames:
+    - "*.{{ homelab_effective.domain.subzone }}"
+    - "{{ homelab_effective.domain.subzone }}"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: homepage-config
+  namespace: {{ homelab_effective.apps.homepage.namespace }}
+data:
+  settings.yaml: |
+    title: Homelab
+    theme: dark
+    color: slate
+    hideVersion: true
+  services.yaml: |
+    - Platform:
+        - Homepage:
+            href: https://{{ homelab_effective.domain.homepage }}
+            description: Homelab landing page
+        - n8n:
+            href: https://{{ homelab_effective.domain.n8n }}
+            description: Automation workflows
+        - Home Assistant:
+            href: https://{{ homelab_effective.domain.home_assistant }}
+            description: Smart home
+  widgets.yaml: |
+    - kubernetes:
+        cluster:
+          show: true
+        nodes:
+          show: true
+  kubernetes.yaml: |
+    mode: cluster
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: homepage
+  namespace: {{ homelab_effective.apps.homepage.namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: homepage
+rules:
+  - apiGroups: [""]
+    resources: ["namespaces", "nodes", "pods", "services"]
+    verbs: ["get", "list"]
+  - apiGroups: ["metrics.k8s.io"]
+    resources: ["nodes", "pods"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: homepage
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: homepage
+subjects:
+  - kind: ServiceAccount
+    name: homepage
+    namespace: {{ homelab_effective.apps.homepage.namespace }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: homepage
+  namespace: {{ homelab_effective.apps.homepage.namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: homepage
+  template:
+    metadata:
+      labels:
+        app: homepage
+    spec:
+      serviceAccountName: homepage
+      containers:
+        - name: homepage
+          image: {{ homelab_effective.apps.homepage.image }}
+          ports:
+            - containerPort: 3000
+              name: http
+          volumeMounts:
+            - name: config
+              mountPath: /app/config
+            - name: logs
+              mountPath: /app/config/logs
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+      volumes:
+        - name: config
+          configMap:
+            name: homepage-config
+        - name: logs
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: homepage
+  namespace: {{ homelab_effective.apps.homepage.namespace }}
+spec:
+  selector:
+    app: homepage
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: homepage
+  namespace: {{ homelab_effective.apps.homepage.namespace }}
+  annotations:
+    cert-manager.io/cluster-issuer: {{ homelab_effective.cert_manager.cluster_issuer_name }}
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - {{ homelab_effective.domain.homepage }}
+      secretName: homelab-wildcard-tls
+  rules:
+    - host: {{ homelab_effective.domain.homepage }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: homepage
+                port:
+                  number: 3000

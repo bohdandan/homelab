@@ -1,0 +1,14 @@
+{
+  "cloudflare_api_token": "replace-me",
+  "account_id": "replace-me",
+  "zone_id": "replace-me",
+  "zone_name": "magnetic-marten.com",
+  "tunnel_name": "homelab",
+  "homepage_hostname": "homepage.homelab.magnetic-marten.com",
+  "n8n_hostname": "n8n.homelab.magnetic-marten.com",
+  "homepage_origin_service": "http://traefik.kube-system.svc.cluster.local:80",
+  "n8n_origin_service": "http://traefik.kube-system.svc.cluster.local:80",
+  "n8n_allowed_emails": [
+    "replace-me@example.com"
+  ]
+}

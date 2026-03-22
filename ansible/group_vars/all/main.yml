@@ -1,0 +1,115 @@
+homelab:
+  domain:
+    root: magnetic-marten.com
+    subzone: homelab.magnetic-marten.com
+    homepage: homepage.homelab.magnetic-marten.com
+    n8n: n8n.homelab.magnetic-marten.com
+    home_assistant: ha.homelab.magnetic-marten.com
+
+  ssh:
+    user: ubuntu
+    public_key_path: "{{ lookup('env', 'HOME') }}/.ssh/id_ed25519.pub"
+    private_key_path: "{{ lookup('env', 'HOME') }}/.ssh/id_ed25519"
+
+  proxmox:
+    ssh_host: 192.168.10.100
+    ssh_user: root
+    ssh_port: 22
+    api_user: homelab@pve
+    api_token_name: automation
+    validate_certs: false
+    recreate_api_token: false
+    node: pve
+    bridge: vmbr0
+    iso_storage: local
+    snippets_storage: local
+    vm_storage: local-lvm
+    cloudinit_storage: local-lvm
+    k3s_template_name: ubuntu-24-04-k3s-template
+    k3s_template_vmid: 9000
+    haos_template_name: haos-x86-64-template
+    haos_template_vmid: 9010
+    backup_storage_name: homelab-backup
+    backup_mount_path: /mnt/homelab-backups
+    backup_device: /dev/sda1
+    backup_schedule: sat 03:00
+    backup_retention: keep-last=4,keep-weekly=8,keep-monthly=3
+    backup_mode: snapshot
+
+  network:
+    cidr_prefix: 24
+    gateway: 192.168.10.1
+    nameserver: 192.168.10.1
+    searchdomain: magnetic-marten.com
+    traefik_lb_ip: 192.168.10.120
+    metallb_range: 192.168.10.120-192.168.10.129
+
+  packer:
+    template_name: ubuntu-24-04-k3s-template
+    template_vmid: 9000
+    iso_url: https://releases.ubuntu.com/noble/ubuntu-24.04.3-live-server-amd64.iso
+    iso_checksum: file:https://releases.ubuntu.com/noble/SHA256SUMS
+    build_ip: 192.168.10.109
+    ssh_username: ubuntu
+    memory: 4096
+    cores: 2
+    disk_size: 30G
+
+  haos:
+    image_version: "16.3"
+    image_url: "https://github.com/home-assistant/operating-system/releases/download/16.3/haos_ova-16.3.qcow2.xz"
+    vmid: 112
+    name: haos-01
+    desired_ip: 192.168.10.112
+    mac_address: "52:54:10:00:00:12"
+    memory: 4096
+    cores: 2
+    disk_size: 32G
+
+  k3s:
+    version: v1.35.0+k3s1
+    token_file: "{{ playbook_dir | default('.') }}/../runtime/k3s-token"
+    control:
+      vmid: 110
+      name: k3s-control-01
+      ip: 192.168.10.110
+      memory: 8192
+      cores: 4
+      disk_size_gb: 60
+    worker:
+      vmid: 111
+      name: k3s-worker-01
+      ip: 192.168.10.111
+      memory: 8192
+      cores: 4
+      disk_size_gb: 80
+
+  cert_manager:
+    namespace: cert-manager
+    version: v1.19.2
+    email: admin@magnetic-marten.com
+    cluster_issuer_name: letsencrypt-cloudflare
+    private_key_secret_name: letsencrypt-cloudflare-account-key
+
+  apps:
+    homepage:
+      namespace: homepage
+      image: ghcr.io/gethomepage/homepage:v1.8.0
+    n8n:
+      namespace: n8n
+      image: n8nio/n8n:latest
+      data_storage: 10Gi
+    postgres:
+      namespace: n8n
+      image: postgres:17-alpine
+      data_storage: 20Gi
+      database: n8n
+      user: n8n
+    cloudflared:
+      namespace: cloudflared
+      image: cloudflare/cloudflared:2025.11.1
+
+  cloudflare:
+    tunnel_name: homelab
+    homepage_service: http://traefik.kube-system.svc.cluster.local:80
+    n8n_service: http://traefik.kube-system.svc.cluster.local:80

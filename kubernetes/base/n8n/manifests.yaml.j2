@@ -1,0 +1,217 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ homelab_effective.apps.n8n.namespace }}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: homelab-wildcard
+  namespace: {{ homelab_effective.apps.n8n.namespace }}
+spec:
+  secretName: homelab-wildcard-tls
+  issuerRef:
+    kind: ClusterIssuer
+    name: {{ homelab_effective.cert_manager.cluster_issuer_name }}
+  dnsNames:
+    - "*.{{ homelab_effective.domain.subzone }}"
+    - "{{ homelab_effective.domain.subzone }}"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: n8n-secrets
+  namespace: {{ homelab_effective.apps.n8n.namespace }}
+type: Opaque
+stringData:
+  POSTGRES_DB: {{ homelab_effective.apps.postgres.database | quote }}
+  POSTGRES_USER: {{ homelab_effective.apps.postgres.user | quote }}
+  POSTGRES_PASSWORD: {{ homelab_effective.secrets.postgres_password | quote }}
+  N8N_ENCRYPTION_KEY: {{ homelab_effective.secrets.n8n_encryption_key | quote }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: {{ homelab_effective.apps.n8n.namespace }}
+spec:
+  clusterIP: None
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432
+  selector:
+    app: postgres
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: {{ homelab_effective.apps.n8n.namespace }}
+spec:
+  serviceName: postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      nodeSelector:
+        homelab.io/stateful: "true"
+      containers:
+        - name: postgres
+          image: {{ homelab_effective.apps.postgres.image }}
+          ports:
+            - containerPort: 5432
+              name: postgres
+          envFrom:
+            - secretRef:
+                name: n8n-secrets
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: local-path
+        resources:
+          requests:
+            storage: {{ homelab_effective.apps.postgres.data_storage }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: n8n-data
+  namespace: {{ homelab_effective.apps.n8n.namespace }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: {{ homelab_effective.apps.n8n.data_storage }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: n8n
+  namespace: {{ homelab_effective.apps.n8n.namespace }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: n8n
+  template:
+    metadata:
+      labels:
+        app: n8n
+    spec:
+      nodeSelector:
+        homelab.io/stateful: "true"
+      containers:
+        - name: n8n
+          image: {{ homelab_effective.apps.n8n.image }}
+          ports:
+            - containerPort: 5678
+              name: http
+          env:
+            - name: DB_TYPE
+              value: postgresdb
+            - name: DB_POSTGRESDB_HOST
+              value: postgres
+            - name: DB_POSTGRESDB_PORT
+              value: "5432"
+            - name: DB_POSTGRESDB_DATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: n8n-secrets
+                  key: POSTGRES_DB
+            - name: DB_POSTGRESDB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: n8n-secrets
+                  key: POSTGRES_USER
+            - name: DB_POSTGRESDB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: n8n-secrets
+                  key: POSTGRES_PASSWORD
+            - name: N8N_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: n8n-secrets
+                  key: N8N_ENCRYPTION_KEY
+            - name: N8N_HOST
+              value: {{ homelab_effective.domain.n8n | quote }}
+            - name: N8N_PROTOCOL
+              value: https
+            - name: WEBHOOK_URL
+              value: "https://{{ homelab_effective.domain.n8n }}/"
+            - name: GENERIC_TIMEZONE
+              value: UTC
+          volumeMounts:
+            - name: n8n-data
+              mountPath: /home/node/.n8n
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+      volumes:
+        - name: n8n-data
+          persistentVolumeClaim:
+            claimName: n8n-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: n8n
+  namespace: {{ homelab_effective.apps.n8n.namespace }}
+spec:
+  selector:
+    app: n8n
+  ports:
+    - name: http
+      port: 5678
+      targetPort: 5678
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: n8n
+  namespace: {{ homelab_effective.apps.n8n.namespace }}
+  annotations:
+    cert-manager.io/cluster-issuer: {{ homelab_effective.cert_manager.cluster_issuer_name }}
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - {{ homelab_effective.domain.n8n }}
+      secretName: homelab-wildcard-tls
+  rules:
+    - host: {{ homelab_effective.domain.n8n }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: n8n
+                port:
+                  number: 5678

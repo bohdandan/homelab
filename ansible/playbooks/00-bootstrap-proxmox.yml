@@ -1,0 +1,185 @@
+---
+- name: Load local context
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Load effective homelab context
+      ansible.builtin.include_tasks: ../tasks/load_context.yml
+
+- name: Bootstrap Proxmox automation user and token
+  hosts: bootstrap
+  gather_facts: false
+  vars:
+    homelab_cfg: "{{ hostvars['localhost'].homelab_effective }}"
+    ansible_ssh_private_key_file: "{{ hostvars['localhost'].homelab_effective.ssh.private_key_path }}"
+    proxmox_token_id: "{{ homelab_cfg.proxmox.api_user ~ '!' ~ homelab_cfg.proxmox.api_token_name }}"
+    proxmox_user_id: "{{ homelab_cfg.proxmox.api_user }}"
+    proxmox_token_name: "{{ homelab_cfg.proxmox.api_token_name }}"
+    proxmox_existing_token_id: "{{ homelab_cfg.secrets.proxmox_api_token_id | default('') }}"
+    proxmox_token_secret: >-
+      {{
+        homelab_cfg.secrets.proxmox_api_token_secret
+        if proxmox_existing_token_id == proxmox_token_id
+        else ''
+      }}
+  tasks:
+    - name: Ensure Python 3 exists on Proxmox host
+      ansible.builtin.raw: "command -v python3 >/dev/null 2>&1 || (apt-get update && apt-get install -y python3)"
+      changed_when: false
+
+    - name: Gather facts after Python bootstrap
+      ansible.builtin.setup:
+
+    - name: List current Proxmox users
+      ansible.builtin.command: pveum user list --output-format json
+      register: proxmox_users
+      changed_when: false
+
+    - name: Create automation Proxmox user
+      ansible.builtin.command:
+        cmd: "pveum user add {{ proxmox_user_id }} --comment 'Homelab automation user'"
+      when: proxmox_user_id not in (proxmox_users.stdout | from_json | map(attribute='userid') | list)
+
+    - name: Ensure automation user has Administrator on /
+      ansible.builtin.command:
+        cmd: "pveum aclmod / --user {{ proxmox_user_id }} --role Administrator"
+      changed_when: false
+
+    - name: List current tokens for the automation user
+      ansible.builtin.command: "pveum user token list {{ proxmox_user_id }} --output-format json"
+      register: proxmox_tokens
+      changed_when: false
+
+    - name: Remove existing token when recreation is requested
+      ansible.builtin.command:
+        cmd: "pveum user token remove {{ proxmox_user_id }} {{ proxmox_token_name }}"
+      when:
+        - homelab_cfg.proxmox.recreate_api_token
+        - proxmox_token_name in (proxmox_tokens.stdout | from_json | map(attribute='tokenid') | list)
+
+    - name: Fail if token exists but the secret is unavailable
+      ansible.builtin.fail:
+        msg: >-
+          The Proxmox API token {{ proxmox_token_id }} already exists but its secret is not available in
+          encrypted secrets or ansible/runtime/proxmox-api-token.yml. Add the existing secret or set
+          homelab.proxmox.recreate_api_token=true before rerunning.
+      when:
+        - proxmox_token_secret | length == 0
+        - not homelab_cfg.proxmox.recreate_api_token
+        - proxmox_token_name in (proxmox_tokens.stdout | from_json | map(attribute='tokenid') | list)
+
+    - name: Create Proxmox API token
+      ansible.builtin.command:
+        cmd: "pveum user token add {{ proxmox_user_id }} {{ proxmox_token_name }} --privsep 0 --output-format json"
+      register: proxmox_token_create
+      when:
+        - proxmox_token_secret | length == 0
+        - homelab_cfg.proxmox.recreate_api_token or proxmox_token_name not in (proxmox_tokens.stdout | from_json | map(attribute='tokenid') | list)
+
+    - name: Persist runtime token locally
+      ansible.builtin.template:
+        src: ../templates/proxmox-api-token.yml.j2
+        dest: "{{ playbook_dir }}/../runtime/proxmox-api-token.yml"
+        mode: "0600"
+      vars:
+        token_id: "{{ proxmox_token_id }}"
+        token_secret: "{{ (proxmox_token_create.stdout | from_json).value }}"
+      delegate_to: localhost
+      become: false
+      when: proxmox_token_create.stdout is defined
+
+    - name: Discover Proxmox short hostname
+      ansible.builtin.command: hostname -s
+      register: proxmox_hostname
+      changed_when: false
+
+    - name: Discover Proxmox bridge
+      ansible.builtin.shell: "ip -o link show type bridge | awk -F': ' '{print $2; exit}'"
+      register: proxmox_bridge
+      changed_when: false
+
+    - name: Discover gateway
+      ansible.builtin.shell: "ip route show default | awk '/default/ {print $3; exit}'"
+      register: proxmox_gateway
+      changed_when: false
+
+    - name: Discover nameserver
+      ansible.builtin.shell: "awk '/^nameserver/ {print $2; exit}' /etc/resolv.conf"
+      register: proxmox_nameserver
+      changed_when: false
+
+    - name: Discover storage inventory
+      ansible.builtin.command: pvesh get /storage --output-format json
+      register: proxmox_storage_status
+      changed_when: false
+
+    - name: Discover block devices for backup SSD review
+      ansible.builtin.command: lsblk -J -o NAME,PATH,SIZE,TYPE,MOUNTPOINT,MODEL,TRAN
+      register: proxmox_block_devices
+      changed_when: false
+
+    - name: Persist runtime discovery locally
+      ansible.builtin.copy:
+        dest: "{{ playbook_dir }}/../runtime/discovered.yml"
+        mode: "0600"
+        content: |
+          homelab:
+            proxmox:
+              node: "{{ proxmox_hostname.stdout | trim }}"
+              bridge: "{{ proxmox_bridge.stdout | trim | default(homelab_cfg.proxmox.bridge, true) }}"
+              iso_storage: "{{
+                ((proxmox_storage_status.stdout | from_json)
+                | selectattr('content', 'search', 'iso')
+                | map(attribute='storage')
+                | list
+                | first) | default(homelab_cfg.proxmox.iso_storage, true)
+              }}"
+              vm_storage: "{{
+                ((proxmox_storage_status.stdout | from_json)
+                | selectattr('content', 'search', 'images')
+                | map(attribute='storage')
+                | list
+                | first) | default(homelab_cfg.proxmox.vm_storage, true)
+              }}"
+              cloudinit_storage: "{{
+                ((proxmox_storage_status.stdout | from_json)
+                | selectattr('content', 'search', 'images')
+                | map(attribute='storage')
+                | list
+                | first) | default(homelab_cfg.proxmox.cloudinit_storage, true)
+              }}"
+            network:
+              gateway: "{{ proxmox_gateway.stdout | trim | default(homelab_cfg.network.gateway, true) }}"
+              nameserver: "{{ proxmox_nameserver.stdout | trim | default(homelab_cfg.network.nameserver, true) }}"
+      delegate_to: localhost
+      become: false
+
+    - name: Save block device report for SSD selection
+      ansible.builtin.copy:
+        dest: "{{ playbook_dir }}/../runtime/proxmox-block-devices.json"
+        mode: "0600"
+        content: "{{ proxmox_block_devices.stdout }}"
+      delegate_to: localhost
+      become: false
+
+- name: Verify Proxmox API connectivity from localhost
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Reload context after bootstrap
+      ansible.builtin.include_tasks: ../tasks/load_context.yml
+
+    - name: Query Proxmox node info via API
+      community.proxmox.proxmox_node_info:
+        api_host: "{{ homelab_effective.proxmox.ssh_host }}"
+        api_user: "{{ homelab_effective.proxmox.api_user }}"
+        api_token_id: "{{ homelab_effective.secrets.proxmox_api_token_id | regex_replace('^.*!', '') }}"
+        api_token_secret: "{{ homelab_effective.secrets.proxmox_api_token_secret }}"
+        validate_certs: "{{ homelab_effective.proxmox.validate_certs }}"
+      register: proxmox_api_info
+
+    - name: Write API verification result
+      ansible.builtin.copy:
+        dest: "{{ playbook_dir }}/../runtime/proxmox-api-check.json"
+        mode: "0600"
+        content: "{{ proxmox_api_info.proxmox_nodes | to_nice_json }}"

@@ -1,0 +1,120 @@
+---
+- name: Load local context
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Load context
+      ansible.builtin.include_tasks: ../tasks/load_context.yml
+
+- name: Configure Proxmox backup storage and jobs
+  hosts: bootstrap
+  gather_facts: false
+  become: true
+  vars:
+    homelab_effective: "{{ hostvars['localhost'].homelab_effective }}"
+    backup_vmids: >-
+      {{
+        [
+          homelab_effective.k3s.control.vmid,
+          homelab_effective.k3s.worker.vmid,
+          homelab_effective.haos.vmid
+        ] | join(',')
+      }}
+  tasks:
+    - name: Ensure backup mountpoint exists
+      ansible.builtin.file:
+        path: "{{ homelab_effective.proxmox.backup_mount_path }}"
+        state: directory
+        mode: "0755"
+
+    - name: Check whether backup path is already mounted
+      ansible.builtin.command: "mountpoint -q {{ homelab_effective.proxmox.backup_mount_path }}"
+      register: backup_mountpoint
+      failed_when: false
+      changed_when: false
+
+    - name: Format backup SSD if requested and not yet mounted
+      community.general.filesystem:
+        fstype: ext4
+        dev: "{{ homelab_effective.proxmox.backup_device }}"
+      when:
+        - backup_mountpoint.rc != 0
+        - homelab_effective.proxmox.backup_device | length > 0
+
+    - name: Mount backup SSD if a device is configured
+      ansible.posix.mount:
+        path: "{{ homelab_effective.proxmox.backup_mount_path }}"
+        src: "{{ homelab_effective.proxmox.backup_device }}"
+        fstype: ext4
+        opts: defaults
+        state: mounted
+      when:
+        - backup_mountpoint.rc != 0
+        - homelab_effective.proxmox.backup_device | length > 0
+
+    - name: Fail when backup storage is not mounted and no device was configured
+      ansible.builtin.fail:
+        msg: >-
+          Backup storage is not mounted at {{ homelab_effective.proxmox.backup_mount_path }}.
+          Set homelab.proxmox.backup_device before running the backup playbook.
+      when:
+        - backup_mountpoint.rc != 0
+        - homelab_effective.proxmox.backup_device | length == 0
+
+    - name: Check whether Proxmox backup storage already exists
+      ansible.builtin.command: "pvesm status --storage {{ homelab_effective.proxmox.backup_storage_name }}"
+      register: proxmox_backup_storage
+      failed_when: false
+      changed_when: false
+
+    - name: Create Proxmox backup dir storage
+      ansible.builtin.command:
+        cmd: >-
+          pvesm add dir {{ homelab_effective.proxmox.backup_storage_name }}
+          --path {{ homelab_effective.proxmox.backup_mount_path }}
+          --content backup
+          --nodes {{ homelab_effective.proxmox.node }}
+      when: proxmox_backup_storage.rc != 0
+
+    - name: Read current Proxmox backup jobs
+      ansible.builtin.command: pvesh get /cluster/backup --output-format json
+      register: proxmox_backup_jobs
+      changed_when: false
+
+    - name: Set current backup job id if one exists on the target storage
+      ansible.builtin.set_fact:
+        current_backup_job_id: >-
+          {{
+            (
+              proxmox_backup_jobs.stdout | from_json
+              | selectattr('storage', 'equalto', homelab_effective.proxmox.backup_storage_name)
+              | map(attribute='id')
+              | list
+              | first
+            ) | default('')
+          }}
+
+    - name: Create Proxmox backup job
+      ansible.builtin.command:
+        cmd: >-
+          pvesh create /cluster/backup
+          --storage {{ homelab_effective.proxmox.backup_storage_name }}
+          --schedule "{{ homelab_effective.proxmox.backup_schedule }}"
+          --mode {{ homelab_effective.proxmox.backup_mode }}
+          --compress zstd
+          --vmid {{ backup_vmids }}
+          --prune-backups "{{ homelab_effective.proxmox.backup_retention }}"
+      when: current_backup_job_id | length == 0
+
+    - name: Update Proxmox backup job
+      ansible.builtin.command:
+        cmd: >-
+          pvesh set /cluster/backup/{{ current_backup_job_id }}
+          --storage {{ homelab_effective.proxmox.backup_storage_name }}
+          --schedule "{{ homelab_effective.proxmox.backup_schedule }}"
+          --mode {{ homelab_effective.proxmox.backup_mode }}
+          --compress zstd
+          --vmid {{ backup_vmids }}
+          --prune-backups "{{ homelab_effective.proxmox.backup_retention }}"
+      when: current_backup_job_id | length > 0
+

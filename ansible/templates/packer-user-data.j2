@@ -1,0 +1,46 @@
+#cloud-config
+autoinstall:
+  version: 1
+  apt:
+    geoip: true
+    preserve_sources_list: false
+  packages:
+    - qemu-guest-agent
+  identity:
+    realname: ""
+    username: {{ homelab_effective.packer.ssh_username }}
+    password: "{{ homelab_effective.secrets.packer_ssh_password | password_hash('sha512') }}"
+    hostname: {{ homelab_effective.packer.template_name }}
+  ssh:
+    allow-pw: true
+    install-server: true
+  locale: en_GB.UTF-8
+  keyboard:
+    layout: gb
+  network:
+    version: 2
+    ethernets:
+      buildnic:
+        match:
+          name: "en*"
+        dhcp4: false
+        dhcp6: false
+        addresses:
+          - {{ homelab_effective.packer.build_ip }}/{{ homelab_effective.network.cidr_prefix }}
+        routes:
+          - to: default
+            via: {{ homelab_effective.network.gateway }}
+        nameservers:
+          addresses:
+            - {{ homelab_effective.network.nameserver }}
+          search:
+            - {{ homelab_effective.network.searchdomain }}
+  storage:
+    layout:
+      name: direct
+  late-commands:
+    - "echo 'Defaults:{{ homelab_effective.packer.ssh_username }} !requiretty' > /target/etc/sudoers.d/{{ homelab_effective.packer.ssh_username }}"
+    - "echo '{{ homelab_effective.packer.ssh_username }} ALL=(ALL) NOPASSWD: ALL' >> /target/etc/sudoers.d/{{ homelab_effective.packer.ssh_username }}"
+    - "chmod 440 /target/etc/sudoers.d/{{ homelab_effective.packer.ssh_username }}"
+    - "curtin in-target --target=/target -- systemctl enable ssh"
+    - "truncate -s 0 /target/etc/machine-id /target/var/lib/dbus/machine-id"

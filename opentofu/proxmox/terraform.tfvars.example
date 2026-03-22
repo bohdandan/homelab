@@ -1,0 +1,42 @@
+{
+  "proxmox_api_url": "https://192.168.10.100:8006/api2/json",
+  "proxmox_api_token_id": "homelab@pve!automation",
+  "proxmox_api_token_secret": "replace-me",
+  "proxmox_node": "pve",
+  "vm_storage": "local-lvm",
+  "cloudinit_storage": "local-lvm",
+  "snippets_storage": "local",
+  "network_bridge": "vmbr0",
+  "nameserver": "192.168.10.1",
+  "searchdomain": "magnetic-marten.com",
+  "gateway": "192.168.10.1",
+  "cidr_prefix": 24,
+  "ssh_public_key": "ssh-ed25519 AAAA...",
+  "k3s_template": "ubuntu-24-04-k3s-template",
+  "haos_template_vmid": 9010,
+  "k3s_control": {
+    "vmid": 110,
+    "name": "k3s-control-01",
+    "ip": "192.168.10.110",
+    "memory": 8192,
+    "cores": 4,
+    "disk_size_gb": 60
+  },
+  "k3s_worker": {
+    "vmid": 111,
+    "name": "k3s-worker-01",
+    "ip": "192.168.10.111",
+    "memory": 8192,
+    "cores": 4,
+    "disk_size_gb": 80
+  },
+  "haos": {
+    "vmid": 112,
+    "name": "haos-01",
+    "desired_ip": "192.168.10.112",
+    "memory": 4096,
+    "cores": 2,
+    "disk_size_gb": "32G",
+    "mac_address": "52:54:10:00:00:12"
+  }
+}

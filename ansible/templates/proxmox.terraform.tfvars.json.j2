@@ -1,0 +1,30 @@
+{
+  "proxmox_api_url": "https://{{ homelab_effective.proxmox.ssh_host }}:8006/api2/json",
+  "proxmox_api_token_id": "{{ homelab_effective.secrets.proxmox_api_token_id }}",
+  "proxmox_api_token_secret": "{{ homelab_effective.secrets.proxmox_api_token_secret }}",
+  "proxmox_tls_insecure": {{ homelab_effective.proxmox.validate_certs | ternary('false', 'true') }},
+  "proxmox_node": "{{ homelab_effective.proxmox.node }}",
+  "vm_storage": "{{ homelab_effective.proxmox.vm_storage }}",
+  "cloudinit_storage": "{{ homelab_effective.proxmox.cloudinit_storage }}",
+  "snippets_storage": "{{ homelab_effective.proxmox.snippets_storage }}",
+  "network_bridge": "{{ homelab_effective.proxmox.bridge }}",
+  "nameserver": "{{ homelab_effective.network.nameserver }}",
+  "searchdomain": "{{ homelab_effective.network.searchdomain }}",
+  "gateway": "{{ homelab_effective.network.gateway }}",
+  "cidr_prefix": {{ homelab_effective.network.cidr_prefix }},
+  "ssh_user": "{{ homelab_effective.ssh.user }}",
+  "ssh_public_key": {{ homelab_public_key | to_json }},
+  "k3s_template": "{{ homelab_effective.proxmox.k3s_template_name }}",
+  "haos_template_vmid": {{ homelab_effective.proxmox.haos_template_vmid }},
+  "k3s_control": {{ homelab_effective.k3s.control | to_nice_json(indent=2) }},
+  "k3s_worker": {{ homelab_effective.k3s.worker | to_nice_json(indent=2) }},
+  "haos": {
+    "vmid": {{ homelab_effective.haos.vmid }},
+    "name": "{{ homelab_effective.haos.name }}",
+    "desired_ip": "{{ homelab_effective.haos.desired_ip }}",
+    "memory": {{ homelab_effective.haos.memory }},
+    "cores": {{ homelab_effective.haos.cores }},
+    "disk_size_gb": "{{ homelab_effective.haos.disk_size }}",
+    "mac_address": "{{ homelab_effective.haos.mac_address }}"
+  }
+}

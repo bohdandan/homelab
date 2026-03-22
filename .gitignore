@@ -1,0 +1,43 @@
+# macOS
+.DS_Store
+
+# Editor / local
+.idea/
+.vscode/
+*.swp
+*.swo
+.nvimlog
+
+# Runtime files
+/ansible/runtime/*
+!/ansible/runtime/.gitkeep
+/ansible/inventory/generated/*
+!/ansible/inventory/generated/.gitkeep
+/packer/**/runtime/*
+!/packer/**/runtime/.gitkeep
+
+# Secrets
+*.agekey
+*.pem
+*.key
+*.crt
+*.p12
+*.env
+
+# Packer
+/packer/**/runtime.auto.pkrvars.hcl
+/packer/**/.packer.d/
+
+# OpenTofu / Terraform
+**/.terraform/
+**/*.tfstate
+**/*.tfstate.*
+/opentofu/**/terraform.tfvars
+/opentofu/**/terraform.tfvars.json
+
+# Ansible
+*.retry
+
+# Generated artifacts
+*.qcow2
+*.xz

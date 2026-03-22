@@ -1,0 +1,65 @@
+- name: Load base homelab variables
+  ansible.builtin.include_vars:
+    file: "{{ playbook_dir }}/../group_vars/all/main.yml"
+
+- name: Check encrypted secrets file
+  ansible.builtin.stat:
+    path: "{{ playbook_dir }}/../group_vars/all/secrets.sops.yaml"
+  register: homelab_secrets_file
+
+- name: Load encrypted secrets
+  community.sops.load_vars:
+    file: "{{ playbook_dir }}/../group_vars/all/secrets.sops.yaml"
+    name: homelab_loaded_secrets
+    age_keyfile: "{{ lookup('env', 'SOPS_AGE_KEY_FILE') | default(omit, true) }}"
+  when: homelab_secrets_file.stat.exists
+
+- name: Check runtime secret file
+  ansible.builtin.stat:
+    path: "{{ playbook_dir }}/../runtime/proxmox-api-token.yml"
+  register: homelab_runtime_secret_file
+
+- name: Load runtime secret file
+  ansible.builtin.include_vars:
+    file: "{{ playbook_dir }}/../runtime/proxmox-api-token.yml"
+    name: homelab_runtime_secret_vars
+  when: homelab_runtime_secret_file.stat.exists
+
+- name: Check runtime discovery file
+  ansible.builtin.stat:
+    path: "{{ playbook_dir }}/../runtime/discovered.yml"
+  register: homelab_discovery_file
+
+- name: Load runtime discovery file
+  ansible.builtin.include_vars:
+    file: "{{ playbook_dir }}/../runtime/discovered.yml"
+    name: homelab_discovered_vars
+  when: homelab_discovery_file.stat.exists
+
+- name: Check runtime Cloudflare tunnel file
+  ansible.builtin.stat:
+    path: "{{ playbook_dir }}/../runtime/cloudflare-tunnel.yml"
+  register: homelab_cloudflare_runtime_file
+
+- name: Load runtime Cloudflare tunnel file
+  ansible.builtin.include_vars:
+    file: "{{ playbook_dir }}/../runtime/cloudflare-tunnel.yml"
+    name: homelab_cloudflare_runtime_secret_vars
+  when: homelab_cloudflare_runtime_file.stat.exists
+
+- name: Build effective homelab context
+  ansible.builtin.set_fact:
+    homelab_effective: >-
+      {{
+        homelab
+        | combine(homelab_discovered_vars.homelab | default({}), recursive=True)
+        | combine(
+            {
+              'secrets':
+                (homelab_loaded_secrets.homelab_secrets | default({}))
+                | combine(homelab_runtime_secret_vars.homelab_secrets | default({}), recursive=True)
+                | combine(homelab_cloudflare_runtime_secret_vars.homelab_secrets | default({}), recursive=True)
+            },
+            recursive=True
+          )
+      }}

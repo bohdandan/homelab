@@ -1,0 +1,14 @@
+version: 1
+config:
+  - type: physical
+    name: ens18
+    subnets:
+      - type: static
+        address: {{ k3s_network_vm.ip }}
+        netmask: 255.255.255.0
+        gateway: {{ homelab_effective.network.gateway }}
+  - type: nameserver
+    address:
+      - {{ homelab_effective.network.nameserver }}
+    search:
+      - {{ homelab_effective.network.searchdomain }}

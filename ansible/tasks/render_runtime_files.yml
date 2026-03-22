@@ -1,0 +1,44 @@
+- name: Read SSH public key
+  ansible.builtin.slurp:
+    src: "{{ homelab_effective.ssh.public_key_path }}"
+  register: homelab_public_key_raw
+
+- name: Set decoded SSH public key
+  ansible.builtin.set_fact:
+    homelab_public_key: "{{ homelab_public_key_raw.content | b64decode | trim }}"
+
+- name: Render Packer runtime variables
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/../templates/packer.auto.pkrvars.hcl.j2"
+    dest: "{{ playbook_dir }}/../../packer/ubuntu-k3s-template/runtime.auto.pkrvars.hcl"
+    mode: "0600"
+
+- name: Ensure Packer runtime directory exists
+  ansible.builtin.file:
+    path: "{{ playbook_dir }}/../../packer/ubuntu-k3s-template/runtime"
+    state: directory
+    mode: "0755"
+
+- name: Render Packer runtime meta-data
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/../templates/packer-meta-data.j2"
+    dest: "{{ playbook_dir }}/../../packer/ubuntu-k3s-template/runtime/meta-data"
+    mode: "0644"
+
+- name: Render Packer runtime user-data
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/../templates/packer-user-data.j2"
+    dest: "{{ playbook_dir }}/../../packer/ubuntu-k3s-template/runtime/user-data"
+    mode: "0600"
+
+- name: Render OpenTofu Proxmox variables
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/../templates/proxmox.terraform.tfvars.json.j2"
+    dest: "{{ playbook_dir }}/../../opentofu/proxmox/terraform.tfvars.json"
+    mode: "0600"
+
+- name: Render OpenTofu Cloudflare variables
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/../templates/cloudflare.terraform.tfvars.json.j2"
+    dest: "{{ playbook_dir }}/../../opentofu/cloudflare/terraform.tfvars.json"
+    mode: "0600"

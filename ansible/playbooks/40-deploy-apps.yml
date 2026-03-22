@@ -1,0 +1,130 @@
+---
+- name: Load local context
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Load context
+      ansible.builtin.include_tasks: ../tasks/load_context.yml
+
+- name: Install cluster add-ons and workloads
+  hosts: k3s_control
+  become: true
+  gather_facts: false
+  vars:
+    homelab_effective: "{{ hostvars['localhost'].homelab_effective }}"
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  tasks:
+    - name: Install MetalLB core manifests
+      ansible.builtin.command:
+        cmd: kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.14.8/config/manifests/metallb-native.yaml
+
+    - name: Wait for MetalLB controller rollout
+      ansible.builtin.command:
+        cmd: kubectl rollout status deployment/controller -n metallb-system --timeout=180s
+
+    - name: Render MetalLB custom resources
+      ansible.builtin.template:
+        src: ../../kubernetes/base/metallb/manifests.yaml.j2
+        dest: /tmp/metallb-homelab.yaml
+        mode: "0644"
+
+    - name: Apply MetalLB custom resources
+      ansible.builtin.command:
+        cmd: kubectl apply -f /tmp/metallb-homelab.yaml
+
+    - name: Patch Traefik service to use a fixed MetalLB VIP
+      ansible.builtin.shell: |
+        kubectl patch svc traefik -n kube-system --type merge \
+          -p '{"spec":{"type":"LoadBalancer","loadBalancerIP":"{{ homelab_effective.network.traefik_lb_ip }}"}}'
+
+    - name: Wait for Traefik external IP assignment
+      ansible.builtin.shell: >-
+        kubectl get svc traefik -n kube-system -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
+      register: traefik_lb_ip
+      retries: 30
+      delay: 10
+      until: traefik_lb_ip.stdout == homelab_effective.network.traefik_lb_ip
+
+    - name: Install cert-manager
+      ansible.builtin.command:
+        cmd: kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/{{ homelab_effective.cert_manager.version }}/cert-manager.yaml
+
+    - name: Wait for cert-manager deployment
+      ansible.builtin.command:
+        cmd: kubectl rollout status deployment/cert-manager -n {{ homelab_effective.cert_manager.namespace }} --timeout=240s
+
+    - name: Create Cloudflare API token secret for cert-manager
+      ansible.builtin.shell: |
+        cat <<'EOF' | kubectl apply -f -
+        apiVersion: v1
+        kind: Secret
+        metadata:
+          name: cloudflare-api-token
+          namespace: {{ homelab_effective.cert_manager.namespace }}
+        type: Opaque
+        stringData:
+          api-token: {{ homelab_effective.secrets.cloudflare_api_token }}
+        EOF
+
+    - name: Render cert-manager ClusterIssuer
+      ansible.builtin.template:
+        src: ../../kubernetes/base/cert-manager/cluster-issuer.yaml.j2
+        dest: /tmp/cert-manager-cluster-issuer.yaml
+        mode: "0644"
+
+    - name: Apply cert-manager ClusterIssuer
+      ansible.builtin.command:
+        cmd: kubectl apply -f /tmp/cert-manager-cluster-issuer.yaml
+
+    - name: Render homepage manifest
+      ansible.builtin.template:
+        src: ../../kubernetes/base/homepage/manifests.yaml.j2
+        dest: /tmp/homepage.yaml
+        mode: "0644"
+
+    - name: Apply homepage manifest
+      ansible.builtin.command:
+        cmd: kubectl apply -f /tmp/homepage.yaml
+
+    - name: Render n8n manifest
+      ansible.builtin.template:
+        src: ../../kubernetes/base/n8n/manifests.yaml.j2
+        dest: /tmp/n8n.yaml
+        mode: "0644"
+
+    - name: Apply n8n manifest
+      ansible.builtin.command:
+        cmd: kubectl apply -f /tmp/n8n.yaml
+
+    - name: Render Home Assistant proxy manifest
+      ansible.builtin.template:
+        src: ../../kubernetes/base/home-assistant-proxy/manifests.yaml.j2
+        dest: /tmp/home-assistant-proxy.yaml
+        mode: "0644"
+
+    - name: Apply Home Assistant proxy manifest
+      ansible.builtin.command:
+        cmd: kubectl apply -f /tmp/home-assistant-proxy.yaml
+
+    - name: Render cloudflared manifest
+      ansible.builtin.template:
+        src: ../../kubernetes/base/cloudflared/manifests.yaml.j2
+        dest: /tmp/cloudflared.yaml
+        mode: "0644"
+
+    - name: Apply cloudflared manifest
+      ansible.builtin.command:
+        cmd: kubectl apply -f /tmp/cloudflared.yaml
+
+    - name: Wait for homepage deployment
+      ansible.builtin.command:
+        cmd: kubectl rollout status deployment/homepage -n {{ homelab_effective.apps.homepage.namespace }} --timeout=240s
+
+    - name: Wait for n8n deployment
+      ansible.builtin.command:
+        cmd: kubectl rollout status deployment/n8n -n {{ homelab_effective.apps.n8n.namespace }} --timeout=240s
+
+    - name: Wait for cloudflared deployment
+      ansible.builtin.command:
+        cmd: kubectl rollout status deployment/cloudflared -n {{ homelab_effective.apps.cloudflared.namespace }} --timeout=240s

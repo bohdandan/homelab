@@ -1,0 +1,8 @@
+all:
+  children:
+    bootstrap:
+      hosts:
+        proxmox-bootstrap:
+          ansible_host: 192.168.10.100
+          ansible_user: root
+          ansible_port: 22

@@ -1,0 +1,17 @@
+proxmox_api_url          = "https://{{ homelab_effective.proxmox.ssh_host }}:8006/api2/json"
+proxmox_api_token_id     = "{{ homelab_effective.secrets.proxmox_api_token_id }}"
+proxmox_api_token_secret = "{{ homelab_effective.secrets.proxmox_api_token_secret }}"
+proxmox_node             = "{{ homelab_effective.proxmox.node }}"
+proxmox_iso_storage      = "{{ homelab_effective.proxmox.iso_storage }}"
+proxmox_vm_storage       = "{{ homelab_effective.proxmox.vm_storage }}"
+proxmox_bridge           = "{{ homelab_effective.proxmox.bridge }}"
+template_name            = "{{ homelab_effective.packer.template_name }}"
+template_vmid            = {{ homelab_effective.packer.template_vmid }}
+iso_url                  = "{{ homelab_effective.packer.iso_url }}"
+iso_checksum             = "{{ homelab_effective.packer.iso_checksum }}"
+ssh_host                 = "{{ homelab_effective.packer.build_ip }}"
+ssh_username             = "{{ homelab_effective.packer.ssh_username }}"
+ssh_password             = "{{ homelab_effective.secrets.packer_ssh_password }}"
+memory                   = {{ homelab_effective.packer.memory }}
+cores                    = {{ homelab_effective.packer.cores }}
+disk_size                = "{{ homelab_effective.packer.disk_size }}"

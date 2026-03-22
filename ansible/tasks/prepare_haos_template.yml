@@ -1,0 +1,63 @@
+- name: Check whether the HAOS template already exists
+  ansible.builtin.command: "qm status {{ homelab_effective.proxmox.haos_template_vmid }}"
+  register: haos_template_status
+  failed_when: false
+  changed_when: false
+
+- name: Ensure HAOS image cache directory exists
+  ansible.builtin.file:
+    path: /var/lib/vz/template/cache
+    state: directory
+    mode: "0755"
+  when: haos_template_status.rc != 0
+
+- name: Download Home Assistant OS image
+  ansible.builtin.get_url:
+    url: "{{ homelab_effective.haos.image_url }}"
+    dest: "/var/lib/vz/template/cache/haos_ova-{{ homelab_effective.haos.image_version }}.qcow2.xz"
+    mode: "0644"
+  when: haos_template_status.rc != 0
+
+- name: Extract Home Assistant OS image
+  ansible.builtin.command:
+    cmd: >-
+      xz -d -f -k /var/lib/vz/template/cache/haos_ova-{{ homelab_effective.haos.image_version }}.qcow2.xz
+  args:
+    creates: "/var/lib/vz/template/cache/haos_ova-{{ homelab_effective.haos.image_version }}.qcow2"
+  when: haos_template_status.rc != 0
+
+- name: Create HAOS template VM shell
+  ansible.builtin.command:
+    cmd: >-
+      qm create {{ homelab_effective.proxmox.haos_template_vmid }}
+      --name {{ homelab_effective.proxmox.haos_template_name }}
+      --memory {{ homelab_effective.haos.memory }}
+      --cores {{ homelab_effective.haos.cores }}
+      --net0 virtio,bridge={{ homelab_effective.proxmox.bridge }}
+      --ostype l26
+      --agent 1
+      --serial0 socket
+      --vga serial0
+  when: haos_template_status.rc != 0
+
+- name: Import HAOS disk into Proxmox storage
+  ansible.builtin.command:
+    cmd: >-
+      qm importdisk {{ homelab_effective.proxmox.haos_template_vmid }}
+      /var/lib/vz/template/cache/haos_ova-{{ homelab_effective.haos.image_version }}.qcow2
+      {{ homelab_effective.proxmox.vm_storage }}
+  when: haos_template_status.rc != 0
+
+- name: Attach imported HAOS disk and finalize template config
+  ansible.builtin.command:
+    cmd: >-
+      qm set {{ homelab_effective.proxmox.haos_template_vmid }}
+      --scsihw virtio-scsi-pci
+      --scsi0 {{ homelab_effective.proxmox.vm_storage }}:vm-{{ homelab_effective.proxmox.haos_template_vmid }}-disk-0
+      --boot order=scsi0
+  when: haos_template_status.rc != 0
+
+- name: Convert HAOS VM to template
+  ansible.builtin.command:
+    cmd: "qm template {{ homelab_effective.proxmox.haos_template_vmid }}"
+  when: haos_template_status.rc != 0

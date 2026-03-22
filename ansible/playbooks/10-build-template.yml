@@ -1,0 +1,50 @@
+---
+- name: Render Packer runtime files and build Ubuntu template
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Load context
+      ansible.builtin.include_tasks: ../tasks/load_context.yml
+
+    - name: Ensure Proxmox API secret is available
+      ansible.builtin.assert:
+        that:
+          - homelab_effective.secrets.proxmox_api_token_id is defined
+          - homelab_effective.secrets.proxmox_api_token_secret is defined
+          - homelab_effective.secrets.packer_ssh_password is defined
+        fail_msg: Run bootstrap first or provide encrypted Proxmox API credentials.
+
+    - name: Render runtime files
+      ansible.builtin.include_tasks: ../tasks/render_runtime_files.yml
+
+    - name: Initialize Packer plugins
+      ansible.builtin.command:
+        cmd: packer init .
+      args:
+        chdir: "{{ playbook_dir }}/../../packer/ubuntu-k3s-template"
+
+    - name: Format Packer files
+      ansible.builtin.command:
+        cmd: packer fmt .
+      args:
+        chdir: "{{ playbook_dir }}/../../packer/ubuntu-k3s-template"
+
+    - name: Validate Packer template
+      ansible.builtin.command:
+        cmd: packer validate -var-file=runtime.auto.pkrvars.hcl .
+      args:
+        chdir: "{{ playbook_dir }}/../../packer/ubuntu-k3s-template"
+
+    - name: Remove previous Packer debug log
+      ansible.builtin.file:
+        path: "{{ playbook_dir }}/../runtime/packer-build.log"
+        state: absent
+
+    - name: Build Ubuntu template
+      ansible.builtin.command:
+        cmd: packer build -var-file=runtime.auto.pkrvars.hcl .
+      args:
+        chdir: "{{ playbook_dir }}/../../packer/ubuntu-k3s-template"
+      environment:
+        PACKER_LOG: "1"
+        PACKER_LOG_PATH: "{{ playbook_dir }}/../runtime/packer-build.log"

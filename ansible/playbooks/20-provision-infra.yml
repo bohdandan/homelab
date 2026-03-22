@@ -1,0 +1,105 @@
+---
+- name: Load context and render OpenTofu runtime files
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Load context
+      ansible.builtin.include_tasks: ../tasks/load_context.yml
+
+    - name: Ensure required secrets are available
+      ansible.builtin.assert:
+        that:
+          - homelab_effective.secrets.proxmox_api_token_id is defined
+          - homelab_effective.secrets.proxmox_api_token_secret is defined
+          - homelab_effective.secrets.cloudflare_api_token is defined
+          - homelab_effective.secrets.cloudflare_account_id is defined
+          - homelab_effective.secrets.cloudflare_zone_id is defined
+        fail_msg: Bootstrap Proxmox and provide Cloudflare secrets before provisioning infrastructure.
+
+    - name: Render runtime files
+      ansible.builtin.include_tasks: ../tasks/render_runtime_files.yml
+
+- name: Prepare the HAOS template on Proxmox
+  hosts: bootstrap
+  gather_facts: false
+  vars:
+    homelab_effective: "{{ hostvars['localhost'].homelab_effective }}"
+    k3s_vm_guests:
+      - name: "{{ homelab_effective.k3s.control.name }}"
+        ip: "{{ homelab_effective.k3s.control.ip }}"
+      - name: "{{ homelab_effective.k3s.worker.name }}"
+        ip: "{{ homelab_effective.k3s.worker.ip }}"
+  become: true
+  tasks:
+    - name: Prepare HAOS template
+      ansible.builtin.include_tasks: ../tasks/prepare_haos_template.yml
+
+    - name: Prepare custom K3s network snippets
+      ansible.builtin.include_tasks: ../tasks/prepare_k3s_network_snippets.yml
+      loop: "{{ k3s_vm_guests }}"
+      loop_control:
+        loop_var: k3s_vm
+        label: "{{ k3s_vm.name }}"
+
+- name: Provision Proxmox VMs and Cloudflare resources
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Load context again
+      ansible.builtin.include_tasks: ../tasks/load_context.yml
+
+    - name: Initialize Proxmox OpenTofu stack
+      ansible.builtin.command:
+        cmd: tofu init
+      args:
+        chdir: "{{ playbook_dir }}/../../opentofu/proxmox"
+
+    - name: Apply Proxmox OpenTofu stack
+      ansible.builtin.command:
+        cmd: tofu apply -auto-approve
+      args:
+        chdir: "{{ playbook_dir }}/../../opentofu/proxmox"
+
+    - name: Read Proxmox OpenTofu outputs
+      ansible.builtin.command:
+        cmd: tofu output -json ansible_inventory
+      args:
+        chdir: "{{ playbook_dir }}/../../opentofu/proxmox"
+      register: proxmox_tofu_inventory_raw
+
+    - name: Parse Proxmox OpenTofu outputs
+      ansible.builtin.set_fact:
+        tofu_inventory: "{{ proxmox_tofu_inventory_raw.stdout | from_json }}"
+
+    - name: Write generated Ansible inventory
+      ansible.builtin.template:
+        src: ../templates/generated.inventory.yml.j2
+        dest: "{{ playbook_dir }}/../inventory/generated/hosts.yml"
+        mode: "0644"
+
+    - name: Initialize Cloudflare OpenTofu stack
+      ansible.builtin.command:
+        cmd: tofu init
+      args:
+        chdir: "{{ playbook_dir }}/../../opentofu/cloudflare"
+
+    - name: Apply Cloudflare OpenTofu stack
+      ansible.builtin.command:
+        cmd: tofu apply -auto-approve
+      args:
+        chdir: "{{ playbook_dir }}/../../opentofu/cloudflare"
+
+    - name: Read Cloudflare tunnel token
+      ansible.builtin.command:
+        cmd: tofu output -raw tunnel_token
+      args:
+        chdir: "{{ playbook_dir }}/../../opentofu/cloudflare"
+      register: cloudflare_tunnel_token
+
+    - name: Persist Cloudflare tunnel token to runtime secrets
+      ansible.builtin.copy:
+        dest: "{{ playbook_dir }}/../runtime/cloudflare-tunnel.yml"
+        mode: "0600"
+        content: |
+          homelab_secrets:
+            cloudflare_tunnel_token: "{{ cloudflare_tunnel_token.stdout | trim }}"
