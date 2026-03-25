@@ -145,6 +145,8 @@ SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt ansible-playbook ansible/playbooks
   - The intended address is still `192.168.10.112`, but in practice that should be enforced with a router DHCP reservation for the VM's MAC address.
 - Public apps terminate TLS at Cloudflare edge.
   - The cluster still uses Let's Encrypt wildcard certificates at the origin.
+  - For `*.homelab.magnetic-marten.com`, Cloudflare edge HTTPS also requires certificate coverage for a multi-level subdomain.
+  - Cloudflare Universal SSL does not cover `*.homelab.magnetic-marten.com` by default, so you need Total TLS, an Advanced Certificate, or a Custom Certificate on the zone before the public HTTPS hostnames will work end to end.
 - Only encrypted secrets and source templates belong in git.
   - Generated runtime files under `ansible/runtime/`, `ansible/inventory/generated/`, and `packer/ubuntu-k3s-template/runtime/` are intentionally ignored.
 

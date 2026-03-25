@@ -3,20 +3,6 @@ kind: Namespace
 metadata:
   name: home-assistant
 ---
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  name: homelab-wildcard
-  namespace: home-assistant
-spec:
-  secretName: homelab-wildcard-tls
-  issuerRef:
-    kind: ClusterIssuer
-    name: {{ homelab_effective.cert_manager.cluster_issuer_name }}
-  dnsNames:
-    - "*.{{ homelab_effective.domain.subzone }}"
-    - "{{ homelab_effective.domain.subzone }}"
----
 apiVersion: v1
 kind: Service
 metadata:
@@ -45,8 +31,6 @@ kind: Ingress
 metadata:
   name: home-assistant
   namespace: home-assistant
-  annotations:
-    cert-manager.io/cluster-issuer: {{ homelab_effective.cert_manager.cluster_issuer_name }}
 spec:
   ingressClassName: traefik
   tls:

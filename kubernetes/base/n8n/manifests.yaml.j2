@@ -3,20 +3,6 @@ kind: Namespace
 metadata:
   name: {{ homelab_effective.apps.n8n.namespace }}
 ---
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  name: homelab-wildcard
-  namespace: {{ homelab_effective.apps.n8n.namespace }}
-spec:
-  secretName: homelab-wildcard-tls
-  issuerRef:
-    kind: ClusterIssuer
-    name: {{ homelab_effective.cert_manager.cluster_issuer_name }}
-  dnsNames:
-    - "*.{{ homelab_effective.domain.subzone }}"
-    - "{{ homelab_effective.domain.subzone }}"
----
 apiVersion: v1
 kind: Secret
 metadata:
@@ -196,8 +182,6 @@ kind: Ingress
 metadata:
   name: n8n
   namespace: {{ homelab_effective.apps.n8n.namespace }}
-  annotations:
-    cert-manager.io/cluster-issuer: {{ homelab_effective.cert_manager.cluster_issuer_name }}
 spec:
   ingressClassName: traefik
   tls:
