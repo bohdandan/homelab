@@ -1,0 +1,283 @@
+---
+- name: Load local context for dev/admin VM
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Load context
+      ansible.builtin.include_tasks: ../tasks/load_context.yml
+
+    - name: Check for local runtime kubeconfig
+      ansible.builtin.stat:
+        path: "{{ playbook_dir }}/../runtime/kubeconfig.raw"
+      register: dev_admin_kubeconfig
+
+- name: Remediate cloned dev/admin VM cloud-init networking when needed
+  hosts: proxmox
+  gather_facts: false
+  become: true
+  vars:
+    homelab_effective: "{{ hostvars['localhost'].homelab_effective }}"
+    dev_admin_host: "{{ groups['dev_admin'][0] }}"
+    vm_guest:
+      name: "{{ dev_admin_host }}"
+      vmid: "{{ hostvars[dev_admin_host].vmid }}"
+      ip: "{{ hostvars[dev_admin_host].ansible_host }}"
+  tasks:
+    - name: Remediate cloned guest cloud-init networking when needed
+      ansible.builtin.include_tasks: ../tasks/remediate_cloned_ubuntu_cloud_init.yml
+
+- name: Wait for dev/admin VM to accept SSH
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Wait for SSH on dev/admin VM
+      ansible.builtin.wait_for:
+        host: "{{ hostvars[groups['dev_admin'][0]].ansible_host }}"
+        port: 22
+        timeout: 300
+        delay: 5
+
+- name: Configure dev/admin VM
+  hosts: dev_admin
+  become: true
+  gather_facts: true
+  vars:
+    homelab_effective: "{{ hostvars['localhost'].homelab_effective }}"
+    dev_login_user: "{{ homelab_effective.dev_admin.login_user }}"
+    kubectl_version: "{{ homelab_effective.k3s.version | regex_replace('\\+.*$', '') }}"
+    helix_deb_version: "{{ homelab_effective.dev_admin.tools.helix_version | regex_replace('\\.0([0-9])', '.\\1') }}"
+    dev_admin_apt_packages:
+      - age
+      - ansible
+      - bat
+      - ca-certificates
+      - curl
+      - eza
+      - fd-find
+      - gh
+      - git
+      - gnupg
+      - jq
+      - nodejs
+      - npm
+      - pipx
+      - python3-pip
+      - ripgrep
+      - tmux
+      - unzip
+      - xz-utils
+      - yq
+  tasks:
+    - name: Set hostname
+      ansible.builtin.hostname:
+        name: "{{ inventory_hostname }}"
+
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Upgrade packages
+      ansible.builtin.apt:
+        upgrade: dist
+
+    - name: Install core apt packages
+      ansible.builtin.apt:
+        name: "{{ dev_admin_apt_packages }}"
+        state: present
+
+    - name: Create bat symlink
+      ansible.builtin.file:
+        src: /usr/bin/batcat
+        dest: /usr/local/bin/bat
+        state: link
+      when: ansible_facts['os_family'] == 'Debian'
+
+    - name: Create fd symlink
+      ansible.builtin.file:
+        src: /usr/bin/fdfind
+        dest: /usr/local/bin/fd
+        state: link
+      when: ansible_facts['os_family'] == 'Debian'
+
+    - name: Ensure dev user exists
+      ansible.builtin.user:
+        name: "{{ dev_login_user }}"
+        shell: /bin/bash
+        groups: sudo
+        append: true
+        create_home: true
+
+    - name: Authorize SSH key for dev user
+      ansible.posix.authorized_key:
+        user: "{{ dev_login_user }}"
+        state: present
+        key: "{{ lookup('file', homelab_effective.ssh.public_key_path) }}"
+
+    - name: Allow passwordless sudo for dev user
+      ansible.builtin.copy:
+        dest: "/etc/sudoers.d/90-{{ dev_login_user }}"
+        mode: "0440"
+        content: "{{ dev_login_user }} ALL=(ALL) NOPASSWD:ALL\n"
+        validate: /usr/sbin/visudo -cf %s
+
+    - name: Download Tailscale install script
+      ansible.builtin.get_url:
+        url: https://tailscale.com/install.sh
+        dest: /tmp/tailscale-install.sh
+        mode: "0755"
+
+    - name: Install Tailscale
+      ansible.builtin.command:
+        cmd: /tmp/tailscale-install.sh
+        creates: /usr/bin/tailscale
+
+    - name: Enable tailscaled service
+      ansible.builtin.systemd:
+        name: tailscaled
+        enabled: true
+        state: started
+
+    - name: Download sops package
+      ansible.builtin.get_url:
+        url: "https://github.com/getsops/sops/releases/download/v{{ homelab_effective.dev_admin.tools.sops_version }}/sops_{{ homelab_effective.dev_admin.tools.sops_version }}_amd64.deb"
+        dest: "/tmp/sops_{{ homelab_effective.dev_admin.tools.sops_version }}_amd64.deb"
+        mode: "0644"
+
+    - name: Install sops package
+      ansible.builtin.apt:
+        deb: "/tmp/sops_{{ homelab_effective.dev_admin.tools.sops_version }}_amd64.deb"
+
+    - name: Download helix package
+      ansible.builtin.get_url:
+        url: "https://github.com/helix-editor/helix/releases/download/{{ homelab_effective.dev_admin.tools.helix_version }}/helix_{{ helix_deb_version }}-1_amd64.deb"
+        dest: "/tmp/helix_{{ helix_deb_version }}-1_amd64.deb"
+        mode: "0644"
+
+    - name: Install helix package
+      ansible.builtin.apt:
+        deb: "/tmp/helix_{{ helix_deb_version }}-1_amd64.deb"
+
+    - name: Download lazygit archive
+      ansible.builtin.get_url:
+        url: "https://github.com/jesseduffield/lazygit/releases/download/v{{ homelab_effective.dev_admin.tools.lazygit_version }}/lazygit_{{ homelab_effective.dev_admin.tools.lazygit_version }}_linux_x86_64.tar.gz"
+        dest: "/tmp/lazygit_{{ homelab_effective.dev_admin.tools.lazygit_version }}_linux_x86_64.tar.gz"
+        mode: "0644"
+
+    - name: Extract lazygit archive
+      ansible.builtin.unarchive:
+        src: "/tmp/lazygit_{{ homelab_effective.dev_admin.tools.lazygit_version }}_linux_x86_64.tar.gz"
+        dest: /tmp
+        remote_src: true
+
+    - name: Install lazygit binary
+      ansible.builtin.copy:
+        src: /tmp/lazygit
+        dest: /usr/local/bin/lazygit
+        remote_src: true
+        mode: "0755"
+
+    - name: Download kubectl binary
+      ansible.builtin.get_url:
+        url: "https://dl.k8s.io/release/{{ kubectl_version }}/bin/linux/amd64/kubectl"
+        dest: /usr/local/bin/kubectl
+        mode: "0755"
+
+    - name: Download Helm archive
+      ansible.builtin.get_url:
+        url: "https://get.helm.sh/helm-{{ homelab_effective.dev_admin.tools.helm_version }}-linux-amd64.tar.gz"
+        dest: "/tmp/helm-{{ homelab_effective.dev_admin.tools.helm_version }}-linux-amd64.tar.gz"
+        mode: "0644"
+
+    - name: Extract Helm archive
+      ansible.builtin.unarchive:
+        src: "/tmp/helm-{{ homelab_effective.dev_admin.tools.helm_version }}-linux-amd64.tar.gz"
+        dest: /tmp
+        remote_src: true
+
+    - name: Install Helm binary
+      ansible.builtin.copy:
+        src: /tmp/linux-amd64/helm
+        dest: /usr/local/bin/helm
+        remote_src: true
+        mode: "0755"
+
+    - name: Check installed Codex CLI version
+      ansible.builtin.command:
+        cmd: npm list -g @openai/codex --depth=0 --json
+      register: codex_npm_list
+      changed_when: false
+      failed_when: false
+
+    - name: Derive installed Codex CLI version
+      ansible.builtin.set_fact:
+        codex_installed_version: >-
+          {{
+            ((codex_npm_list.stdout | default('{}') | from_json).dependencies | default({}))
+            .get('@openai/codex', {})
+            .get('version', '')
+          }}
+
+    - name: Install Codex CLI
+      ansible.builtin.command:
+        cmd: "npm install -g @openai/codex@{{ homelab_effective.dev_admin.tools.codex_version }}"
+      when: >
+        codex_npm_list.rc != 0 or
+        codex_installed_version != homelab_effective.dev_admin.tools.codex_version
+
+    - name: Ensure dev workspace exists
+      ansible.builtin.file:
+        path: "{{ homelab_effective.dev_admin.workspace_dir }}"
+        state: directory
+        owner: "{{ dev_login_user }}"
+        group: "{{ dev_login_user }}"
+        mode: "0755"
+
+    - name: Ensure dev .kube directory exists
+      ansible.builtin.file:
+        path: "/home/{{ dev_login_user }}/.kube"
+        state: directory
+        owner: "{{ dev_login_user }}"
+        group: "{{ dev_login_user }}"
+        mode: "0700"
+
+    - name: Copy kubeconfig to dev user when available
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../runtime/kubeconfig.raw"
+        dest: "/home/{{ dev_login_user }}/.kube/config"
+        owner: "{{ dev_login_user }}"
+        group: "{{ dev_login_user }}"
+        mode: "0600"
+      when: hostvars['localhost'].dev_admin_kubeconfig.stat.exists
+
+    - name: Ensure SOPS age config directory exists for dev user
+      ansible.builtin.file:
+        path: "/home/{{ dev_login_user }}/.config/sops/age"
+        state: directory
+        owner: "{{ dev_login_user }}"
+        group: "{{ dev_login_user }}"
+        mode: "0700"
+
+    - name: Render dev first-login script
+      ansible.builtin.template:
+        src: ../templates/dev-first-login.sh.j2
+        dest: "{{ homelab_effective.dev_admin.first_login_script }}"
+        owner: "{{ dev_login_user }}"
+        group: "{{ dev_login_user }}"
+        mode: "0755"
+
+    - name: Verify installed tool versions
+      ansible.builtin.shell: |
+        set -euo pipefail
+        codex --version
+        eza --version
+        lazygit --version
+        hx --version
+        bat --version
+        kubectl version --client=true
+        helm version --short
+        sops --version
+      args:
+        executable: /bin/bash
+      register: dev_admin_tool_versions
+      changed_when: false

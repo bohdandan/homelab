@@ -22,6 +22,12 @@ all:
           ansible_host: {{ tofu_inventory.k3s_worker.ip }}
           node_role: worker
           vmid: {{ tofu_inventory.k3s_worker.vmid }}
+    dev_admin:
+      hosts:
+        {{ tofu_inventory.dev_admin.name }}:
+          ansible_host: {{ tofu_inventory.dev_admin.ip }}
+          vmid: {{ tofu_inventory.dev_admin.vmid }}
+          remote_login_user: {{ homelab_effective.dev_admin.login_user }}
     home_assistant:
       hosts:
         {{ tofu_inventory.haos.name }}:

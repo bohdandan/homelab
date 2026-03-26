@@ -39,7 +39,7 @@
   gather_facts: false
   vars:
     homelab_effective: "{{ hostvars['localhost'].homelab_effective }}"
-    k3s_vm_guests:
+    ubuntu_vm_guests:
       - name: "{{ groups['k3s_control'][0] }}"
         vmid: "{{ hostvars[groups['k3s_control'][0]].vmid }}"
         ip: "{{ hostvars[groups['k3s_control'][0]].ansible_host }}"
@@ -49,11 +49,11 @@
   become: true
   tasks:
     - name: Remediate cloned guest cloud-init networking when needed
-      ansible.builtin.include_tasks: ../tasks/remediate_k3s_clone_cloud_init.yml
-      loop: "{{ k3s_vm_guests }}"
+      ansible.builtin.include_tasks: ../tasks/remediate_cloned_ubuntu_cloud_init.yml
+      loop: "{{ ubuntu_vm_guests }}"
       loop_control:
-        loop_var: k3s_vm
-        label: "{{ k3s_vm.name }}"
+        loop_var: vm_guest
+        label: "{{ vm_guest.name }}"
 
 - name: Wait for K3s nodes to accept SSH
   hosts: localhost

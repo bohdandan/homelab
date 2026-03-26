@@ -34,6 +34,18 @@ output "haos_mac_address" {
   value = var.haos.mac_address
 }
 
+output "dev_admin_ip" {
+  value = module.dev_admin.ip_address
+}
+
+output "dev_admin_name" {
+  value = module.dev_admin.vm_name
+}
+
+output "dev_admin_vmid" {
+  value = module.dev_admin.vm_id
+}
+
 output "ansible_inventory" {
   value = {
     k3s_control = {
@@ -45,6 +57,11 @@ output "ansible_inventory" {
       name = module.k3s_worker.vm_name
       ip   = module.k3s_worker.ip_address
       vmid = module.k3s_worker.vm_id
+    }
+    dev_admin = {
+      name = module.dev_admin.vm_name
+      ip   = module.dev_admin.ip_address
+      vmid = module.dev_admin.vm_id
     }
     haos = {
       name = proxmox_vm_qemu.haos.name

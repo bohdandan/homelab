@@ -3,5 +3,6 @@
 - import_playbook: 10-build-template.yml
 - import_playbook: 20-provision-infra.yml
 - import_playbook: 30-configure-k3s.yml
+- import_playbook: 35-configure-dev-admin.yml
 - import_playbook: 40-deploy-apps.yml
 - import_playbook: 50-configure-backups.yml

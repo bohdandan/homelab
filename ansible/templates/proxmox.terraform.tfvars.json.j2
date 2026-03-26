@@ -18,6 +18,7 @@
   "haos_template_vmid": {{ homelab_effective.proxmox.haos_template_vmid }},
   "k3s_control": {{ homelab_effective.k3s.control | to_nice_json(indent=2) }},
   "k3s_worker": {{ homelab_effective.k3s.worker | to_nice_json(indent=2) }},
+  "dev_admin": {{ homelab_effective.dev_admin | dict2items | rejectattr('key', 'in', ['login_user', 'workspace_dir', 'first_login_script', 'tools']) | items2dict | to_nice_json(indent=2) }},
   "haos": {
     "vmid": {{ homelab_effective.haos.vmid }},
     "name": "{{ homelab_effective.haos.name }}",

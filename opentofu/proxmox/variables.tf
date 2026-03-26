@@ -69,6 +69,17 @@ variable "haos_template_vmid" {
   type = number
 }
 
+variable "dev_admin" {
+  type = object({
+    vmid         = number
+    name         = string
+    ip           = string
+    memory       = number
+    cores        = number
+    disk_size_gb = number
+  })
+}
+
 variable "k3s_control" {
   type = object({
     vmid         = number

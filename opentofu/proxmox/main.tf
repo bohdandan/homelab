@@ -48,6 +48,31 @@ module "k3s_worker" {
   tags         = ["k3s", "worker", "stateful"]
 }
 
+module "dev_admin" {
+  source = "./modules/k3s-node"
+
+  proxmox_node          = var.proxmox_node
+  vm_storage            = var.vm_storage
+  cloudinit_storage     = var.cloudinit_storage
+  network_config_volume = "${var.snippets_storage}:snippets/${var.dev_admin.name}-network.yaml"
+  network_bridge        = var.network_bridge
+  nameserver            = var.nameserver
+  searchdomain          = var.searchdomain
+  gateway               = var.gateway
+  cidr_prefix           = var.cidr_prefix
+  ssh_public_key        = var.ssh_public_key
+  ssh_user              = var.ssh_user
+  source_template       = var.k3s_template
+
+  vmid         = var.dev_admin.vmid
+  node_name    = var.dev_admin.name
+  ip_address   = var.dev_admin.ip
+  memory       = var.dev_admin.memory
+  cores        = var.dev_admin.cores
+  disk_size_gb = var.dev_admin.disk_size_gb
+  tags         = ["dev", "admin", "codex"]
+}
+
 resource "proxmox_vm_qemu" "haos" {
   name               = var.haos.name
   target_node        = var.proxmox_node

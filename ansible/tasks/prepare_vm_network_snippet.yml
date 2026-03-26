@@ -1,0 +1,19 @@
+- name: Resolve VM network snippet path
+  ansible.builtin.command:
+    cmd: >-
+      pvesm path
+      {{ homelab_effective.proxmox.snippets_storage }}:snippets/{{ vm_guest.name }}-network.yaml
+  register: vm_network_snippet_path
+  changed_when: false
+
+- name: Ensure VM network snippet directory exists
+  ansible.builtin.file:
+    path: "{{ (vm_network_snippet_path.stdout | trim) | dirname }}"
+    state: directory
+    mode: "0755"
+
+- name: Render VM custom network snippet
+  ansible.builtin.template:
+    src: ../templates/vm-network-snippet.yaml.j2
+    dest: "{{ vm_network_snippet_path.stdout | trim }}"
+    mode: "0644"

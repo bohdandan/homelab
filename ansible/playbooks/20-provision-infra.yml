@@ -22,22 +22,24 @@
   gather_facts: false
   vars:
     homelab_effective: "{{ hostvars['localhost'].homelab_effective }}"
-    k3s_vm_guests:
+    ubuntu_vm_guests:
       - name: "{{ homelab_effective.k3s.control.name }}"
         ip: "{{ homelab_effective.k3s.control.ip }}"
       - name: "{{ homelab_effective.k3s.worker.name }}"
         ip: "{{ homelab_effective.k3s.worker.ip }}"
+      - name: "{{ homelab_effective.dev_admin.name }}"
+        ip: "{{ homelab_effective.dev_admin.ip }}"
   become: true
   tasks:
     - name: Prepare HAOS template
       ansible.builtin.include_tasks: ../tasks/prepare_haos_template.yml
 
-    - name: Prepare custom K3s network snippets
-      ansible.builtin.include_tasks: ../tasks/prepare_k3s_network_snippets.yml
-      loop: "{{ k3s_vm_guests }}"
+    - name: Prepare custom Ubuntu VM network snippets
+      ansible.builtin.include_tasks: ../tasks/prepare_vm_network_snippet.yml
+      loop: "{{ ubuntu_vm_guests }}"
       loop_control:
-        loop_var: k3s_vm
-        label: "{{ k3s_vm.name }}"
+        loop_var: vm_guest
+        label: "{{ vm_guest.name }}"
 
 - name: Provision Proxmox VMs and Cloudflare resources
   hosts: localhost

@@ -7,6 +7,7 @@ homelab:
     n8n: n8n.magnetic-marten.com
     n8n_internal: n8n.homelab.magnetic-marten.com
     home_assistant: ha.homelab.magnetic-marten.com
+    dev_admin: dev.homelab.magnetic-marten.com
     proxmox: proxmox.homelab.magnetic-marten.com
     haos: haos.homelab.magnetic-marten.com
     k3s_control: k3s-control.homelab.magnetic-marten.com
@@ -72,6 +73,23 @@ homelab:
     memory: 4096
     cores: 2
     disk_size: 32G
+
+  dev_admin:
+    vmid: 113
+    name: dev-admin-01
+    ip: 192.168.10.113
+    memory: 8192
+    cores: 4
+    disk_size_gb: 80
+    login_user: dev
+    workspace_dir: /home/dev/workspace
+    first_login_script: /home/dev/workspace/first-login.sh
+    tools:
+      codex_version: 0.116.0
+      helm_version: v4.1.3
+      helix_version: 25.07.1
+      lazygit_version: 0.56.0
+      sops_version: 3.12.2
 
   k3s:
     version: v1.35.0+k3s1

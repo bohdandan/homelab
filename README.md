@@ -12,6 +12,7 @@ Infrastructure as code for a Proxmox-based homelab using:
 - `k3s-control-01` at `192.168.10.110`
 - `k3s-worker-01` at `192.168.10.111`
 - `haos-01` at `192.168.10.112`
+- `dev-admin-01` at `192.168.10.113`
 - MetalLB pool `192.168.10.120-192.168.10.129`
 - Traefik VIP `192.168.10.120`
 
@@ -27,6 +28,8 @@ Infrastructure as code for a Proxmox-based homelab using:
   - LAN only through CoreDNS and Traefik
 - `ha.homelab.magnetic-marten.com`
   - LAN only, routed through Traefik to the Home Assistant OS VM
+- `dev.homelab.magnetic-marten.com`
+  - LAN only SSH/admin VM for Codex, Ansible, and homelab operations
 
 ## Repository Layout
 
@@ -105,6 +108,7 @@ LAN-only names are resolved by a dedicated CoreDNS service in K3s.
   - `haos.homelab.magnetic-marten.com -> 192.168.10.112`
   - `k3s-control.homelab.magnetic-marten.com -> 192.168.10.110`
   - `k3s-worker.homelab.magnetic-marten.com -> 192.168.10.111`
+  - `dev.homelab.magnetic-marten.com -> 192.168.10.113`
 
 In UniFi, keep clients using the gateway as DNS and add one `Forward Domain`
 record that forwards `homelab.magnetic-marten.com` to `192.168.10.121`.
@@ -145,10 +149,13 @@ SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt ansible-playbook ansible/playbooks
 # 4. Configure K3s cluster
 SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt ansible-playbook ansible/playbooks/30-configure-k3s.yml
 
-# 5. Deploy cert-manager, Homepage, n8n, Home Assistant proxy, cloudflared
+# 5. Configure the dev/admin VM
+SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt ansible-playbook ansible/playbooks/35-configure-dev-admin.yml
+
+# 6. Deploy cert-manager, Homepage, n8n, Home Assistant proxy, cloudflared
 SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt ansible-playbook ansible/playbooks/40-deploy-apps.yml
 
-# 6. Configure Proxmox backup storage and VM backup jobs
+# 7. Configure Proxmox backup storage and VM backup jobs
 SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt ansible-playbook ansible/playbooks/50-configure-backups.yml
 ```
 
@@ -177,8 +184,10 @@ SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt ansible-playbook ansible/playbooks
 - Ubuntu template build
 - HAOS template preparation
 - K3s VM provisioning
+- Dev/admin VM provisioning
 - Cloudflare Tunnel, DNS, and n8n Access policy
 - K3s install with Traefik and MetalLB
+- Dev/admin VM configuration with Codex CLI, Tailscale, and homelab tooling
 - cert-manager DNS-01 issuer for Cloudflare
 - Homepage
 - n8n + PostgreSQL

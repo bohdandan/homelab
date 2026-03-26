@@ -1,0 +1,47 @@
+- name: Read current guest network interfaces
+  ansible.builtin.command:
+    cmd: "qm guest cmd {{ vm_guest.vmid }} network-get-interfaces"
+  register: vm_guest_network
+  changed_when: false
+  failed_when: false
+
+- name: Extract current guest IP addresses
+  ansible.builtin.set_fact:
+    vm_guest_current_ips: "{{ vm_guest_network.stdout | regex_findall('\"ip-address\"\\s*:\\s*\"([^\"]+)\"') }}"
+
+- name: Reset stale installer cloud-init config when the guest kept the packer build IP
+  ansible.builtin.command:
+    cmd: >-
+      qm guest exec {{ vm_guest.vmid }} -- bash -lc
+      'rm -f /etc/netplan/50-cloud-init.yaml
+      /etc/cloud/cloud.cfg.d/90-installer-network.cfg
+      /etc/cloud/cloud.cfg.d/99-installer.cfg
+      /etc/cloud/cloud-init.disabled
+      /var/lib/cloud/data/disabled
+      && rm -rf /var/lib/cloud/instance /var/lib/cloud/instances/*
+      /var/log/cloud-init*'
+  when:
+    - homelab_effective.packer.build_ip in vm_guest_current_ips
+    - vm_guest.ip not in vm_guest_current_ips
+
+- name: Reboot guest after cloud-init cleanup
+  ansible.builtin.command:
+    cmd: "qm reboot {{ vm_guest.vmid }}"
+  when:
+    - vm_guest.ip not in vm_guest_current_ips
+    - homelab_effective.packer.build_ip in vm_guest_current_ips or vm_guest_network.rc != 0
+
+- name: Wait for guest to report its intended IP
+  ansible.builtin.command:
+    cmd: "qm guest cmd {{ vm_guest.vmid }} network-get-interfaces"
+  register: vm_guest_network_after
+  changed_when: false
+  failed_when: false
+  retries: 30
+  delay: 5
+  until:
+    - vm_guest_network_after.rc == 0
+    - vm_guest.ip in (vm_guest_network_after.stdout | regex_findall('\"ip-address\"\\s*:\\s*\"([^\"]+)\"'))
+  when:
+    - vm_guest.ip not in vm_guest_current_ips
+    - homelab_effective.packer.build_ip in vm_guest_current_ips or vm_guest_network.rc != 0

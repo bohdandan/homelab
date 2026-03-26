@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "Homelab dev/admin first-login checklist"
+echo
+echo "1. Join Tailscale with SSH enabled:"
+echo "   sudo tailscale up --ssh"
+echo
+echo "2. Check your Tailscale IPv4 address:"
+echo "   tailscale ip -4"
+echo
+echo "3. Authenticate Codex CLI:"
+echo "   codex login"
+echo
+echo "4. Optional: authenticate GitHub CLI if you want to clone/push as yourself:"
+echo "   gh auth login --web"
+echo
+echo "5. Optional: restore your age key if you want to decrypt repo secrets on this VM:"
+echo "   mkdir -p ~/.config/sops/age"
+echo "   # securely copy ~/.config/sops/age/keys.txt onto this machine"
+echo "   export SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt"
+echo
+echo "6. Clone the homelab repo locally if you want to work from this VM:"
+echo "   cd {{ homelab_effective.dev_admin.workspace_dir }}"
+echo "   git clone https://github.com/bohdandan/homelab.git"
+echo
+echo "7. Install Ansible collections inside the repo before running playbooks:"
+echo "   cd {{ homelab_effective.dev_admin.workspace_dir }}/homelab"
+echo "   ansible-galaxy collection install -r ansible/requirements.yml"
+echo
+echo "8. Local tools available on this VM:"
+echo "   codex --version"
+echo "   hx --version"
+echo "   lazygit --version"
+echo "   eza --version"
+echo "   bat --version"
+echo "   kubectl version --client"
+echo "   helm version"
