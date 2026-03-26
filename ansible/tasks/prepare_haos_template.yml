@@ -36,6 +36,7 @@
       --net0 virtio,bridge={{ homelab_effective.proxmox.bridge }}
       --ostype l26
       --agent 1
+      --bios ovmf
       --serial0 socket
       --vga serial0
   when: haos_template_status.rc != 0
@@ -54,6 +55,7 @@
       qm set {{ homelab_effective.proxmox.haos_template_vmid }}
       --scsihw virtio-scsi-pci
       --scsi0 {{ homelab_effective.proxmox.vm_storage }}:vm-{{ homelab_effective.proxmox.haos_template_vmid }}-disk-0
+      --efidisk0 {{ homelab_effective.proxmox.vm_storage }}:0,efitype=4m,pre-enrolled-keys=0
       --boot order=scsi0
   when: haos_template_status.rc != 0
 

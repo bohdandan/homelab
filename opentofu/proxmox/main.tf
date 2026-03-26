@@ -56,6 +56,7 @@ resource "proxmox_vm_qemu" "haos" {
   full_clone         = true
   start_at_node_boot = true
   agent              = 1
+  bios               = "ovmf"
   os_type            = "other"
 
   cores  = var.haos.cores
@@ -70,11 +71,26 @@ resource "proxmox_vm_qemu" "haos" {
     iothread = true
   }
 
+  efidisk {
+    storage           = var.vm_storage
+    efitype           = "4m"
+    pre_enrolled_keys = false
+  }
+
   network {
     id      = 0
     model   = "virtio"
     bridge  = var.network_bridge
     macaddr = var.haos.mac_address
+  }
+
+  serial {
+    id   = 0
+    type = "socket"
+  }
+
+  vga {
+    type = "serial0"
   }
 
   description = "Home Assistant OS VM. Reserve ${var.haos.desired_ip} on the router using ${var.haos.mac_address}."

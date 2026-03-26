@@ -59,10 +59,30 @@ resource "cloudflare_access_application" "n8n" {
   session_duration = "24h"
 }
 
+resource "cloudflare_access_application" "homepage" {
+  zone_id          = var.zone_id
+  name             = "homepage"
+  domain           = var.homepage_hostname
+  type             = "self_hosted"
+  session_duration = "24h"
+}
+
 resource "cloudflare_access_policy" "n8n_allow" {
   zone_id        = var.zone_id
   application_id = cloudflare_access_application.n8n.id
   name           = "Allow homelab n8n users"
+  precedence     = "1"
+  decision       = "allow"
+
+  include {
+    email = var.n8n_allowed_emails
+  }
+}
+
+resource "cloudflare_access_policy" "homepage_allow" {
+  zone_id        = var.zone_id
+  application_id = cloudflare_access_application.homepage.id
+  name           = "Allow homelab homepage users"
   precedence     = "1"
   decision       = "allow"
 

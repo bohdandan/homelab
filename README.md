@@ -17,9 +17,9 @@ Infrastructure as code for a Proxmox-based homelab using:
 
 ## Applications
 
-- `homepage.homelab.magnetic-marten.com`
-  - Public through Cloudflare Tunnel
-- `n8n.homelab.magnetic-marten.com`
+- `homepage.magnetic-marten.com`
+  - Public through Cloudflare Tunnel and protected by Cloudflare Access
+- `n8n.magnetic-marten.com`
   - Public through Cloudflare Tunnel and protected by Cloudflare Access
 - `ha.homelab.magnetic-marten.com`
   - LAN only, routed through Traefik to the Home Assistant OS VM
@@ -86,6 +86,7 @@ SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt sops -e -i ansible/group_vars/all/
 - Cloudflare account with:
   - zone `magnetic-marten.com`
   - API token for DNS and Zero Trust resources
+- Cloudflare Access allowlist emails in `ansible/group_vars/all/secrets.sops.yaml`
 - Router/local DNS support for a LAN override:
   - `ha.homelab.magnetic-marten.com -> 192.168.10.120`
 

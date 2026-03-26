@@ -2,8 +2,8 @@ homelab:
   domain:
     root: magnetic-marten.com
     subzone: homelab.magnetic-marten.com
-    homepage: homepage.homelab.magnetic-marten.com
-    n8n: n8n.homelab.magnetic-marten.com
+    homepage: homepage.magnetic-marten.com
+    n8n: n8n.magnetic-marten.com
     home_assistant: ha.homelab.magnetic-marten.com
 
   ssh:
