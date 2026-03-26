@@ -37,6 +37,7 @@
       community.general.filesystem:
         fstype: ext4
         dev: "{{ homelab_effective.proxmox.backup_device }}"
+        force: true
       when:
         - backup_mountpoint.rc != 0
         - homelab_effective.proxmox.backup_device | length > 0
@@ -117,4 +118,3 @@
           --vmid {{ backup_vmids }}
           --prune-backups "{{ homelab_effective.proxmox.backup_retention }}"
       when: current_backup_job_id | length > 0
-
