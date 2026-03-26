@@ -92,7 +92,7 @@
       ansible.builtin.debug:
         msg: >-
           MetalLB and cert-manager are installed. Skipping ClusterIssuer, homepage, n8n,
-          Home Assistant proxy, and cloudflared until real Cloudflare and application secrets
+          QuickDrop, Home Assistant proxy, and cloudflared until real Cloudflare and application secrets
           are present in ansible/group_vars/all/secrets.sops.yaml.
       when: not (hostvars['localhost'].homelab_app_secrets_ready | bool)
 
@@ -146,6 +146,18 @@
         cmd: kubectl apply -f /tmp/n8n.yaml
       when: hostvars['localhost'].homelab_app_secrets_ready | bool
 
+    - name: Render QuickDrop manifest
+      ansible.builtin.template:
+        src: ../../kubernetes/base/quickdrop/manifests.yaml.j2
+        dest: /tmp/quickdrop.yaml
+        mode: "0644"
+      when: hostvars['localhost'].homelab_app_secrets_ready | bool
+
+    - name: Apply QuickDrop manifest
+      ansible.builtin.command:
+        cmd: kubectl apply -f /tmp/quickdrop.yaml
+      when: hostvars['localhost'].homelab_app_secrets_ready | bool
+
     - name: Render Home Assistant proxy manifest
       ansible.builtin.template:
         src: ../../kubernetes/base/home-assistant-proxy/manifests.yaml.j2
@@ -178,6 +190,11 @@
     - name: Wait for n8n deployment
       ansible.builtin.command:
         cmd: kubectl rollout status deployment/n8n -n {{ homelab_effective.apps.n8n.namespace }} --timeout=240s
+      when: hostvars['localhost'].homelab_app_secrets_ready | bool
+
+    - name: Wait for QuickDrop deployment
+      ansible.builtin.command:
+        cmd: kubectl rollout status deployment/quickdrop -n {{ homelab_effective.apps.quickdrop.namespace }} --timeout=240s
       when: hostvars['localhost'].homelab_app_secrets_ready | bool
 
     - name: Wait for cloudflared deployment

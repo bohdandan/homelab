@@ -6,6 +6,8 @@ homelab:
     homepage_internal: homepage.homelab.magnetic-marten.com
     n8n: n8n.magnetic-marten.com
     n8n_internal: n8n.homelab.magnetic-marten.com
+    share: share.magnetic-marten.com
+    share_internal: share.homelab.magnetic-marten.com
     home_assistant: ha.homelab.magnetic-marten.com
     dev_admin: dev.homelab.magnetic-marten.com
     proxmox: proxmox.homelab.magnetic-marten.com
@@ -49,6 +51,7 @@ homelab:
     gateway: 192.168.10.1
     nameserver: 192.168.10.1
     searchdomain: magnetic-marten.com
+    public_ipv4: 86.18.122.115
     traefik_lb_ip: 192.168.10.120
     metallb_range: 192.168.10.120-192.168.10.129
 
@@ -129,6 +132,10 @@ homelab:
       namespace: n8n
       image: n8nio/n8n:latest
       data_storage: 10Gi
+    quickdrop:
+      namespace: quickdrop
+      image: roastslav/quickdrop:latest
+      data_storage: 30Gi
     postgres:
       namespace: n8n
       image: postgres:17-alpine

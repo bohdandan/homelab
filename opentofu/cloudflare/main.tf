@@ -51,6 +51,15 @@ resource "cloudflare_record" "n8n" {
   ttl     = 1
 }
 
+resource "cloudflare_record" "share" {
+  zone_id = var.zone_id
+  name    = var.share_hostname
+  value   = var.share_origin_ipv4
+  type    = "A"
+  proxied = false
+  ttl     = 1
+}
+
 resource "cloudflare_access_application" "n8n" {
   zone_id          = var.zone_id
   name             = "n8n"

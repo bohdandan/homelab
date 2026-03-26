@@ -26,6 +26,10 @@ Infrastructure as code for a Proxmox-based homelab using:
   - Public through Cloudflare Tunnel and protected by Cloudflare Access
 - `n8n.homelab.magnetic-marten.com`
   - LAN only through CoreDNS and Traefik
+- `share.magnetic-marten.com`
+  - Public direct ingress for QuickDrop file sharing
+- `share.homelab.magnetic-marten.com`
+  - LAN only through CoreDNS and Traefik
 - `ha.homelab.magnetic-marten.com`
   - LAN only, routed through Traefik to the Home Assistant OS VM
 - `dev.homelab.magnetic-marten.com`
@@ -93,9 +97,12 @@ SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt sops -e -i ansible/group_vars/all/
 - Cloudflare account with:
   - zone `magnetic-marten.com`
   - API token for DNS and Zero Trust resources
-- Cloudflare Access allowlist emails in `ansible/group_vars/all/secrets.sops.yaml`
-- UniFi local DNS forward domain:
+  - Cloudflare Access allowlist emails in `ansible/group_vars/all/secrets.sops.yaml`
+  - UniFi local DNS forward domain:
   - `homelab.magnetic-marten.com -> 192.168.10.121`
+  - Router port forwards:
+    - TCP `80` -> `192.168.10.120`
+    - TCP `443` -> `192.168.10.120`
 
 ## LAN DNS
 
@@ -109,6 +116,7 @@ LAN-only names are resolved by a dedicated CoreDNS service in K3s.
   - `k3s-control.homelab.magnetic-marten.com -> 192.168.10.110`
   - `k3s-worker.homelab.magnetic-marten.com -> 192.168.10.111`
   - `dev.homelab.magnetic-marten.com -> 192.168.10.113`
+  - `share.homelab.magnetic-marten.com -> 192.168.10.120`
 
 In UniFi, keep clients using the gateway as DNS and add one `Forward Domain`
 record that forwards `homelab.magnetic-marten.com` to `192.168.10.121`.
@@ -191,6 +199,7 @@ SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt ansible-playbook ansible/playbooks
 - cert-manager DNS-01 issuer for Cloudflare
 - Homepage
 - n8n + PostgreSQL
+- QuickDrop
 - Home Assistant LAN ingress proxy
 - Proxmox VM backup storage and backup jobs
 

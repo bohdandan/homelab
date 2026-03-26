@@ -23,7 +23,7 @@ data:
   db.homelab: |
     $ORIGIN {{ homelab_effective.domain.subzone }}.
     @ 3600 IN SOA ns1.{{ homelab_effective.domain.subzone }}. admin.{{ homelab_effective.domain.root }}. (
-      2026032602
+      2026032603
       7200
       3600
       1209600
@@ -34,6 +34,7 @@ data:
     ha 300 IN A {{ homelab_effective.network.traefik_lb_ip }}
     homepage 300 IN A {{ homelab_effective.network.traefik_lb_ip }}
     n8n 300 IN A {{ homelab_effective.network.traefik_lb_ip }}
+    share 300 IN A {{ homelab_effective.network.traefik_lb_ip }}
     traefik 300 IN A {{ homelab_effective.network.traefik_lb_ip }}
     dev 300 IN A {{ homelab_effective.dev_admin.ip }}
     proxmox 300 IN A {{ homelab_effective.proxmox.ssh_host }}

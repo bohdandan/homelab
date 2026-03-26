@@ -17,6 +17,12 @@
       "homepage_href": "https://{{ homelab_effective.domain.home_assistant }}"
     },
     {
+      "id": "quickdrop",
+      "homepage_entry_required": true,
+      "homepage_title": "QuickDrop",
+      "homepage_href": "https://{{ homelab_effective.domain.share_internal }}"
+    },
+    {
       "id": "postgres",
       "homepage_entry_required": false
     },

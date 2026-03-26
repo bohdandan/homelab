@@ -15,5 +15,6 @@ output "public_hostnames" {
   value = [
     var.homepage_hostname,
     var.n8n_hostname,
+    var.share_hostname,
   ]
 }
