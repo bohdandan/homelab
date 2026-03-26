@@ -15,22 +15,45 @@ data:
     color: slate
     hideVersion: true
   services.yaml: |
-    - Platform:
-        - Homepage:
-            href: https://{{ homelab_effective.domain.homepage }}
-            description: Homelab landing page
+    - Apps:
         - n8n:
-            href: https://{{ homelab_effective.domain.n8n }}
+            href: https://{{ homelab_effective.domain.n8n_internal }}
+            siteMonitor: https://{{ homelab_effective.domain.n8n_internal }}/
             description: Automation workflows
+            namespace: {{ homelab_effective.apps.n8n.namespace }}
+            podSelector: app=n8n
         - Home Assistant:
             href: https://{{ homelab_effective.domain.home_assistant }}
+            siteMonitor: https://{{ homelab_effective.domain.home_assistant }}/
             description: Smart home
+    - Data:
+        - Postgres:
+            description: n8n database
+            namespace: {{ homelab_effective.apps.postgres.namespace }}
+            podSelector: app=postgres
+    - Platform:
+        - Cloudflared:
+            description: Cloudflare tunnel connector
+            namespace: {{ homelab_effective.apps.cloudflared.namespace }}
+            podSelector: app=cloudflared
+        - CoreDNS:
+            description: LAN DNS service
+            namespace: {{ homelab_effective.apps.coredns.namespace }}
+            podSelector: app=coredns
   widgets.yaml: |
     - kubernetes:
         cluster:
           show: true
+          cpu: true
+          memory: true
+          showLabel: true
+          label: cluster
         nodes:
           show: true
+          cpu: true
+          memory: true
+          showLabel: true
+          label: nodes
   kubernetes.yaml: |
     mode: cluster
 ---
