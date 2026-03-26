@@ -87,6 +87,8 @@ kind: Ingress
 metadata:
   name: quickdrop
   namespace: {{ homelab_effective.apps.quickdrop.namespace }}
+  annotations:
+    cert-manager.io/cluster-issuer: "{{ homelab_effective.cert_manager.cluster_issuer_name }}"
 spec:
   ingressClassName: traefik
   tls:

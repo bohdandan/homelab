@@ -31,6 +31,8 @@ kind: Ingress
 metadata:
   name: home-assistant
   namespace: home-assistant
+  annotations:
+    cert-manager.io/cluster-issuer: "{{ homelab_effective.cert_manager.cluster_issuer_name }}"
 spec:
   ingressClassName: traefik
   tls:

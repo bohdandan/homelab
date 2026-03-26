@@ -84,6 +84,12 @@
       ansible.builtin.command:
         cmd: kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/{{ homelab_effective.cert_manager.version }}/cert-manager.yaml
 
+    - name: Patch cert-manager deployment to use public recursive resolvers for DNS-01 self-checks
+      ansible.builtin.command:
+        cmd: >-
+          kubectl -n {{ homelab_effective.cert_manager.namespace }} patch deployment cert-manager --type=json
+          -p=[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--dns01-recursive-nameservers=1.1.1.1:53,1.0.0.1:53"},{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--dns01-recursive-nameservers-only"}]
+
     - name: Wait for cert-manager deployment
       ansible.builtin.command:
         cmd: kubectl rollout status deployment/cert-manager -n {{ homelab_effective.cert_manager.namespace }} --timeout=240s

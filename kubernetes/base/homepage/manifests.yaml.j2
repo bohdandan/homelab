@@ -164,6 +164,8 @@ kind: Ingress
 metadata:
   name: homepage
   namespace: {{ homelab_effective.apps.homepage.namespace }}
+  annotations:
+    cert-manager.io/cluster-issuer: "{{ homelab_effective.cert_manager.cluster_issuer_name }}"
 spec:
   ingressClassName: traefik
   tls:
