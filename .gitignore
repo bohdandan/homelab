@@ -8,6 +8,8 @@
 *.swp
 *.swo
 .nvimlog
+__pycache__/
+*.pyc
 
 # Runtime files
 /ansible/runtime/*
