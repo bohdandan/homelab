@@ -1,0 +1,32 @@
+{
+  "applications": [
+    {
+      "id": "homepage",
+      "homepage_entry_required": false
+    },
+    {
+      "id": "n8n",
+      "homepage_entry_required": true,
+      "homepage_title": "n8n",
+      "homepage_href": "https://{{ homelab_effective.domain.n8n_internal }}"
+    },
+    {
+      "id": "home-assistant",
+      "homepage_entry_required": true,
+      "homepage_title": "Home Assistant",
+      "homepage_href": "https://{{ homelab_effective.domain.home_assistant }}"
+    },
+    {
+      "id": "postgres",
+      "homepage_entry_required": false
+    },
+    {
+      "id": "cloudflared",
+      "homepage_entry_required": false
+    },
+    {
+      "id": "coredns",
+      "homepage_entry_required": false
+    }
+  ]
+}
