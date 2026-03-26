@@ -4,6 +4,7 @@
 # Editor / local
 .idea/
 .vscode/
+.worktrees/
 *.swp
 *.swo
 .nvimlog
