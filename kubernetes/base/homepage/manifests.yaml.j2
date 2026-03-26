@@ -84,6 +84,9 @@ spec:
       containers:
         - name: homepage
           image: {{ homelab_effective.apps.homepage.image }}
+          env:
+            - name: HOMEPAGE_ALLOWED_HOSTS
+              value: "{{ homelab_effective.domain.homepage }},homepage.homelab.magnetic-marten.com"
           ports:
             - containerPort: 3000
               name: http
