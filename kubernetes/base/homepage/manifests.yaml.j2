@@ -86,7 +86,7 @@ spec:
           image: {{ homelab_effective.apps.homepage.image }}
           env:
             - name: HOMEPAGE_ALLOWED_HOSTS
-              value: "{{ homelab_effective.domain.homepage }},homepage.homelab.magnetic-marten.com"
+              value: "{{ homelab_effective.domain.homepage }},{{ homelab_effective.domain.homepage_internal }}"
           ports:
             - containerPort: 3000
               name: http
@@ -132,9 +132,20 @@ spec:
   tls:
     - hosts:
         - {{ homelab_effective.domain.homepage }}
+        - {{ homelab_effective.domain.homepage_internal }}
       secretName: homelab-wildcard-tls
   rules:
     - host: {{ homelab_effective.domain.homepage }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: homepage
+                port:
+                  number: 3000
+    - host: {{ homelab_effective.domain.homepage_internal }}
       http:
         paths:
           - path: /

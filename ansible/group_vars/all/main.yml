@@ -3,8 +3,15 @@ homelab:
     root: magnetic-marten.com
     subzone: homelab.magnetic-marten.com
     homepage: homepage.magnetic-marten.com
+    homepage_internal: homepage.homelab.magnetic-marten.com
     n8n: n8n.magnetic-marten.com
+    n8n_internal: n8n.homelab.magnetic-marten.com
     home_assistant: ha.homelab.magnetic-marten.com
+    proxmox: proxmox.homelab.magnetic-marten.com
+    haos: haos.homelab.magnetic-marten.com
+    k3s_control: k3s-control.homelab.magnetic-marten.com
+    k3s_worker: k3s-worker.homelab.magnetic-marten.com
+    traefik: traefik.homelab.magnetic-marten.com
 
   ssh:
     user: ubuntu
@@ -92,6 +99,11 @@ homelab:
     private_key_secret_name: letsencrypt-cloudflare-account-key
 
   apps:
+    coredns:
+      namespace: dns
+      image: coredns/coredns:1.13.1
+      service_ip: 192.168.10.121
+      upstream_resolver: 192.168.10.1
     homepage:
       namespace: homepage
       image: ghcr.io/gethomepage/homepage:v1.8.0

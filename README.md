@@ -19,8 +19,12 @@ Infrastructure as code for a Proxmox-based homelab using:
 
 - `homepage.magnetic-marten.com`
   - Public through Cloudflare Tunnel and protected by Cloudflare Access
+- `homepage.homelab.magnetic-marten.com`
+  - LAN only through CoreDNS and Traefik
 - `n8n.magnetic-marten.com`
   - Public through Cloudflare Tunnel and protected by Cloudflare Access
+- `n8n.homelab.magnetic-marten.com`
+  - LAN only through CoreDNS and Traefik
 - `ha.homelab.magnetic-marten.com`
   - LAN only, routed through Traefik to the Home Assistant OS VM
 
@@ -87,8 +91,23 @@ SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt sops -e -i ansible/group_vars/all/
   - zone `magnetic-marten.com`
   - API token for DNS and Zero Trust resources
 - Cloudflare Access allowlist emails in `ansible/group_vars/all/secrets.sops.yaml`
-- Router/local DNS support for a LAN override:
-  - `ha.homelab.magnetic-marten.com -> 192.168.10.120`
+- UniFi local DNS forward domain:
+  - `homelab.magnetic-marten.com -> 192.168.10.121`
+
+## LAN DNS
+
+LAN-only names are resolved by a dedicated CoreDNS service in K3s.
+
+- CoreDNS service IP: `192.168.10.121`
+- Wildcard: `*.homelab.magnetic-marten.com -> 192.168.10.120`
+- Explicit overrides:
+  - `proxmox.homelab.magnetic-marten.com -> 192.168.10.100`
+  - `haos.homelab.magnetic-marten.com -> 192.168.10.112`
+  - `k3s-control.homelab.magnetic-marten.com -> 192.168.10.110`
+  - `k3s-worker.homelab.magnetic-marten.com -> 192.168.10.111`
+
+In UniFi, keep clients using the gateway as DNS and add one `Forward Domain`
+record that forwards `homelab.magnetic-marten.com` to `192.168.10.121`.
 
 Install Ansible collections before the first run:
 

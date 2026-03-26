@@ -66,6 +66,20 @@
       delay: 10
       until: traefik_lb_ip.stdout == homelab_effective.network.traefik_lb_ip
 
+    - name: Render CoreDNS manifest
+      ansible.builtin.template:
+        src: ../../kubernetes/base/coredns/manifests.yaml.j2
+        dest: /tmp/coredns.yaml
+        mode: "0644"
+
+    - name: Apply CoreDNS manifest
+      ansible.builtin.command:
+        cmd: kubectl apply -f /tmp/coredns.yaml
+
+    - name: Wait for CoreDNS deployment
+      ansible.builtin.command:
+        cmd: kubectl rollout status deployment/coredns -n {{ homelab_effective.apps.coredns.namespace }} --timeout=240s
+
     - name: Install cert-manager
       ansible.builtin.command:
         cmd: kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/{{ homelab_effective.cert_manager.version }}/cert-manager.yaml
