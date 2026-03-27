@@ -33,7 +33,8 @@ Use this checklist whenever a new application is added to the homelab or an exis
 
 - Add or update the entry in `docs/application-catalog.json`
 - If `"homepage_entry_required": true`, add or update the Homepage card in `kubernetes/base/homepage/manifests.yaml.j2`
-- Keep the title and `href` in Homepage aligned with the catalog entry so the regression test stays meaningful
+- Add an `href` only when a direct operator-facing URL is reasonable for the app; otherwise keep the Homepage entry as a status-only card
+- Keep the title and `href` in Homepage aligned with the catalog entry when an `href` is present so the regression test stays meaningful
 
 ## 5. Verification
 
@@ -50,4 +51,4 @@ Use this checklist whenever a new application is added to the homelab or an exis
 
 - Public app hostnames use first-level names on `magnetic-marten.com` and are protected by Cloudflare Access where required.
 - Internal app hostnames use `*.homelab.magnetic-marten.com` and resolve through UniFi -> CoreDNS.
-- Homepage links should generally use internal hostnames so the dashboard remains useful on the LAN without depending on Cloudflare.
+- Homepage links should generally use internal hostnames when a link is appropriate so the dashboard remains useful on the LAN without depending on Cloudflare.

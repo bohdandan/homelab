@@ -36,13 +36,47 @@ data:
             href: https://{{ homelab_effective.domain.home_assistant }}
             siteMonitor: https://{{ homelab_effective.domain.home_assistant }}/
             description: Smart home
+    - Observability:
+        - ChangeDetection:
+            href: https://{{ homelab_effective.domain.changedetection }}
+            siteMonitor: https://{{ homelab_effective.domain.changedetection }}/
+            description: Website change monitoring
+            namespace: {{ homelab_effective.apps.changedetection.namespace }}
+            podSelector: app=changedetection
+        - Uptime Kuma:
+            href: https://{{ homelab_effective.domain.kuma }}
+            siteMonitor: https://{{ homelab_effective.domain.kuma }}/
+            description: Service uptime checks
+            namespace: {{ homelab_effective.apps.uptime_kuma.namespace }}
+            podSelector: app=uptime-kuma
+        - ntfy:
+            href: https://{{ homelab_effective.domain.ntfy }}
+            siteMonitor: https://{{ homelab_effective.domain.ntfy }}/
+            description: Internal notifications
+            namespace: {{ homelab_effective.apps.ntfy.namespace }}
+            podSelector: app=ntfy
+        - Glances:
+            href: https://{{ homelab_effective.domain.glances }}
+            siteMonitor: https://{{ homelab_effective.domain.glances }}/
+            description: Dev admin VM metrics
+            widget:
+              type: glances
+              url: http://{{ homelab_effective.dev_admin.ip }}:{{ homelab_effective.apps.glances.port }}
+              version: 4
     - Data:
         - Postgres:
             description: n8n database
             namespace: {{ homelab_effective.apps.postgres.namespace }}
             podSelector: app=postgres
     - Platform:
-        - Cloudflared:
+        - Proxmox:
+            href: https://{{ homelab_effective.domain.proxmox }}:8006
+            description: Virtualization host
+        - Traefik:
+            description: Ingress controller
+            namespace: kube-system
+            podSelector: app.kubernetes.io/name=traefik
+        - Cloudflare Tunnels:
             description: Cloudflare tunnel connector
             namespace: {{ homelab_effective.apps.cloudflared.namespace }}
             podSelector: app=cloudflared
@@ -51,6 +85,11 @@ data:
             namespace: {{ homelab_effective.apps.coredns.namespace }}
             podSelector: app=coredns
   widgets.yaml: |
+    - datetime:
+        text_size: xl
+        format:
+          dateStyle: short
+          timeStyle: short
     - kubernetes:
         cluster:
           show: true

@@ -30,6 +30,14 @@ Infrastructure as code for a Proxmox-based homelab using:
   - Public direct ingress for QuickDrop file sharing
 - `share.homelab.magnetic-marten.com`
   - LAN only through CoreDNS and Traefik
+- `changedetection.homelab.magnetic-marten.com`
+  - LAN only through CoreDNS and Traefik
+- `kuma.homelab.magnetic-marten.com`
+  - LAN only through CoreDNS and Traefik
+- `ntfy.homelab.magnetic-marten.com`
+  - LAN only through CoreDNS and Traefik
+- `glances.homelab.magnetic-marten.com`
+  - LAN only through CoreDNS and Traefik, backed by the dev/admin VM
 - `ha.homelab.magnetic-marten.com`
   - LAN only, routed through Traefik to the Home Assistant OS VM
 - `dev.homelab.magnetic-marten.com`
@@ -116,6 +124,10 @@ LAN-only names are resolved by a dedicated CoreDNS service in K3s.
   - `k3s-control.homelab.magnetic-marten.com -> 192.168.10.110`
   - `k3s-worker.homelab.magnetic-marten.com -> 192.168.10.111`
   - `dev.homelab.magnetic-marten.com -> 192.168.10.113`
+  - `glances.homelab.magnetic-marten.com -> 192.168.10.120`
+  - `changedetection.homelab.magnetic-marten.com -> 192.168.10.120`
+  - `kuma.homelab.magnetic-marten.com -> 192.168.10.120`
+  - `ntfy.homelab.magnetic-marten.com -> 192.168.10.120`
   - `share.homelab.magnetic-marten.com -> 192.168.10.120`
 
 In UniFi, keep clients using the gateway as DNS and add one `Forward Domain`
@@ -160,7 +172,7 @@ SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt ansible-playbook ansible/playbooks
 # 5. Configure the dev/admin VM
 SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt ansible-playbook ansible/playbooks/35-configure-dev-admin.yml
 
-# 6. Deploy cert-manager, Homepage, n8n, Home Assistant proxy, cloudflared
+# 6. Deploy cert-manager, internal apps, Homepage, n8n, Home Assistant proxy, cloudflared
 SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt ansible-playbook ansible/playbooks/40-deploy-apps.yml
 
 # 7. Configure Proxmox backup storage and VM backup jobs
@@ -184,6 +196,11 @@ SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt ansible-playbook ansible/playbooks
   - Cloudflare Universal SSL does not cover `*.homelab.magnetic-marten.com` by default, so you need Total TLS, an Advanced Certificate, or a Custom Certificate on the zone before the public HTTPS hostnames will work end to end.
 - Only encrypted secrets and source templates belong in git.
   - Generated runtime files under `ansible/runtime/`, `ansible/inventory/generated/`, and `packer/ubuntu-k3s-template/runtime/` are intentionally ignored.
+- Hosted Renovate is the recommended image update path for this repo.
+  - Pin image versions in git.
+  - Let Renovate open PRs.
+  - After merging an image update PR, re-run `ansible/playbooks/40-deploy-apps.yml`.
+  - If a Renovate PR updates dev VM tooling instead of K3s app images, re-run `ansible/playbooks/35-configure-dev-admin.yml`.
 
 ## What Is Automated
 
@@ -198,6 +215,10 @@ SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt ansible-playbook ansible/playbooks
 - Dev/admin VM configuration with Codex CLI, Tailscale, and homelab tooling
 - cert-manager DNS-01 issuer for Cloudflare
 - Homepage
+- ChangeDetection
+- Uptime Kuma
+- ntfy
+- Glances on the dev/admin VM
 - n8n + PostgreSQL
 - QuickDrop
 - Home Assistant LAN ingress proxy
@@ -210,3 +231,4 @@ SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt ansible-playbook ansible/playbooks
 - SSD device selection and formatting policy
 - Cloudflare account and zone identifiers
 - Router/local DNS override for Home Assistant
+- Installing the hosted Renovate GitHub app on the repository

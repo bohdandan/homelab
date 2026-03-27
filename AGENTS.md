@@ -18,8 +18,9 @@ Use this file for durable repo rules that every agent should follow.
 
 - Homepage is the operator landing page for homelab apps.
 - Every user-facing application that should appear there must be recorded in `docs/application-catalog.json`.
+- Add a Homepage link only when a direct operator-facing URL is reasonable for the app. Infrastructure or support components may appear as status-only cards without an `href`.
 - The Homepage regression tests enforce that each catalog entry marked with `"homepage_entry_required": true` exists in the Homepage manifest.
-- Prefer LAN hostnames for Homepage links so the dashboard works even when Cloudflare or Tunnel is unavailable.
+- Prefer LAN hostnames for Homepage links when a link exists so the dashboard works even when Cloudflare or Tunnel is unavailable.
 
 ## Done Criteria For New Applications
 

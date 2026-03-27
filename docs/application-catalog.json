@@ -23,6 +23,36 @@
       "homepage_href": "https://{{ homelab_effective.domain.share_internal }}"
     },
     {
+      "id": "changedetection",
+      "homepage_entry_required": true,
+      "homepage_title": "ChangeDetection",
+      "homepage_href": "https://{{ homelab_effective.domain.changedetection }}"
+    },
+    {
+      "id": "uptime-kuma",
+      "homepage_entry_required": true,
+      "homepage_title": "Uptime Kuma",
+      "homepage_href": "https://{{ homelab_effective.domain.kuma }}"
+    },
+    {
+      "id": "ntfy",
+      "homepage_entry_required": true,
+      "homepage_title": "ntfy",
+      "homepage_href": "https://{{ homelab_effective.domain.ntfy }}"
+    },
+    {
+      "id": "glances",
+      "homepage_entry_required": true,
+      "homepage_title": "Glances",
+      "homepage_href": "https://{{ homelab_effective.domain.glances }}"
+    },
+    {
+      "id": "proxmox",
+      "homepage_entry_required": true,
+      "homepage_title": "Proxmox",
+      "homepage_href": "https://{{ homelab_effective.domain.proxmox }}:8006"
+    },
+    {
       "id": "postgres",
       "homepage_entry_required": false
     },

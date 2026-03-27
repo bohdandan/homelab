@@ -9,6 +9,10 @@ class IngressTLSAnnotationsTest(unittest.TestCase):
             Path("kubernetes/base/n8n/manifests.yaml.j2"),
             Path("kubernetes/base/home-assistant-proxy/manifests.yaml.j2"),
             Path("kubernetes/base/quickdrop/manifests.yaml.j2"),
+            Path("kubernetes/base/changedetection/manifests.yaml.j2"),
+            Path("kubernetes/base/uptime-kuma/manifests.yaml.j2"),
+            Path("kubernetes/base/ntfy/manifests.yaml.j2"),
+            Path("kubernetes/base/glances/manifests.yaml.j2"),
         ]
 
         expected_line = 'cert-manager.io/cluster-issuer: "{{ homelab_effective.cert_manager.cluster_issuer_name }}"'

@@ -84,11 +84,22 @@
       ansible.builtin.command:
         cmd: kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/{{ homelab_effective.cert_manager.version }}/cert-manager.yaml
 
-    - name: Patch cert-manager deployment to use public recursive resolvers for DNS-01 self-checks
+    - name: Read current cert-manager controller args
       ansible.builtin.command:
         cmd: >-
-          kubectl -n {{ homelab_effective.cert_manager.namespace }} patch deployment cert-manager --type=json
-          -p=[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--dns01-recursive-nameservers=1.1.1.1:53,1.0.0.1:53"},{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--dns01-recursive-nameservers-only"}]
+          kubectl -n {{ homelab_effective.cert_manager.namespace }} get deployment cert-manager
+          -o jsonpath={.spec.template.spec.containers[0].args}
+      register: cert_manager_controller_args
+      changed_when: false
+
+    - name: Patch cert-manager deployment to use public recursive resolvers for DNS-01 self-checks
+      ansible.builtin.shell: |
+        kubectl -n {{ homelab_effective.cert_manager.namespace }} patch deployment cert-manager --type=json \
+          -p='[
+            {"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--dns01-recursive-nameservers=1.1.1.1:53,1.0.0.1:53"},
+            {"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--dns01-recursive-nameservers-only"}
+          ]'
+      when: "'--dns01-recursive-nameservers=1.1.1.1:53,1.0.0.1:53' not in cert_manager_controller_args.stdout"
 
     - name: Wait for cert-manager deployment
       ansible.builtin.command:
@@ -97,9 +108,9 @@
     - name: Report skipped secret-dependent workloads
       ansible.builtin.debug:
         msg: >-
-          MetalLB and cert-manager are installed. Skipping ClusterIssuer, homepage, n8n,
-          QuickDrop, Home Assistant proxy, and cloudflared until real Cloudflare and application secrets
-          are present in ansible/group_vars/all/secrets.sops.yaml.
+          MetalLB and cert-manager are installed. Skipping ClusterIssuer, homepage, ChangeDetection,
+          Uptime Kuma, ntfy, Glances ingress, n8n, QuickDrop, Home Assistant proxy, and cloudflared
+          until real Cloudflare and application secrets are present in ansible/group_vars/all/secrets.sops.yaml.
       when: not (hostvars['localhost'].homelab_app_secrets_ready | bool)
 
     - name: Create Cloudflare API token secret for cert-manager
@@ -138,6 +149,54 @@
     - name: Apply homepage manifest
       ansible.builtin.command:
         cmd: kubectl apply -f /tmp/homepage.yaml
+      when: hostvars['localhost'].homelab_app_secrets_ready | bool
+
+    - name: Render ChangeDetection manifest
+      ansible.builtin.template:
+        src: ../../kubernetes/base/changedetection/manifests.yaml.j2
+        dest: /tmp/changedetection.yaml
+        mode: "0644"
+      when: hostvars['localhost'].homelab_app_secrets_ready | bool
+
+    - name: Apply ChangeDetection manifest
+      ansible.builtin.command:
+        cmd: kubectl apply -f /tmp/changedetection.yaml
+      when: hostvars['localhost'].homelab_app_secrets_ready | bool
+
+    - name: Render Uptime Kuma manifest
+      ansible.builtin.template:
+        src: ../../kubernetes/base/uptime-kuma/manifests.yaml.j2
+        dest: /tmp/uptime-kuma.yaml
+        mode: "0644"
+      when: hostvars['localhost'].homelab_app_secrets_ready | bool
+
+    - name: Apply Uptime Kuma manifest
+      ansible.builtin.command:
+        cmd: kubectl apply -f /tmp/uptime-kuma.yaml
+      when: hostvars['localhost'].homelab_app_secrets_ready | bool
+
+    - name: Render ntfy manifest
+      ansible.builtin.template:
+        src: ../../kubernetes/base/ntfy/manifests.yaml.j2
+        dest: /tmp/ntfy.yaml
+        mode: "0644"
+      when: hostvars['localhost'].homelab_app_secrets_ready | bool
+
+    - name: Apply ntfy manifest
+      ansible.builtin.command:
+        cmd: kubectl apply -f /tmp/ntfy.yaml
+      when: hostvars['localhost'].homelab_app_secrets_ready | bool
+
+    - name: Render Glances ingress manifest
+      ansible.builtin.template:
+        src: ../../kubernetes/base/glances/manifests.yaml.j2
+        dest: /tmp/glances.yaml
+        mode: "0644"
+      when: hostvars['localhost'].homelab_app_secrets_ready | bool
+
+    - name: Apply Glances ingress manifest
+      ansible.builtin.command:
+        cmd: kubectl apply -f /tmp/glances.yaml
       when: hostvars['localhost'].homelab_app_secrets_ready | bool
 
     - name: Render n8n manifest
@@ -191,6 +250,21 @@
     - name: Wait for homepage deployment
       ansible.builtin.command:
         cmd: kubectl rollout status deployment/homepage -n {{ homelab_effective.apps.homepage.namespace }} --timeout=240s
+      when: hostvars['localhost'].homelab_app_secrets_ready | bool
+
+    - name: Wait for ChangeDetection deployment
+      ansible.builtin.command:
+        cmd: kubectl rollout status deployment/changedetection -n {{ homelab_effective.apps.changedetection.namespace }} --timeout=240s
+      when: hostvars['localhost'].homelab_app_secrets_ready | bool
+
+    - name: Wait for Uptime Kuma deployment
+      ansible.builtin.command:
+        cmd: kubectl rollout status deployment/uptime-kuma -n {{ homelab_effective.apps.uptime_kuma.namespace }} --timeout=240s
+      when: hostvars['localhost'].homelab_app_secrets_ready | bool
+
+    - name: Wait for ntfy deployment
+      ansible.builtin.command:
+        cmd: kubectl rollout status deployment/ntfy -n {{ homelab_effective.apps.ntfy.namespace }} --timeout=240s
       when: hostvars['localhost'].homelab_app_secrets_ready | bool
 
     - name: Wait for n8n deployment
