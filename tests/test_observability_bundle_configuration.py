@@ -46,6 +46,13 @@ class ObservabilityBundleConfigurationTest(unittest.TestCase):
 
         self.assertIn("type: glances", homepage)
         self.assertIn("metric: info", homepage)
+        self.assertIn(
+            "siteMonitor: http://{{ homelab_effective.dev_admin.ip }}:{{ homelab_effective.apps.glances.port }}/api/4/all",
+            homepage,
+        )
+        self.assertNotIn("description: Dev admin VM metrics", homepage)
+        self.assertIn('apiGroups: ["networking.k8s.io"]', homepage)
+        self.assertIn('resources: ["ingresses"]', homepage)
 
 
 if __name__ == "__main__":

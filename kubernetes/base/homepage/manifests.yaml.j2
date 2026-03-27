@@ -57,8 +57,7 @@ data:
             podSelector: app=ntfy
         - Glances:
             href: https://{{ homelab_effective.domain.glances }}
-            siteMonitor: https://{{ homelab_effective.domain.glances }}/
-            description: Dev admin VM metrics
+            siteMonitor: http://{{ homelab_effective.dev_admin.ip }}:{{ homelab_effective.apps.glances.port }}/api/4/all
             widget:
               type: glances
               url: http://{{ homelab_effective.dev_admin.ip }}:{{ homelab_effective.apps.glances.port }}
@@ -130,6 +129,9 @@ metadata:
 rules:
   - apiGroups: [""]
     resources: ["namespaces", "nodes", "pods", "services"]
+    verbs: ["get", "list"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["ingresses"]
     verbs: ["get", "list"]
   - apiGroups: ["metrics.k8s.io"]
     resources: ["nodes", "pods"]
