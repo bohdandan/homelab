@@ -46,6 +46,8 @@
     dev_login_user: "{{ homelab_effective.dev_admin.login_user }}"
     kubectl_version: "{{ homelab_effective.k3s.version | regex_replace('\\+.*$', '') }}"
     helix_deb_version: "{{ homelab_effective.dev_admin.tools.helix_version | regex_replace('\\.0([0-9])', '.\\1') }}"
+    glances_rest_api_module_path: >-
+      /opt/glances-venv/lib/python{{ ansible_facts.python.version.major }}.{{ ansible_facts.python.version.minor }}/site-packages/glances/outputs/glances_restful_api.py
     dev_admin_apt_packages:
       - age
       - ansible
@@ -225,25 +227,53 @@
         owner: glances
         group: glances
         mode: "0644"
+      register: glances_config_render
 
     - name: Install Glances in dedicated virtualenv
       ansible.builtin.pip:
         name: "glances[all]=={{ homelab_effective.dev_admin.tools.glances_version }}"
         virtualenv: /opt/glances-venv
         virtualenv_command: python3 -m venv
+      register: glances_install
+
+    - name: Patch Glances web UI TemplateResponse compatibility
+      ansible.builtin.replace:
+        path: "{{ glances_rest_api_module_path }}"
+        regexp: 'return self\._templates\.TemplateResponse\("index\.html", \{"request": request, "refresh_time": refresh_time\}\)'
+        replace: 'return self._templates.TemplateResponse(request, "index.html", {"refresh_time": refresh_time})'
+      register: glances_index_template_patch
+
+    - name: Patch Glances browser UI TemplateResponse compatibility
+      ansible.builtin.replace:
+        path: "{{ glances_rest_api_module_path }}"
+        regexp: 'return self\._templates\.TemplateResponse\("browser\.html", \{"request": request, "refresh_time": refresh_time\}\)'
+        replace: 'return self._templates.TemplateResponse(request, "browser.html", {"refresh_time": refresh_time})'
+      register: glances_browser_template_patch
 
     - name: Render glances systemd unit
       ansible.builtin.template:
         src: ../templates/glances.service.j2
         dest: /etc/systemd/system/glances.service
         mode: "0644"
+      register: glances_service_unit
 
     - name: Enable and start glances service
       ansible.builtin.systemd:
         name: glances
         daemon_reload: true
         enabled: true
-        state: started
+        state: >-
+          {{
+            'restarted'
+            if (
+              glances_config_render.changed
+              or glances_install.changed
+              or glances_index_template_patch.changed
+              or glances_browser_template_patch.changed
+              or glances_service_unit.changed
+            )
+            else 'started'
+          }}
 
     - name: Check installed Codex CLI version
       ansible.builtin.command:

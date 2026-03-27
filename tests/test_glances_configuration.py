@@ -18,6 +18,9 @@ class GlancesConfigurationTest(unittest.TestCase):
 
         self.assertIn("Create glances system user", playbook)
         self.assertIn("Install Glances in dedicated virtualenv", playbook)
+        self.assertIn("Patch Glances web UI TemplateResponse compatibility", playbook)
+        self.assertIn('TemplateResponse(request, "index.html"', playbook)
+        self.assertIn('TemplateResponse(request, "browser.html"', playbook)
         self.assertIn("Enable and start glances service", playbook)
         self.assertIn("--enable-mcp", service_template.read_text())
         self.assertIn("ExecStart=", service_template.read_text())
