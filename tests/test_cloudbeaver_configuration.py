@@ -40,6 +40,13 @@ class CloudBeaverConfigurationTest(unittest.TestCase):
 
         self.assertIn("CloudBeaver", homepage)
         self.assertIn("https://{{ homelab_effective.domain.cloudbeaver }}", homepage)
+        self.assertIn("- Database:", homepage)
+        self.assertIn("- CloudBeaver:", homepage)
+        database_section = homepage.split("- Database:", 1)[1].split("- Platform:", 1)[0]
+        self.assertIn("- Postgres:", database_section)
+        self.assertIn("- CloudBeaver:", database_section)
+        observability_section = homepage.split("- Observability:", 1)[1].split("- Database:", 1)[0]
+        self.assertNotIn("- CloudBeaver:", observability_section)
         self.assertIn("db 300 IN A", coredns)
 
 

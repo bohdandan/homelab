@@ -63,17 +63,17 @@ data:
               url: http://{{ homelab_effective.dev_admin.ip }}:{{ homelab_effective.apps.glances.port }}
               version: 4
               metric: info
+    - Database:
+        - Postgres:
+            description: n8n database
+            namespace: {{ homelab_effective.apps.postgres.namespace }}
+            podSelector: app=postgres
         - CloudBeaver:
             href: https://{{ homelab_effective.domain.cloudbeaver }}
             siteMonitor: https://{{ homelab_effective.domain.cloudbeaver }}/
             description: Internal database UI
             namespace: {{ homelab_effective.apps.cloudbeaver.namespace }}
             podSelector: app=cloudbeaver
-    - Data:
-        - Postgres:
-            description: n8n database
-            namespace: {{ homelab_effective.apps.postgres.namespace }}
-            podSelector: app=postgres
     - Platform:
         - Proxmox:
             href: https://{{ homelab_effective.domain.proxmox }}:8006
