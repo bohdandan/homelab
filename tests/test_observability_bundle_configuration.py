@@ -45,6 +45,7 @@ class ObservabilityBundleConfigurationTest(unittest.TestCase):
                 self.assertIn(dns_snippet, coredns)
 
         self.assertIn("type: glances", homepage)
+        self.assertIn("metric: info", homepage)
 
 
 if __name__ == "__main__":
