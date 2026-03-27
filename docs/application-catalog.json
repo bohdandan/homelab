@@ -17,6 +17,12 @@
       "homepage_href": "https://{{ homelab_effective.domain.home_assistant }}"
     },
     {
+      "id": "zigbee2mqtt",
+      "homepage_entry_required": true,
+      "homepage_title": "Zigbee2MQTT",
+      "homepage_href": "https://{{ homelab_effective.domain.zigbee }}"
+    },
+    {
       "id": "quickdrop",
       "homepage_entry_required": true,
       "homepage_title": "QuickDrop",

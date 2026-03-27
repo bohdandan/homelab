@@ -30,6 +30,30 @@
             and (homelab_effective.secrets.cloudflare_tunnel_token | length) > 0
           }}
 
+    - name: Check whether Zigbee and MQTT secrets are ready
+      ansible.builtin.set_fact:
+        homelab_mqtt_secrets_ready: >-
+          {{
+            homelab_effective.secrets.mqtt_username is defined
+            and homelab_effective.secrets.mqtt_username != 'replace-me'
+            and homelab_effective.secrets.mqtt_password is defined
+            and homelab_effective.secrets.mqtt_password != 'replace-me'
+            and homelab_effective.secrets.zigbee2mqtt_network_key is defined
+            and homelab_effective.secrets.zigbee2mqtt_network_key != 'replace-me'
+          }}
+        homelab_zigbee_stack_ready: >-
+          {{
+            homelab_effective.secrets.mqtt_username is defined
+            and homelab_effective.secrets.mqtt_username != 'replace-me'
+            and homelab_effective.secrets.mqtt_password is defined
+            and homelab_effective.secrets.mqtt_password != 'replace-me'
+            and homelab_effective.secrets.zigbee2mqtt_network_key is defined
+            and homelab_effective.secrets.zigbee2mqtt_network_key != 'replace-me'
+            and homelab_effective.iot.slzb_mr4.ip is defined
+            and homelab_effective.iot.slzb_mr4.ip != 'replace-me'
+            and homelab_effective.iot.slzb_mr4.ip != '0.0.0.0'
+          }}
+
 - name: Install cluster add-ons and workloads
   hosts: k3s_control
   become: true
@@ -80,6 +104,10 @@
       ansible.builtin.command:
         cmd: kubectl apply -f /tmp/coredns.yaml
 
+    - name: Restart CoreDNS deployment to pick up updated zone data
+      ansible.builtin.command:
+        cmd: kubectl rollout restart deployment/coredns -n {{ homelab_effective.apps.coredns.namespace }}
+
     - name: Wait for CoreDNS deployment
       ansible.builtin.command:
         cmd: kubectl rollout status deployment/coredns -n {{ homelab_effective.apps.coredns.namespace }} --timeout=240s
@@ -108,6 +136,44 @@
     - name: Wait for cert-manager deployment
       ansible.builtin.command:
         cmd: kubectl rollout status deployment/cert-manager -n {{ homelab_effective.cert_manager.namespace }} --timeout=240s
+
+    - name: Report skipped Mosquitto rollout
+      ansible.builtin.debug:
+        msg: >-
+          Skipping Mosquitto until mqtt_username, mqtt_password, and zigbee2mqtt_network_key are populated
+          in ansible/group_vars/all/secrets.sops.yaml.
+      when: not (hostvars['localhost'].homelab_mqtt_secrets_ready | bool)
+
+    - name: Render Mosquitto manifest
+      ansible.builtin.template:
+        src: ../../kubernetes/base/mosquitto/manifests.yaml.j2
+        dest: /tmp/mosquitto.yaml
+        mode: "0644"
+      when: hostvars['localhost'].homelab_mqtt_secrets_ready | bool
+
+    - name: Apply Mosquitto manifest
+      ansible.builtin.command:
+        cmd: kubectl apply -f /tmp/mosquitto.yaml
+      when: hostvars['localhost'].homelab_mqtt_secrets_ready | bool
+
+    - name: Report skipped Zigbee2MQTT rollout
+      ansible.builtin.debug:
+        msg: >-
+          Skipping Zigbee2MQTT until the SLZB-MR4 IP is recorded in ansible/group_vars/all/main.yml
+          with a real LAN address instead of 0.0.0.0.
+      when: not (hostvars['localhost'].homelab_zigbee_stack_ready | bool)
+
+    - name: Render Zigbee2MQTT manifest
+      ansible.builtin.template:
+        src: ../../kubernetes/base/zigbee2mqtt/manifests.yaml.j2
+        dest: /tmp/zigbee2mqtt.yaml
+        mode: "0644"
+      when: hostvars['localhost'].homelab_zigbee_stack_ready | bool
+
+    - name: Apply Zigbee2MQTT manifest
+      ansible.builtin.command:
+        cmd: kubectl apply -f /tmp/zigbee2mqtt.yaml
+      when: hostvars['localhost'].homelab_zigbee_stack_ready | bool
 
     - name: Report skipped secret-dependent workloads
       ansible.builtin.debug:
@@ -282,6 +348,16 @@
       ansible.builtin.command:
         cmd: kubectl rollout status deployment/ntfy -n {{ homelab_effective.apps.ntfy.namespace }} --timeout=240s
       when: hostvars['localhost'].homelab_app_secrets_ready | bool
+
+    - name: Wait for Mosquitto deployment
+      ansible.builtin.command:
+        cmd: kubectl rollout status deployment/mosquitto -n {{ homelab_effective.apps.mosquitto.namespace }} --timeout=240s
+      when: hostvars['localhost'].homelab_mqtt_secrets_ready | bool
+
+    - name: Wait for Zigbee2MQTT deployment
+      ansible.builtin.command:
+        cmd: kubectl rollout status deployment/zigbee2mqtt -n {{ homelab_effective.apps.zigbee2mqtt.namespace }} --timeout=240s
+      when: hostvars['localhost'].homelab_zigbee_stack_ready | bool
 
     - name: Wait for CloudBeaver deployment
       ansible.builtin.command:

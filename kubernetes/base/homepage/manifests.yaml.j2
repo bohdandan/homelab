@@ -36,6 +36,12 @@ data:
             href: https://{{ homelab_effective.domain.home_assistant }}
             siteMonitor: https://{{ homelab_effective.domain.home_assistant }}/
             description: Smart home
+        - Zigbee2MQTT:
+            href: https://{{ homelab_effective.domain.zigbee }}
+            siteMonitor: https://{{ homelab_effective.domain.zigbee }}/
+            description: Zigbee coordinator UI
+            namespace: {{ homelab_effective.apps.zigbee2mqtt.namespace }}
+            podSelector: app=zigbee2mqtt
     - Observability:
         - ChangeDetection:
             href: https://{{ homelab_effective.domain.changedetection }}

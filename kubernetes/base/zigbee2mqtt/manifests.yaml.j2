@@ -1,0 +1,147 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ homelab_effective.apps.zigbee2mqtt.namespace }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: zigbee2mqtt-config
+  namespace: {{ homelab_effective.apps.zigbee2mqtt.namespace }}
+type: Opaque
+stringData:
+  configuration.yaml: |
+    version: 5
+    homeassistant:
+      enabled: true
+    mqtt:
+      base_topic: zigbee2mqtt
+      server: mqtt://mosquitto.{{ homelab_effective.apps.mosquitto.namespace }}.svc.cluster.local:1883
+      user: {{ homelab_effective.secrets.mqtt_username | quote }}
+      password: {{ homelab_effective.secrets.mqtt_password | quote }}
+    serial:
+      port: tcp://{{ homelab_effective.iot.slzb_mr4.ip }}:{{ homelab_effective.iot.slzb_mr4.zigbee_port }}
+      adapter: {{ homelab_effective.iot.slzb_mr4.zigbee_adapter_type }}
+    frontend:
+      enabled: true
+      port: 8080
+    advanced:
+      channel: {{ homelab_effective.apps.zigbee2mqtt.channel }}
+      network_key: {{ homelab_effective.secrets.zigbee2mqtt_network_key }}
+    permit_join: false
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: zigbee2mqtt-data
+  namespace: {{ homelab_effective.apps.zigbee2mqtt.namespace }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: {{ homelab_effective.apps.zigbee2mqtt.data_storage }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zigbee2mqtt
+  namespace: {{ homelab_effective.apps.zigbee2mqtt.namespace }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: zigbee2mqtt
+  template:
+    metadata:
+      labels:
+        app: zigbee2mqtt
+    spec:
+      nodeSelector:
+        homelab.io/stateful: "true"
+      initContainers:
+        - name: seed-configuration
+          image: {{ homelab_effective.apps.zigbee2mqtt.image }}
+          command:
+            - /bin/sh
+            - -ec
+            - |
+              cp /config-source/configuration.yaml /app/data/configuration.yaml
+          volumeMounts:
+            - name: config
+              mountPath: /config-source
+            - name: data
+              mountPath: /app/data
+      containers:
+        - name: zigbee2mqtt
+          image: {{ homelab_effective.apps.zigbee2mqtt.image }}
+          env:
+            - name: TZ
+              value: UTC
+          ports:
+            - containerPort: 8080
+              name: http
+          livenessProbe:
+            tcpSocket:
+              port: http
+          readinessProbe:
+            tcpSocket:
+              port: http
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+          volumeMounts:
+            - name: data
+              mountPath: /app/data
+      volumes:
+        - name: config
+          secret:
+            secretName: zigbee2mqtt-config
+        - name: data
+          persistentVolumeClaim:
+            claimName: zigbee2mqtt-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zigbee2mqtt
+  namespace: {{ homelab_effective.apps.zigbee2mqtt.namespace }}
+spec:
+  selector:
+    app: zigbee2mqtt
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: zigbee2mqtt
+  namespace: {{ homelab_effective.apps.zigbee2mqtt.namespace }}
+  annotations:
+    cert-manager.io/cluster-issuer: "{{ homelab_effective.cert_manager.cluster_issuer_name }}"
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - {{ homelab_effective.domain.zigbee }}
+      secretName: homelab-wildcard-tls
+  rules:
+    - host: {{ homelab_effective.domain.zigbee }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: zigbee2mqtt
+                port:
+                  number: 8080

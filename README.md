@@ -30,6 +30,8 @@ Infrastructure as code for a Proxmox-based homelab using:
   - Public direct ingress for QuickDrop file sharing
 - `share.homelab.magnetic-marten.com`
   - LAN only through CoreDNS and Traefik
+- `zigbee.homelab.magnetic-marten.com`
+  - LAN only through CoreDNS and Traefik for Zigbee2MQTT
 - `changedetection.homelab.magnetic-marten.com`
   - LAN only through CoreDNS and Traefik
 - `kuma.homelab.magnetic-marten.com`
@@ -44,6 +46,8 @@ Infrastructure as code for a Proxmox-based homelab using:
   - LAN only, routed through Traefik to the Home Assistant OS VM
 - `dev.homelab.magnetic-marten.com`
   - LAN only SSH/admin VM for Codex, Ansible, and homelab operations
+- `slzb-mr4.homelab.magnetic-marten.com`
+  - Explicit LAN hostname for the SMLIGHT SLZB-MR4 once its device IP is recorded
 
 ## Repository Layout
 
@@ -131,7 +135,9 @@ LAN-only names are resolved by a dedicated CoreDNS service in K3s.
   - `changedetection.homelab.magnetic-marten.com -> 192.168.10.120`
   - `kuma.homelab.magnetic-marten.com -> 192.168.10.120`
   - `ntfy.homelab.magnetic-marten.com -> 192.168.10.120`
+  - `zigbee.homelab.magnetic-marten.com -> 192.168.10.120`
   - `share.homelab.magnetic-marten.com -> 192.168.10.120`
+  - `slzb-mr4.homelab.magnetic-marten.com -> <device IP>`
 
 In UniFi, keep clients using the gateway as DNS and add one `Forward Domain`
 record that forwards `homelab.magnetic-marten.com` to `192.168.10.121`.
@@ -223,6 +229,8 @@ SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt ansible-playbook ansible/playbooks
 - ntfy
 - Glances on the dev/admin VM
 - CloudBeaver CE
+- Mosquitto
+- Zigbee2MQTT
 - n8n + PostgreSQL
 - QuickDrop
 - Home Assistant LAN ingress proxy
@@ -235,6 +243,7 @@ SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt ansible-playbook ansible/playbooks
 - SSD device selection and formatting policy
 - Cloudflare account and zone identifiers
 - Router/local DNS override for Home Assistant
+- Stable SLZB-MR4 LAN IP and Thread/OTBR endpoint details
 - Installing the hosted Renovate GitHub app on the repository
 
 ## CloudBeaver First Use
@@ -249,3 +258,44 @@ One manual step remains after first login:
 1. Sign in as the seeded CloudBeaver admin.
 2. Open the preconfigured `n8n PostgreSQL` connection.
 3. Enter the PostgreSQL password once and save it in CloudBeaver.
+
+## SLZB-MR4 / Zigbee2MQTT First Use
+
+The repository now includes:
+
+- `Mosquitto` as an internal MQTT broker on MetalLB IP `192.168.10.122`
+- `Zigbee2MQTT` at `https://zigbee.homelab.magnetic-marten.com`
+- an explicit CoreDNS record for `slzb-mr4.homelab.magnetic-marten.com` once the device IP is set in `ansible/group_vars/all/main.yml`
+
+Before applying the Zigbee stack, record the real SLZB-MR4 values in `ansible/group_vars/all/main.yml`:
+
+```yaml
+  iot:
+    slzb_mr4:
+      ip: 192.168.10.X
+      zigbee_adapter_type: zstack
+      zigbee_port: 6638
+      thread_otbr_url: http://192.168.10.X:8080
+```
+
+Until you replace it, the repo keeps `slzb-mr4.homelab.magnetic-marten.com` pinned to `0.0.0.0`
+so it does not fall through to the wildcard Traefik record by mistake.
+
+Populate these encrypted secrets too:
+
+- `mqtt_username`
+- `mqtt_password`
+- `zigbee2mqtt_network_key`
+
+Then redeploy:
+
+```bash
+SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt ansible-playbook ansible/playbooks/40-deploy-apps.yml
+```
+
+Manual Home Assistant steps remain:
+
+1. Add the MQTT integration in Home Assistant using `192.168.10.122`, the configured username, and the configured password.
+2. Open the SLZB-MR4 web UI and confirm the Zigbee radio socket and Thread/OTBR mode.
+3. Add the OpenThread Border Router / Thread integration in Home Assistant using the device OTBR endpoint.
+4. Complete Matter-over-Thread commissioning from the Home Assistant mobile app when you start pairing devices.

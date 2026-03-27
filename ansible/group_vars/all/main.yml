@@ -8,6 +8,8 @@ homelab:
     n8n_internal: n8n.homelab.magnetic-marten.com
     share: share.magnetic-marten.com
     share_internal: share.homelab.magnetic-marten.com
+    zigbee: zigbee.homelab.magnetic-marten.com
+    slzb_mr4: slzb-mr4.homelab.magnetic-marten.com
     changedetection: changedetection.homelab.magnetic-marten.com
     kuma: kuma.homelab.magnetic-marten.com
     ntfy: ntfy.homelab.magnetic-marten.com
@@ -59,6 +61,13 @@ homelab:
     public_ipv4: 86.18.122.115
     traefik_lb_ip: 192.168.10.120
     metallb_range: 192.168.10.120-192.168.10.129
+
+  iot:
+    slzb_mr4:
+      ip: 0.0.0.0
+      zigbee_adapter_type: zstack
+      zigbee_port: 6638
+      thread_otbr_url: replace-me
 
   packer:
     template_name: ubuntu-24-04-k3s-template
@@ -161,6 +170,16 @@ homelab:
       namespace: quickdrop
       image: roastslav/quickdrop:v1.5.2
       data_storage: 30Gi
+    mosquitto:
+      namespace: mqtt
+      image: eclipse-mosquitto:2.1.2-alpine
+      service_ip: 192.168.10.122
+      data_storage: 5Gi
+    zigbee2mqtt:
+      namespace: zigbee2mqtt
+      image: ghcr.io/koenkk/zigbee2mqtt:2.7.2
+      data_storage: 10Gi
+      channel: 20
     postgres:
       namespace: n8n
       image: postgres:17-alpine
