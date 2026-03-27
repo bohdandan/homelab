@@ -1,0 +1,178 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ homelab_effective.apps.cloudbeaver.namespace }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cloudbeaver-seed
+  namespace: {{ homelab_effective.apps.cloudbeaver.namespace }}
+data:
+  initial-data-sources.conf: |
+    {
+      "folders": {},
+      "connections": {
+        "postgres-jdbc-n8n": {
+          "provider": "postgresql",
+          "driver": "postgres-jdbc",
+          "name": "{{ homelab_effective.apps.cloudbeaver.connection_name }}",
+          "save-password": false,
+          "show-system-objects": false,
+          "read-only": false,
+          "configuration": {
+            "host": "postgres.{{ homelab_effective.apps.postgres.namespace }}.svc.cluster.local",
+            "port": "5432",
+            "database": "{{ homelab_effective.apps.postgres.database }}",
+            "url": "jdbc:postgresql://postgres.{{ homelab_effective.apps.postgres.namespace }}.svc.cluster.local:5432/{{ homelab_effective.apps.postgres.database }}",
+            "type": "dev"
+          }
+        }
+      }
+    }
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cloudbeaver-admin
+  namespace: {{ homelab_effective.apps.cloudbeaver.namespace }}
+type: Opaque
+stringData:
+  admin-name: {{ homelab_effective.secrets.cloudbeaver_admin_name | quote }}
+  admin-password: {{ homelab_effective.secrets.cloudbeaver_admin_password | quote }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: cloudbeaver-workspace
+  namespace: {{ homelab_effective.apps.cloudbeaver.namespace }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: {{ homelab_effective.apps.cloudbeaver.data_storage }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloudbeaver
+  namespace: {{ homelab_effective.apps.cloudbeaver.namespace }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: cloudbeaver
+  template:
+    metadata:
+      labels:
+        app: cloudbeaver
+    spec:
+      nodeSelector:
+        homelab.io/stateful: "true"
+      initContainers:
+        - name: seed-datasources
+          image: {{ homelab_effective.apps.cloudbeaver.init_image }}
+          command:
+            - /bin/sh
+            - -ec
+            - |
+              mkdir -p /workspace/GlobalConfiguration/.dbeaver
+              if [ ! -f /workspace/GlobalConfiguration/.dbeaver/data-sources.json ]; then
+                cp /seed/initial-data-sources.conf /workspace/GlobalConfiguration/.dbeaver/data-sources.json
+              fi
+          volumeMounts:
+            - name: workspace
+              mountPath: /workspace
+            - name: seed
+              mountPath: /seed
+              readOnly: true
+      containers:
+        - name: cloudbeaver
+          image: {{ homelab_effective.apps.cloudbeaver.image }}
+          env:
+            - name: CB_SERVER_NAME
+              value: Homelab CloudBeaver
+            - name: CB_SERVER_URL
+              value: "https://{{ homelab_effective.domain.cloudbeaver }}"
+            - name: CB_ADMIN_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: cloudbeaver-admin
+                  key: admin-name
+            - name: CB_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: cloudbeaver-admin
+                  key: admin-password
+          ports:
+            - containerPort: {{ homelab_effective.apps.cloudbeaver.port }}
+              name: http
+          readinessProbe:
+            tcpSocket:
+              port: http
+          livenessProbe:
+            tcpSocket:
+              port: http
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 2Gi
+          volumeMounts:
+            - name: workspace
+              mountPath: /opt/cloudbeaver/workspace
+            - name: seed
+              mountPath: /opt/cloudbeaver/conf/initial-data-sources.conf
+              subPath: initial-data-sources.conf
+              readOnly: true
+      volumes:
+        - name: workspace
+          persistentVolumeClaim:
+            claimName: cloudbeaver-workspace
+        - name: seed
+          configMap:
+            name: cloudbeaver-seed
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cloudbeaver
+  namespace: {{ homelab_effective.apps.cloudbeaver.namespace }}
+spec:
+  selector:
+    app: cloudbeaver
+  ports:
+    - name: http
+      port: {{ homelab_effective.apps.cloudbeaver.port }}
+      targetPort: {{ homelab_effective.apps.cloudbeaver.port }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: cloudbeaver
+  namespace: {{ homelab_effective.apps.cloudbeaver.namespace }}
+  annotations:
+    cert-manager.io/cluster-issuer: "{{ homelab_effective.cert_manager.cluster_issuer_name }}"
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - {{ homelab_effective.domain.cloudbeaver }}
+      secretName: homelab-wildcard-tls
+  rules:
+    - host: {{ homelab_effective.domain.cloudbeaver }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: cloudbeaver
+                port:
+                  number: {{ homelab_effective.apps.cloudbeaver.port }}

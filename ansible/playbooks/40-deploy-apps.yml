@@ -22,6 +22,10 @@
             and homelab_effective.secrets.postgres_password != 'replace-me'
             and homelab_effective.secrets.n8n_encryption_key is defined
             and homelab_effective.secrets.n8n_encryption_key != 'replace-me'
+            and homelab_effective.secrets.cloudbeaver_admin_name is defined
+            and homelab_effective.secrets.cloudbeaver_admin_name != 'replace-me'
+            and homelab_effective.secrets.cloudbeaver_admin_password is defined
+            and homelab_effective.secrets.cloudbeaver_admin_password != 'replace-me'
             and homelab_effective.secrets.cloudflare_tunnel_token is defined
             and (homelab_effective.secrets.cloudflare_tunnel_token | length) > 0
           }}
@@ -109,7 +113,7 @@
       ansible.builtin.debug:
         msg: >-
           MetalLB and cert-manager are installed. Skipping ClusterIssuer, homepage, ChangeDetection,
-          Uptime Kuma, ntfy, Glances ingress, n8n, QuickDrop, Home Assistant proxy, and cloudflared
+          Uptime Kuma, ntfy, Glances ingress, CloudBeaver, n8n, QuickDrop, Home Assistant proxy, and cloudflared
           until real Cloudflare and application secrets are present in ansible/group_vars/all/secrets.sops.yaml.
       when: not (hostvars['localhost'].homelab_app_secrets_ready | bool)
 
@@ -199,6 +203,18 @@
         cmd: kubectl apply -f /tmp/glances.yaml
       when: hostvars['localhost'].homelab_app_secrets_ready | bool
 
+    - name: Render CloudBeaver manifest
+      ansible.builtin.template:
+        src: ../../kubernetes/base/cloudbeaver/manifests.yaml.j2
+        dest: /tmp/cloudbeaver.yaml
+        mode: "0644"
+      when: hostvars['localhost'].homelab_app_secrets_ready | bool
+
+    - name: Apply CloudBeaver manifest
+      ansible.builtin.command:
+        cmd: kubectl apply -f /tmp/cloudbeaver.yaml
+      when: hostvars['localhost'].homelab_app_secrets_ready | bool
+
     - name: Render n8n manifest
       ansible.builtin.template:
         src: ../../kubernetes/base/n8n/manifests.yaml.j2
@@ -265,6 +281,11 @@
     - name: Wait for ntfy deployment
       ansible.builtin.command:
         cmd: kubectl rollout status deployment/ntfy -n {{ homelab_effective.apps.ntfy.namespace }} --timeout=240s
+      when: hostvars['localhost'].homelab_app_secrets_ready | bool
+
+    - name: Wait for CloudBeaver deployment
+      ansible.builtin.command:
+        cmd: kubectl rollout status deployment/cloudbeaver -n {{ homelab_effective.apps.cloudbeaver.namespace }} --timeout=240s
       when: hostvars['localhost'].homelab_app_secrets_ready | bool
 
     - name: Wait for n8n deployment

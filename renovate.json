@@ -14,7 +14,7 @@
         "^ansible/group_vars/all/main\\.yml$"
       ],
       "matchStrings": [
-        "image:\\s+(?<depName>\\S+?):(?<currentValue>[^\\s]+)"
+        "(?m)^\\s*(?:[a-z_]*image):\\s+(?<depName>\\S+?):(?<currentValue>[^\\s]+)"
       ],
       "datasourceTemplate": "docker"
     }

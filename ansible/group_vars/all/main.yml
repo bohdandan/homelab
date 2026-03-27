@@ -12,6 +12,7 @@ homelab:
     kuma: kuma.homelab.magnetic-marten.com
     ntfy: ntfy.homelab.magnetic-marten.com
     glances: glances.homelab.magnetic-marten.com
+    cloudbeaver: db.homelab.magnetic-marten.com
     home_assistant: ha.homelab.magnetic-marten.com
     dev_admin: dev.homelab.magnetic-marten.com
     proxmox: proxmox.homelab.magnetic-marten.com
@@ -145,6 +146,13 @@ homelab:
       namespace: ntfy
       image: binwiederhier/ntfy:v2.15.0
       data_storage: 5Gi
+    cloudbeaver:
+      namespace: cloudbeaver
+      image: dbeaver/cloudbeaver:26.0.1
+      init_image: busybox:1.37.0
+      data_storage: 10Gi
+      port: 8978
+      connection_name: n8n PostgreSQL
     n8n:
       namespace: n8n
       image: n8nio/n8n:2.2.6

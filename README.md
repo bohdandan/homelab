@@ -38,6 +38,8 @@ Infrastructure as code for a Proxmox-based homelab using:
   - LAN only through CoreDNS and Traefik
 - `glances.homelab.magnetic-marten.com`
   - LAN only through CoreDNS and Traefik, backed by the dev/admin VM
+- `db.homelab.magnetic-marten.com`
+  - LAN only through CoreDNS and Traefik for CloudBeaver CE
 - `ha.homelab.magnetic-marten.com`
   - LAN only, routed through Traefik to the Home Assistant OS VM
 - `dev.homelab.magnetic-marten.com`
@@ -125,6 +127,7 @@ LAN-only names are resolved by a dedicated CoreDNS service in K3s.
   - `k3s-worker.homelab.magnetic-marten.com -> 192.168.10.111`
   - `dev.homelab.magnetic-marten.com -> 192.168.10.113`
   - `glances.homelab.magnetic-marten.com -> 192.168.10.120`
+  - `db.homelab.magnetic-marten.com -> 192.168.10.120`
   - `changedetection.homelab.magnetic-marten.com -> 192.168.10.120`
   - `kuma.homelab.magnetic-marten.com -> 192.168.10.120`
   - `ntfy.homelab.magnetic-marten.com -> 192.168.10.120`
@@ -219,6 +222,7 @@ SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt ansible-playbook ansible/playbooks
 - Uptime Kuma
 - ntfy
 - Glances on the dev/admin VM
+- CloudBeaver CE
 - n8n + PostgreSQL
 - QuickDrop
 - Home Assistant LAN ingress proxy
@@ -232,3 +236,16 @@ SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt ansible-playbook ansible/playbooks
 - Cloudflare account and zone identifiers
 - Router/local DNS override for Home Assistant
 - Installing the hosted Renovate GitHub app on the repository
+
+## CloudBeaver First Use
+
+CloudBeaver is internal-only at `https://db.homelab.magnetic-marten.com`.
+
+What is automated:
+- seeded admin login from encrypted repo secrets
+- preconfigured `n8n` PostgreSQL connection metadata
+
+One manual step remains after first login:
+1. Sign in as the seeded CloudBeaver admin.
+2. Open the preconfigured `n8n PostgreSQL` connection.
+3. Enter the PostgreSQL password once and save it in CloudBeaver.

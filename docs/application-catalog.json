@@ -47,6 +47,12 @@
       "homepage_href": "https://{{ homelab_effective.domain.glances }}"
     },
     {
+      "id": "cloudbeaver",
+      "homepage_entry_required": true,
+      "homepage_title": "CloudBeaver",
+      "homepage_href": "https://{{ homelab_effective.domain.cloudbeaver }}"
+    },
+    {
       "id": "proxmox",
       "homepage_entry_required": true,
       "homepage_title": "Proxmox",
