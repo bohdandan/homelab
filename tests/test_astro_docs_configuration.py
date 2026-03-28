@@ -29,21 +29,30 @@ class AstroDocsConfigurationTest(unittest.TestCase):
         self.assertRegex(
             cloudflare_tf,
             re.compile(
-                r"ingress_rule\s*\{.*?hostname\s*=\s*.*docs.*?service\s*=\s*.*docs.*?\}",
+                r"ingress_rule\s*\{.*?hostname\s*=\s*(?:var\.docs_hostname|\"docs\.magnetic-marten\.com\")"
+                r".*?service\s*=\s*(?:var\.docs_origin_service|\"http://traefik\.kube-system\.svc\.cluster\.local:80\")"
+                r".*?\}",
                 re.S,
             ),
         )
         self.assertRegex(
             cloudflare_tf,
             re.compile(
-                r'resource\s+"cloudflare_record"\s+"[^"]*docs[^"]*"\s*\{.*?name\s*=\s*.*docs.*?type\s*=\s*"CNAME".*?proxied\s*=\s*true.*?cfargotunnel\.com',
+                r'resource\s+"cloudflare_record"\s+"[^"]+"\s*\{.*?name\s*=\s*'
+                r'(?:var\.docs_hostname|\"docs\.magnetic-marten\.com\")'
+                r'.*?type\s*=\s*"CNAME".*?proxied\s*=\s*true.*?cfargotunnel\.com',
                 re.S,
             ),
         )
 
         self.assertIn("docs.homelab.magnetic-marten.com", coredns)
-        self.assertIn("        - Docs:", homepage)
-        self.assertIn("href: https://{{ homelab_effective.domain.docs_internal }}", homepage)
+        self.assertRegex(
+            homepage,
+            re.compile(
+                r"-\s*Docs:\s*\n\s*href:\s*https://\{\{\s*homelab_effective\.domain\.docs_internal\s*\}\}",
+                re.S,
+            ),
+        )
 
         docs_app = next((app for app in catalog["applications"] if app["id"] == "docs"), None)
         self.assertIsNotNone(docs_app)
@@ -53,17 +62,21 @@ class AstroDocsConfigurationTest(unittest.TestCase):
     def test_astro_docs_is_not_cloudflare_access_protected(self) -> None:
         cloudflare_tf = Path("opentofu/cloudflare/main.tf").read_text()
 
+        self.assertNotIn('resource "cloudflare_access_application" "docs"', cloudflare_tf)
+        self.assertNotIn('resource "cloudflare_access_policy" "docs"', cloudflare_tf)
         self.assertNotRegex(
             cloudflare_tf,
             re.compile(
-                r'resource\s+"cloudflare_access_application"\s+"[^"]+"\s*\{.*?(docs\.magnetic-marten\.com|docs\.homelab\.magnetic-marten\.com|var\.docs_[A-Za-z0-9_]+)',
+                r'resource\s+"cloudflare_access_application"\s+"[^"]+"\s*\{'
+                r'.*?(docs\.magnetic-marten\.com|docs\.homelab\.magnetic-marten\.com|var\.docs_[A-Za-z0-9_]+)',
                 re.S,
             ),
         )
         self.assertNotRegex(
             cloudflare_tf,
             re.compile(
-                r'resource\s+"cloudflare_access_policy"\s+"[^"]+"\s*\{.*?(docs\.magnetic-marten\.com|docs\.homelab\.magnetic-marten\.com|var\.docs_[A-Za-z0-9_]+)',
+                r'resource\s+"cloudflare_access_policy"\s+"[^"]+"\s*\{'
+                r'.*?(docs\.magnetic-marten\.com|docs\.homelab\.magnetic-marten\.com|var\.docs_[A-Za-z0-9_]+)',
                 re.S,
             ),
         )
