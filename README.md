@@ -57,14 +57,23 @@ Infrastructure as code for a Proxmox-based homelab using:
 
 ```text
 .
+├── .github/                  # CI workflows such as GHCR image publishing
+├── apps/                     # App-owned source, content, and configuration
 ├── ansible/                  # Orchestration, K3s, apps, backups
+├── docs/                     # Operator docs, specs, plans, and app catalog
 ├── kubernetes/               # Versioned Kubernetes manifests/templates
 ├── opentofu/
 │   ├── cloudflare/           # DNS, tunnel, Access
 │   └── proxmox/              # VM provisioning
-└── packer/
-    └── ubuntu-k3s-template/  # Ubuntu 24.04 template for K3s nodes
+├── packer/
+│   └── ubuntu-k3s-template/  # Ubuntu 24.04 template for K3s nodes
+└── tests/                    # Regression coverage for repo wiring
 ```
+
+Use `apps/<app>/` for app-owned content and configuration.
+
+- `apps/astro-docs/` is the current example.
+- Keep deployment manifests and IaC wiring in `kubernetes/`, `ansible/`, and `opentofu/` until a broader refactor is justified.
 
 ## Secrets
 
@@ -116,11 +125,11 @@ SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt sops -e -i ansible/group_vars/all/
   - zone `magnetic-marten.com`
   - API token for DNS and Zero Trust resources
   - Cloudflare Access allowlist emails in `ansible/group_vars/all/secrets.sops.yaml`
-  - UniFi local DNS forward domain:
+- UniFi local DNS forward domain:
   - `homelab.magnetic-marten.com -> 192.168.10.121`
-  - Router port forwards:
-    - TCP `80` -> `192.168.10.120`
-    - TCP `443` -> `192.168.10.120`
+- Router port forwards for direct-ingress services:
+  - TCP `80` -> `192.168.10.120`
+  - TCP `443` -> `192.168.10.120`
 
 ## LAN DNS
 
@@ -186,7 +195,7 @@ SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt ansible-playbook ansible/playbooks
 # 5. Configure the dev/admin VM
 SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt ansible-playbook ansible/playbooks/35-configure-dev-admin.yml
 
-# 6. Deploy cert-manager, internal apps, Astro docs, Homepage, n8n, Home Assistant proxy, cloudflared
+# 6. Deploy cert-manager, internal apps, Astro docs, Homepage, n8n, QuickDrop, Home Assistant proxy, and cloudflared
 SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt ansible-playbook ansible/playbooks/40-deploy-apps.yml
 
 # 7. Configure Proxmox backup storage and VM backup jobs
@@ -204,10 +213,11 @@ SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt ansible-playbook ansible/playbooks
 - Home Assistant OS does not support the same cloud-init flow as the Ubuntu K3s nodes.
   - This repo provisions `haos-01` as a VM clone from a prepared HAOS template.
   - The intended address is still `192.168.10.112`, but in practice that should be enforced with a router DHCP reservation for the VM's MAC address.
-- Public apps terminate TLS at Cloudflare edge.
-  - The cluster still uses Let's Encrypt wildcard certificates at the origin.
-  - For `*.homelab.magnetic-marten.com`, Cloudflare edge HTTPS also requires certificate coverage for a multi-level subdomain.
-  - Cloudflare Universal SSL does not cover `*.homelab.magnetic-marten.com` by default, so you need Total TLS, an Advanced Certificate, or a Custom Certificate on the zone before the public HTTPS hostnames will work end to end.
+- Public exposure is intentionally mixed:
+  - `docs.magnetic-marten.com`, `homepage.magnetic-marten.com`, and `n8n.magnetic-marten.com` are routed through Cloudflare Tunnel.
+  - `homepage` and `n8n` are protected by Cloudflare Access.
+  - `share.magnetic-marten.com` is DNS-only direct ingress so large file uploads bypass Cloudflare upload limits.
+  - LAN-only `*.homelab.magnetic-marten.com` hostnames resolve through UniFi -> CoreDNS -> Traefik.
 - Only encrypted secrets and source templates belong in git.
   - Generated runtime files under `ansible/runtime/`, `ansible/inventory/generated/`, and `packer/ubuntu-k3s-template/runtime/` are intentionally ignored.
 - Hosted Renovate is the recommended image update path for this repo.
@@ -226,7 +236,7 @@ SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt ansible-playbook ansible/playbooks
 - HAOS template preparation
 - K3s VM provisioning
 - Dev/admin VM provisioning
-- Cloudflare Tunnel, DNS, and n8n Access policy
+- Cloudflare Tunnel, public DNS, and Access policy wiring for public apps
 - Astro docs on K3s with public and LAN Traefik ingress
 - K3s install with Traefik and MetalLB
 - Dev/admin VM configuration with Codex CLI, Tailscale, and homelab tooling
@@ -250,7 +260,6 @@ SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt ansible-playbook ansible/playbooks
 - Proxmox node/storage names if they differ from defaults
 - SSD device selection and formatting policy
 - Cloudflare account and zone identifiers
-- Router/local DNS override for Home Assistant
 - Stable SLZB-MR4 LAN IP and Thread/OTBR endpoint details
 - Installing the hosted Renovate GitHub app on the repository
 

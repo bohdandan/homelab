@@ -11,8 +11,9 @@ Use this checklist whenever a new application is added to the homelab or an exis
 
 ## 2. Add The Runtime
 
+- Add or update app-owned content and configuration under `apps/<app>/` when the application has source files, content, static assets, or tracked runtime config that belongs with the app itself.
 - For Kubernetes workloads:
-  - add or update manifests under `kubernetes/base/<app>/`
+  - keep deployment manifests under `kubernetes/base/<app>/`
   - wire deployment into `ansible/playbooks/40-deploy-apps.yml` if needed
 - For VMs:
   - update `opentofu/proxmox/`
@@ -26,6 +27,7 @@ Use this checklist whenever a new application is added to the homelab or an exis
   - if it needs a dedicated LAN target, update `kubernetes/base/coredns/manifests.yaml.j2`
 - Public app:
   - update Cloudflare/OpenTofu resources
+  - decide whether it should be proxied through Cloudflare Tunnel or exposed as direct ingress / DNS-only
   - add or update Cloudflare Access policy if the app should be protected
 - If the app is reachable through Traefik, prefer using the LAN hostname in Homepage.
 
@@ -46,9 +48,11 @@ Use this checklist whenever a new application is added to the homelab or an exis
   - LAN: `curl -skI https://<internal-hostname>`
   - Public: `curl -I https://<public-hostname>`
 - If the change affects operators, update `README.md`
+- If the app owns source or content under `apps/<app>/`, update that app README too
 
 ## Current Pattern
 
 - Public app hostnames use first-level names on `magnetic-marten.com` and are protected by Cloudflare Access where required.
 - Internal app hostnames use `*.homelab.magnetic-marten.com` and resolve through UniFi -> CoreDNS.
 - Homepage links should generally use internal hostnames when a link is appropriate so the dashboard remains useful on the LAN without depending on Cloudflare.
+- App-owned source and configuration live under `apps/<app>/`; Kubernetes and infra wiring stay in their existing top-level folders.

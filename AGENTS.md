@@ -6,6 +6,7 @@ Use this file for durable repo rules that every agent should follow.
 
 - Keep this repository infrastructure-as-code first. Prefer changing tracked source files over making live-only changes.
 - Never commit plaintext secrets. Store secrets only in `sops`-encrypted files.
+- Put app-owned source, content, and tracked runtime configuration under `apps/<app>/` when an app needs it.
 - When adding or removing a user-facing application, update:
   - `docs/application-catalog.json`
   - `kubernetes/base/homepage/manifests.yaml.j2`
@@ -13,6 +14,7 @@ Use this file for durable repo rules that every agent should follow.
 - When adding a LAN hostname, update CoreDNS config.
 - When adding a public hostname, update Cloudflare/OpenTofu config and Access policy if needed.
 - When operator workflow changes, update `README.md`.
+- When app-owned content or configuration changes, update that app's `README.md` if the operator workflow or local development flow changed.
 
 ## Homepage Rule
 
