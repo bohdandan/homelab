@@ -38,14 +38,15 @@ class AstroDocsConfigurationTest(unittest.TestCase):
         self.assertRegex(
             cloudflare_tf,
             re.compile(
-                r'resource\s+"cloudflare_record"\s+"[^"]+"\s*\{.*?name\s*=\s*'
-                r'(?:var\.docs_hostname|\"docs\.magnetic-marten\.com\")'
-                r'.*?type\s*=\s*"CNAME".*?proxied\s*=\s*true.*?cfargotunnel\.com',
+                r'resource\s+"cloudflare_record"\s+"[^"]+"\s*\{'
+                r'.*?name\s*=\s*(?:var\.docs_hostname|\"docs\.magnetic-marten\.com\")'
+                r'.*?type\s*=\s*"CNAME".*?proxied\s*=\s*true'
+                r'.*?cfargotunnel\.com',
                 re.S,
             ),
         )
 
-        self.assertIn("docs.homelab.magnetic-marten.com", coredns)
+        self.assertIn("docs 300 IN A", coredns)
         self.assertRegex(
             homepage,
             re.compile(
@@ -68,7 +69,8 @@ class AstroDocsConfigurationTest(unittest.TestCase):
             cloudflare_tf,
             re.compile(
                 r'resource\s+"cloudflare_access_application"\s+"[^"]+"\s*\{'
-                r'.*?(docs\.magnetic-marten\.com|docs\.homelab\.magnetic-marten\.com|var\.docs_[A-Za-z0-9_]+)',
+                r'[^}]*?(?:domain|hostname)\s*=\s*(?:var\.docs_[A-Za-z0-9_]+|\"docs\.(?:magnetic-marten|homelab\.magnetic-marten)\.com\")'
+                r'[^}]*\}',
                 re.S,
             ),
         )
@@ -76,7 +78,8 @@ class AstroDocsConfigurationTest(unittest.TestCase):
             cloudflare_tf,
             re.compile(
                 r'resource\s+"cloudflare_access_policy"\s+"[^"]+"\s*\{'
-                r'.*?(docs\.magnetic-marten\.com|docs\.homelab\.magnetic-marten\.com|var\.docs_[A-Za-z0-9_]+)',
+                r'[^}]*application_id\s*=\s*cloudflare_access_application\.[A-Za-z0-9_]*docs[A-Za-z0-9_]*\.id'
+                r'[^}]*\}',
                 re.S,
             ),
         )
