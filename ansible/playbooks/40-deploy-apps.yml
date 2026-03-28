@@ -179,7 +179,8 @@
       ansible.builtin.debug:
         msg: >-
           MetalLB and cert-manager are installed. Skipping ClusterIssuer, homepage, ChangeDetection,
-          Uptime Kuma, ntfy, Glances ingress, CloudBeaver, n8n, QuickDrop, Home Assistant proxy, and cloudflared
+          Uptime Kuma, ntfy, Glances ingress, CloudBeaver, astro-docs, n8n, QuickDrop, Home Assistant proxy,
+          and cloudflared
           until real Cloudflare and application secrets are present in ansible/group_vars/all/secrets.sops.yaml.
       when: not (hostvars['localhost'].homelab_app_secrets_ready | bool)
 
@@ -281,6 +282,18 @@
         cmd: kubectl apply -f /tmp/cloudbeaver.yaml
       when: hostvars['localhost'].homelab_app_secrets_ready | bool
 
+    - name: Render astro-docs manifest
+      ansible.builtin.template:
+        src: ../../kubernetes/base/astro-docs/manifests.yaml.j2
+        dest: /tmp/astro-docs.yaml
+        mode: "0644"
+      when: hostvars['localhost'].homelab_app_secrets_ready | bool
+
+    - name: Apply astro-docs manifest
+      ansible.builtin.command:
+        cmd: kubectl apply -f /tmp/astro-docs.yaml
+      when: hostvars['localhost'].homelab_app_secrets_ready | bool
+
     - name: Render n8n manifest
       ansible.builtin.template:
         src: ../../kubernetes/base/n8n/manifests.yaml.j2
@@ -362,6 +375,11 @@
     - name: Wait for CloudBeaver deployment
       ansible.builtin.command:
         cmd: kubectl rollout status deployment/cloudbeaver -n {{ homelab_effective.apps.cloudbeaver.namespace }} --timeout=240s
+      when: hostvars['localhost'].homelab_app_secrets_ready | bool
+
+    - name: Wait for astro-docs deployment
+      ansible.builtin.command:
+        cmd: kubectl rollout status deployment/astro-docs -n {{ homelab_effective.apps.astro_docs.namespace }} --timeout=240s
       when: hostvars['localhost'].homelab_app_secrets_ready | bool
 
     - name: Wait for n8n deployment

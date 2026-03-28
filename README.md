@@ -18,6 +18,10 @@ Infrastructure as code for a Proxmox-based homelab using:
 
 ## Applications
 
+- `docs.magnetic-marten.com`
+  - Public through Cloudflare Tunnel without Cloudflare Access
+- `docs.homelab.magnetic-marten.com`
+  - LAN only through CoreDNS and Traefik
 - `homepage.magnetic-marten.com`
   - Public through Cloudflare Tunnel and protected by Cloudflare Access
 - `homepage.homelab.magnetic-marten.com`
@@ -132,6 +136,7 @@ LAN-only names are resolved by a dedicated CoreDNS service in K3s.
   - `dev.homelab.magnetic-marten.com -> 192.168.10.113`
   - `glances.homelab.magnetic-marten.com -> 192.168.10.120`
   - `db.homelab.magnetic-marten.com -> 192.168.10.120`
+  - `docs.homelab.magnetic-marten.com -> 192.168.10.120`
   - `changedetection.homelab.magnetic-marten.com -> 192.168.10.120`
   - `kuma.homelab.magnetic-marten.com -> 192.168.10.120`
   - `ntfy.homelab.magnetic-marten.com -> 192.168.10.120`
@@ -181,7 +186,7 @@ SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt ansible-playbook ansible/playbooks
 # 5. Configure the dev/admin VM
 SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt ansible-playbook ansible/playbooks/35-configure-dev-admin.yml
 
-# 6. Deploy cert-manager, internal apps, Homepage, n8n, Home Assistant proxy, cloudflared
+# 6. Deploy cert-manager, internal apps, Astro docs, Homepage, n8n, Home Assistant proxy, cloudflared
 SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt ansible-playbook ansible/playbooks/40-deploy-apps.yml
 
 # 7. Configure Proxmox backup storage and VM backup jobs
@@ -221,6 +226,7 @@ SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt ansible-playbook ansible/playbooks
 - K3s VM provisioning
 - Dev/admin VM provisioning
 - Cloudflare Tunnel, DNS, and n8n Access policy
+- Astro docs on K3s with public and LAN Traefik ingress
 - K3s install with Traefik and MetalLB
 - Dev/admin VM configuration with Codex CLI, Tailscale, and homelab tooling
 - cert-manager DNS-01 issuer for Cloudflare

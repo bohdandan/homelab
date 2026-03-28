@@ -18,6 +18,11 @@ resource "cloudflare_zero_trust_tunnel_cloudflared_config" "homelab" {
 
   config {
     ingress_rule {
+      hostname = var.docs_hostname
+      service  = var.docs_origin_service
+    }
+
+    ingress_rule {
       hostname = var.homepage_hostname
       service  = var.homepage_origin_service
     }
@@ -31,6 +36,15 @@ resource "cloudflare_zero_trust_tunnel_cloudflared_config" "homelab" {
       service = "http_status:404"
     }
   }
+}
+
+resource "cloudflare_record" "docs" {
+  zone_id = var.zone_id
+  name    = var.docs_hostname
+  type    = "CNAME"
+  proxied = true
+  ttl     = 1
+  value   = "${cloudflare_zero_trust_tunnel_cloudflared.homelab.id}.cfargotunnel.com"
 }
 
 resource "cloudflare_record" "homepage" {

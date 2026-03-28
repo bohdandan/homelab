@@ -5,6 +5,12 @@
       "homepage_entry_required": false
     },
     {
+      "id": "docs",
+      "homepage_entry_required": true,
+      "homepage_title": "Docs",
+      "homepage_href": "https://{{ homelab_effective.domain.docs_internal }}"
+    },
+    {
       "id": "n8n",
       "homepage_entry_required": true,
       "homepage_title": "n8n",

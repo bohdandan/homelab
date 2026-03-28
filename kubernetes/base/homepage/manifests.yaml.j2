@@ -20,6 +20,12 @@ data:
   custom.js: |
   services.yaml: |
     - Apps:
+        - Docs:
+            href: https://{{ homelab_effective.domain.docs_internal }}
+            siteMonitor: https://{{ homelab_effective.domain.docs_internal }}/
+            description: Homelab documentation
+            namespace: {{ homelab_effective.apps.astro_docs.namespace }}
+            podSelector: app=astro-docs
         - QuickDrop:
             href: https://{{ homelab_effective.domain.share_internal }}
             siteMonitor: https://{{ homelab_effective.domain.share_internal }}/

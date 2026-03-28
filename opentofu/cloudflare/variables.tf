@@ -19,6 +19,10 @@ variable "tunnel_name" {
   type = string
 }
 
+variable "docs_hostname" {
+  type = string
+}
+
 variable "homepage_hostname" {
   type = string
 }
@@ -32,6 +36,10 @@ variable "share_hostname" {
 }
 
 variable "share_origin_ipv4" {
+  type = string
+}
+
+variable "docs_origin_service" {
   type = string
 }
 
