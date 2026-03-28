@@ -210,6 +210,7 @@ SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt ansible-playbook ansible/playbooks
   - Let Renovate open PRs.
   - After merging an image update PR, re-run `ansible/playbooks/40-deploy-apps.yml`.
   - If a Renovate PR updates dev VM tooling instead of K3s app images, re-run `ansible/playbooks/35-configure-dev-admin.yml`.
+- After the first successful GHCR publish for a new app image, confirm the package is public so K3s can pull it without a registry secret.
 
 ## What Is Automated
 

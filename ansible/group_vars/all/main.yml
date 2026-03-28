@@ -2,6 +2,8 @@ homelab:
   domain:
     root: magnetic-marten.com
     subzone: homelab.magnetic-marten.com
+    docs: docs.magnetic-marten.com
+    docs_internal: docs.homelab.magnetic-marten.com
     homepage: homepage.magnetic-marten.com
     homepage_internal: homepage.homelab.magnetic-marten.com
     n8n: n8n.magnetic-marten.com
@@ -143,6 +145,9 @@ homelab:
     homepage:
       namespace: homepage
       image: ghcr.io/gethomepage/homepage:v1.8.0
+    astro_docs:
+      namespace: astro-docs
+      image: ghcr.io/bohdandan/homelab/astro-docs:0.1.0
     changedetection:
       namespace: changedetection
       image: dgtlmoon/changedetection.io:0.52.4
