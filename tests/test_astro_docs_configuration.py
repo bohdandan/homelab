@@ -25,11 +25,16 @@ class AstroDocsConfigurationTest(unittest.TestCase):
         self.assertIn("astro_docs:", main_yml)
         self.assertIn("ghcr.io/bohdandan/homelab/astro-docs", main_yml)
 
-        self.assertIn("docs.magnetic-marten.com", cloudflare_tf)
+        self.assertIn('hostname = var.docs_hostname', cloudflare_tf)
+        self.assertIn('service  = var.docs_origin_service', cloudflare_tf)
         self.assertIn('resource "cloudflare_record" "docs"', cloudflare_tf)
+        self.assertIn('name    = var.docs_hostname', cloudflare_tf)
+        self.assertIn('value   = "${cloudflare_zero_trust_tunnel_cloudflared.homelab.id}.cfargotunnel.com"', cloudflare_tf)
+        self.assertIn('proxied = true', cloudflare_tf)
 
         self.assertIn("docs.homelab.magnetic-marten.com", coredns)
-        self.assertIn("docs.homelab.magnetic-marten.com", homepage)
+        self.assertIn("        - Docs:", homepage)
+        self.assertIn("href: https://{{ homelab_effective.domain.docs_internal }}", homepage)
 
         docs_app = next((app for app in catalog["applications"] if app["id"] == "docs"), None)
         self.assertIsNotNone(docs_app)
