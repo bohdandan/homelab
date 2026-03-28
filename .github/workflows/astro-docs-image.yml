@@ -2,6 +2,8 @@ name: astro-docs-image
 
 on:
   push:
+    branches:
+      - main
     paths:
       - apps/astro-docs/**
       - .github/workflows/astro-docs-image.yml
