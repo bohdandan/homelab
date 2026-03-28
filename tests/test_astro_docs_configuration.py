@@ -56,6 +56,12 @@ class AstroDocsConfigurationTest(unittest.TestCase):
         self.assertIn("social: [", astro_config)
         self.assertNotIn("social: {", astro_config)
 
+    def test_astro_docs_uses_starlight_loader_imports(self) -> None:
+        content_config = Path("apps/astro-docs/src/content.config.ts").read_text()
+
+        self.assertIn('from "@astrojs/starlight/loaders"', content_config)
+        self.assertNotIn('docsLoader, docsSchema } from "@astrojs/starlight/schema"', content_config)
+
     def test_astro_docs_is_not_cloudflare_access_protected(self) -> None:
         cloudflare_tf = Path("opentofu/cloudflare/main.tf").read_text()
 
