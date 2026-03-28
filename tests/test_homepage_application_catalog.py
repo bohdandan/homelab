@@ -16,6 +16,13 @@ class HomepageApplicationCatalogTest(unittest.TestCase):
                 self.assertIn(application["homepage_title"], template)
                 self.assertIn(application["homepage_href"], template)
 
+    def test_homepage_platform_section_includes_github_link(self) -> None:
+        template = Path("kubernetes/base/homepage/manifests.yaml.j2").read_text()
+
+        self.assertIn("- Platform:", template)
+        self.assertIn("- GitHub:", template)
+        self.assertIn("href: https://github.com/bohdandan/homelab", template)
+
 
 if __name__ == "__main__":
     unittest.main()
