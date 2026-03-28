@@ -25,12 +25,17 @@ class AstroDocsConfigurationTest(unittest.TestCase):
         self.assertIn("astro_docs:", main_yml)
         self.assertIn("ghcr.io/bohdandan/homelab/astro-docs", main_yml)
 
-        self.assertIn("hostname = var.docs_hostname", cloudflare_tf)
+        self.assertRegex(
+            cloudflare_tf,
+            r'ingress_rule\s*\{[^}]*hostname\s*=\s*var\.docs_hostname[^}]*service\s*=',
+        )
         self.assertRegex(
             cloudflare_tf,
             r'resource\s+"cloudflare_record"\s+"docs"\s*\{[^}]*'
             r'name\s*=\s*var\.docs_hostname[^}]*'
-            r'value\s*=\s*"\$\{cloudflare_zero_trust_tunnel_cloudflared\.homelab\.id\}\.cfargotunnel\.com"',
+            r'type\s*=\s*"CNAME"[^}]*'
+            r'proxied\s*=\s*true[^}]*'
+            r'cfargotunnel\.com',
         )
 
         self.assertIn("docs 300 IN A", coredns)
