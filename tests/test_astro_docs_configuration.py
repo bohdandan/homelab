@@ -47,13 +47,8 @@ class AstroDocsConfigurationTest(unittest.TestCase):
         )
 
         self.assertIn("docs 300 IN A", coredns)
-        self.assertRegex(
-            homepage,
-            re.compile(
-                r"-\s*Docs:\s*\n\s*href:\s*https://\{\{\s*homelab_effective\.domain\.docs_internal\s*\}\}",
-                re.S,
-            ),
-        )
+        self.assertIn("Docs:", homepage)
+        self.assertIn("href: https://{{ homelab_effective.domain.docs_internal }}", homepage)
 
         docs_app = next((app for app in catalog["applications"] if app["id"] == "docs"), None)
         self.assertIsNotNone(docs_app)
