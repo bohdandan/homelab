@@ -1,4 +1,5 @@
 import json
+import re
 import unittest
 from pathlib import Path
 
@@ -27,15 +28,16 @@ class AstroDocsConfigurationTest(unittest.TestCase):
 
         self.assertRegex(
             cloudflare_tf,
-            r'ingress_rule\s*\{[^}]*hostname\s*=\s*var\.docs_hostname[^}]*service\s*=',
+            r'ingress_rule\s*\{(?=[^}]*hostname\s*=\s*var\.docs_hostname)(?=[^}]*service\s*=)[^}]*\}',
         )
         self.assertRegex(
             cloudflare_tf,
-            r'resource\s+"cloudflare_record"\s+"docs"\s*\{[^}]*'
-            r'name\s*=\s*var\.docs_hostname[^}]*'
-            r'type\s*=\s*"CNAME"[^}]*'
-            r'proxied\s*=\s*true[^}]*'
-            r'cfargotunnel\.com',
+            r'resource\s+"cloudflare_record"\s+"docs"\s*\{'
+            r'(?=[^}]*name\s*=\s*var\.docs_hostname)'
+            r'(?=[^}]*type\s*=\s*"CNAME")'
+            r'(?=[^}]*proxied\s*=\s*true)'
+            r'(?=[^}]*value\s*=\s*"\$\{cloudflare_zero_trust_tunnel_cloudflared\.homelab\.id\}\.cfargotunnel\.com")'
+            r'[^}]*\}',
         )
 
         self.assertIn("docs 300 IN A", coredns)
