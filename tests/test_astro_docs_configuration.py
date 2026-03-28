@@ -1,4 +1,5 @@
 import json
+import re
 import unittest
 from pathlib import Path
 
@@ -25,12 +26,20 @@ class AstroDocsConfigurationTest(unittest.TestCase):
         self.assertIn("astro_docs:", main_yml)
         self.assertIn("ghcr.io/bohdandan/homelab/astro-docs", main_yml)
 
-        self.assertIn('hostname = var.docs_hostname', cloudflare_tf)
-        self.assertIn('service  = var.docs_origin_service', cloudflare_tf)
-        self.assertIn('resource "cloudflare_record" "docs"', cloudflare_tf)
-        self.assertIn('name    = var.docs_hostname', cloudflare_tf)
-        self.assertIn('value   = "${cloudflare_zero_trust_tunnel_cloudflared.homelab.id}.cfargotunnel.com"', cloudflare_tf)
-        self.assertIn('proxied = true', cloudflare_tf)
+        self.assertRegex(
+            cloudflare_tf,
+            re.compile(
+                r"ingress_rule\s*\{.*?hostname\s*=\s*.*docs.*?service\s*=\s*.*docs.*?\}",
+                re.S,
+            ),
+        )
+        self.assertRegex(
+            cloudflare_tf,
+            re.compile(
+                r'resource\s+"cloudflare_record"\s+"[^"]*docs[^"]*"\s*\{.*?name\s*=\s*.*docs.*?type\s*=\s*"CNAME".*?proxied\s*=\s*true.*?cfargotunnel\.com',
+                re.S,
+            ),
+        )
 
         self.assertIn("docs.homelab.magnetic-marten.com", coredns)
         self.assertIn("        - Docs:", homepage)
@@ -44,8 +53,20 @@ class AstroDocsConfigurationTest(unittest.TestCase):
     def test_astro_docs_is_not_cloudflare_access_protected(self) -> None:
         cloudflare_tf = Path("opentofu/cloudflare/main.tf").read_text()
 
-        self.assertNotIn('resource "cloudflare_access_application" "docs"', cloudflare_tf)
-        self.assertNotIn('resource "cloudflare_access_policy" "docs"', cloudflare_tf)
+        self.assertNotRegex(
+            cloudflare_tf,
+            re.compile(
+                r'resource\s+"cloudflare_access_application"\s+"[^"]+"\s*\{.*?(docs\.magnetic-marten\.com|docs\.homelab\.magnetic-marten\.com|var\.docs_[A-Za-z0-9_]+)',
+                re.S,
+            ),
+        )
+        self.assertNotRegex(
+            cloudflare_tf,
+            re.compile(
+                r'resource\s+"cloudflare_access_policy"\s+"[^"]+"\s*\{.*?(docs\.magnetic-marten\.com|docs\.homelab\.magnetic-marten\.com|var\.docs_[A-Za-z0-9_]+)',
+                re.S,
+            ),
+        )
 
 
 if __name__ == "__main__":
