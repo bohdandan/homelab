@@ -6,9 +6,13 @@ export default defineConfig({
   integrations: [
     starlight({
       title: "Docs",
-      social: {
-        github: "https://github.com/bohdandan/homelab"
-      }
+      social: [
+        {
+          icon: "github",
+          label: "GitHub",
+          href: "https://github.com/bohdandan/homelab"
+        }
+      ]
     })
   ]
 });

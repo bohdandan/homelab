@@ -50,6 +50,12 @@ class AstroDocsConfigurationTest(unittest.TestCase):
         self.assertEqual(docs_app.get("homepage_title"), "Docs")
         self.assertEqual(docs_app.get("homepage_href"), "https://{{ homelab_effective.domain.docs_internal }}")
 
+    def test_astro_docs_uses_starlight_social_array_syntax(self) -> None:
+        astro_config = Path("apps/astro-docs/astro.config.mjs").read_text()
+
+        self.assertIn("social: [", astro_config)
+        self.assertNotIn("social: {", astro_config)
+
     def test_astro_docs_is_not_cloudflare_access_protected(self) -> None:
         cloudflare_tf = Path("opentofu/cloudflare/main.tf").read_text()
 
