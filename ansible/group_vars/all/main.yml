@@ -66,10 +66,10 @@ homelab:
 
   iot:
     slzb_mr4:
-      ip: 0.0.0.0
-      zigbee_adapter_type: zstack
+      ip: 192.168.30.100
+      zigbee_adapter_type: ember
       zigbee_port: 6638
-      thread_otbr_url: replace-me
+      thread_network_device: 192.168.30.100:7638
 
   packer:
     template_name: ubuntu-24-04-k3s-template

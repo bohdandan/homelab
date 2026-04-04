@@ -299,10 +299,10 @@ Before applying the Zigbee stack, record the real SLZB-MR4 values in `ansible/gr
 ```yaml
   iot:
     slzb_mr4:
-      ip: 192.168.10.X
-      zigbee_adapter_type: zstack
+      ip: 192.168.30.X
+      zigbee_adapter_type: ember
       zigbee_port: 6638
-      thread_otbr_url: http://192.168.10.X:8080
+      thread_network_device: 192.168.30.X:7638
 ```
 
 Until you replace it, the repo keeps `slzb-mr4.homelab.magnetic-marten.com` pinned to `0.0.0.0`
@@ -323,6 +323,6 @@ SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt ansible-playbook ansible/playbooks
 Manual Home Assistant steps remain:
 
 1. Add the MQTT integration in Home Assistant using `192.168.10.122`, the configured username, and the configured password.
-2. Open the SLZB-MR4 web UI and confirm the Zigbee radio socket and Thread/OTBR mode.
-3. Add the OpenThread Border Router / Thread integration in Home Assistant using the device OTBR endpoint.
+2. Open the SLZB-MR4 web UI and confirm the Zigbee radio socket and Thread mode are still on `6638` and `7638`.
+3. In the Home Assistant OpenThread Border Router add-on, use the MR4 as a remote network device at `192.168.30.X:7638`.
 4. Complete Matter-over-Thread commissioning from the Home Assistant mobile app when you start pairing devices.

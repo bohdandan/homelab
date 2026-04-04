@@ -175,6 +175,11 @@
         cmd: kubectl apply -f /tmp/zigbee2mqtt.yaml
       when: hostvars['localhost'].homelab_zigbee_stack_ready | bool
 
+    - name: Restart Zigbee2MQTT deployment
+      ansible.builtin.command:
+        cmd: kubectl rollout restart deployment/zigbee2mqtt -n {{ homelab_effective.apps.zigbee2mqtt.namespace }}
+      when: hostvars['localhost'].homelab_zigbee_stack_ready | bool
+
     - name: Report skipped secret-dependent workloads
       ansible.builtin.debug:
         msg: >-

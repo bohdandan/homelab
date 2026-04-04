@@ -11,7 +11,7 @@ metadata:
 type: Opaque
 stringData:
   configuration.yaml: |
-    version: 5
+    version: 4
     homeassistant:
       enabled: true
     mqtt:
@@ -84,6 +84,11 @@ spec:
           ports:
             - containerPort: 8080
               name: http
+          startupProbe:
+            tcpSocket:
+              port: http
+            failureThreshold: 30
+            periodSeconds: 10
           livenessProbe:
             tcpSocket:
               port: http

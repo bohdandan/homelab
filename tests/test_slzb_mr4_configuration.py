@@ -17,6 +17,7 @@ class SlzbMr4ConfigurationTest(unittest.TestCase):
         self.assertIn("slzb_mr4:", main_yml)
         self.assertIn("mosquitto:", main_yml)
         self.assertIn("zigbee2mqtt:", main_yml)
+        self.assertIn("zigbee_adapter_type: ember", main_yml)
         self.assertIn("mqtt_username", secrets_example)
         self.assertIn("mqtt_password", secrets_example)
         self.assertIn("zigbee2mqtt_network_key", secrets_example)
@@ -26,6 +27,7 @@ class SlzbMr4ConfigurationTest(unittest.TestCase):
         self.assertIn("{{ homelab_effective.domain.zigbee }}", homepage)
         self.assertIn("Render Mosquitto manifest", deploy_playbook)
         self.assertIn("Render Zigbee2MQTT manifest", deploy_playbook)
+        self.assertIn("Restart Zigbee2MQTT deployment", deploy_playbook)
         self.assertIn("zigbee.homelab.magnetic-marten.com", readme)
         self.assertIn("slzb-mr4.homelab.magnetic-marten.com", readme)
 
@@ -51,6 +53,8 @@ class SlzbMr4ConfigurationTest(unittest.TestCase):
         self.assertIn("name: zigbee2mqtt", zigbee_text)
         self.assertIn("host: {{ homelab_effective.domain.zigbee }}", zigbee_text)
         self.assertIn("tcp://{{ homelab_effective.iot.slzb_mr4.ip }}:{{ homelab_effective.iot.slzb_mr4.zigbee_port }}", zigbee_text)
+        self.assertIn("version: 4", zigbee_text)
+        self.assertIn("startupProbe:", zigbee_text)
         self.assertIn("network_key", zigbee_text)
 
 
