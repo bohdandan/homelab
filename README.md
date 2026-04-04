@@ -83,6 +83,7 @@ Current homelab placement:
 Use `apps/<app>/` for app-owned content and configuration.
 
 - `apps/astro-docs/` is the current example.
+- `apps/uptime-kuma/` stores the repo-managed Kuma desired state and reconciliation script.
 - Keep deployment manifests and IaC wiring in `kubernetes/`, `ansible/`, and `opentofu/` until a broader refactor is justified.
 
 ## Secrets
@@ -135,6 +136,7 @@ SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt sops -e -i ansible/group_vars/all/
   - zone `magnetic-marten.com`
   - API token for DNS and Zero Trust resources
   - Cloudflare Access allowlist emails in `ansible/group_vars/all/secrets.sops.yaml`
+- Uptime Kuma admin credentials in `ansible/group_vars/all/secrets.sops.yaml`
 - UniFi local DNS forward domain:
   - `homelab.magnetic-marten.com -> 192.168.10.121`
 - Router port forwards for direct-ingress services:
@@ -217,6 +219,19 @@ To run the whole flow in one command:
 ```bash
 SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt ansible-playbook ansible/playbooks/site.yml
 ```
+
+## Uptime Kuma As Code
+
+Uptime Kuma monitor definitions are managed in:
+
+- [apps/uptime-kuma/config/desired-state.yaml.j2](/Users/bohdandanyliuk/Workspace/homelab/apps/uptime-kuma/config/desired-state.yaml.j2)
+
+The `40-deploy-apps.yml` playbook now:
+
+- ensures the Kuma admin username/password match the encrypted repo secrets
+- renders the desired-state file into `ansible/runtime/`
+- installs the Python API client in a local runtime virtualenv
+- creates or updates the managed monitors in the live Kuma instance
 
 ## Important Notes
 

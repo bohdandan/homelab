@@ -54,6 +54,16 @@
             and homelab_effective.iot.slzb_mr4.ip != '0.0.0.0'
           }}
 
+    - name: Check whether Uptime Kuma admin secrets are ready
+      ansible.builtin.set_fact:
+        homelab_uptime_kuma_secrets_ready: >-
+          {{
+            homelab_effective.secrets.uptime_kuma_admin_name is defined
+            and homelab_effective.secrets.uptime_kuma_admin_name != 'replace-me'
+            and homelab_effective.secrets.uptime_kuma_admin_password is defined
+            and homelab_effective.secrets.uptime_kuma_admin_password != 'replace-me'
+          }}
+
 - name: Install cluster add-ons and workloads
   hosts: k3s_control
   become: true
@@ -362,6 +372,48 @@
         cmd: kubectl rollout status deployment/uptime-kuma -n {{ homelab_effective.apps.uptime_kuma.namespace }} --timeout=240s
       when: hostvars['localhost'].homelab_app_secrets_ready | bool
 
+    - name: Ensure Uptime Kuma admin credentials match encrypted secrets
+      vars:
+        homelab_uptime_kuma_admin_name: "{{ homelab_effective.secrets.uptime_kuma_admin_name }}"
+        homelab_uptime_kuma_admin_password_b64: "{{ homelab_effective.secrets.uptime_kuma_admin_password | b64encode }}"
+      ansible.builtin.shell: |
+        set -eu
+
+        POD_NAME="$(kubectl get pod -n {{ homelab_effective.apps.uptime_kuma.namespace }} -l app=uptime-kuma -o jsonpath='{.items[0].metadata.name}')"
+        kubectl exec -i -n {{ homelab_effective.apps.uptime_kuma.namespace }} "$POD_NAME" -- env \
+          DESIRED_USERNAME="{{ homelab_uptime_kuma_admin_name }}" \
+          PASSWORD_B64="{{ homelab_uptime_kuma_admin_password_b64 }}" \
+          sh <<'EOF'
+          set -eu
+          PASSWORD="$(printf "%s" "$PASSWORD_B64" | base64 -d)"
+          USER_COUNT="$(sqlite3 /app/data/kuma.db "select count(*) from user;")"
+
+          if [ "$USER_COUNT" = "0" ]; then
+            HASH="$(node -e "const {generate}=require('/app/server/password-hash'); generate(process.argv[1]).then((hash)=>console.log(hash));" "$PASSWORD")"
+            sqlite3 /app/data/kuma.db "insert into user (username, password) values ('$DESIRED_USERNAME', '$HASH');"
+            echo CREATED
+            exit 0
+          fi
+
+          CURRENT_USERNAME="$(sqlite3 /app/data/kuma.db "select username from user where id = 1;")"
+          CURRENT_HASH="$(sqlite3 /app/data/kuma.db "select password from user where id = 1;")"
+          PASSWORD_MATCH="$(node -e "const {verify}=require('/app/server/password-hash'); console.log(verify(process.argv[1], process.argv[2]) ? \"match\" : \"mismatch\");" "$PASSWORD" "$CURRENT_HASH")"
+
+          if [ "$CURRENT_USERNAME" = "$DESIRED_USERNAME" ] && [ "$PASSWORD_MATCH" = "match" ]; then
+            echo UNCHANGED
+            exit 0
+          fi
+
+          HASH="$(node -e "const {generate}=require('/app/server/password-hash'); generate(process.argv[1]).then((hash)=>console.log(hash));" "$PASSWORD")"
+          sqlite3 /app/data/kuma.db "update user set username = '$DESIRED_USERNAME', password = '$HASH' where id = 1;"
+          echo UPDATED
+        EOF
+      register: uptime_kuma_admin_reconcile
+      changed_when: "'UPDATED' in uptime_kuma_admin_reconcile.stdout or 'CREATED' in uptime_kuma_admin_reconcile.stdout"
+      when:
+        - hostvars['localhost'].homelab_app_secrets_ready | bool
+        - hostvars['localhost'].homelab_uptime_kuma_secrets_ready | bool
+
     - name: Wait for ntfy deployment
       ansible.builtin.command:
         cmd: kubectl rollout status deployment/ntfy -n {{ homelab_effective.apps.ntfy.namespace }} --timeout=240s
@@ -401,3 +453,64 @@
       ansible.builtin.command:
         cmd: kubectl rollout status deployment/cloudflared -n {{ homelab_effective.apps.cloudflared.namespace }} --timeout=240s
       when: hostvars['localhost'].homelab_app_secrets_ready | bool
+
+- name: Reconcile Uptime Kuma desired state
+  hosts: localhost
+  gather_facts: false
+  vars:
+    homelab_uptime_kuma_venv: "{{ playbook_dir }}/../runtime/venvs/uptime-kuma"
+    homelab_uptime_kuma_desired_state_path: "{{ playbook_dir }}/../runtime/uptime-kuma-desired-state.yaml"
+    homelab_uptime_kuma_app_dir: "{{ playbook_dir }}/../../apps/uptime-kuma"
+  tasks:
+    - name: Load context
+      ansible.builtin.include_tasks: ../tasks/load_context.yml
+
+    - name: Check whether Uptime Kuma admin secrets are ready
+      ansible.builtin.set_fact:
+        homelab_uptime_kuma_secrets_ready: >-
+          {{
+            homelab_effective.secrets.uptime_kuma_admin_name is defined
+            and homelab_effective.secrets.uptime_kuma_admin_name != 'replace-me'
+            and homelab_effective.secrets.uptime_kuma_admin_password is defined
+            and homelab_effective.secrets.uptime_kuma_admin_password != 'replace-me'
+          }}
+
+    - name: Report skipped Uptime Kuma desired-state reconciliation
+      ansible.builtin.debug:
+        msg: >-
+          Skipping Uptime Kuma desired-state reconciliation until uptime_kuma_admin_name and
+          uptime_kuma_admin_password are populated in ansible/group_vars/all/secrets.sops.yaml.
+      when: not (homelab_uptime_kuma_secrets_ready | bool)
+
+    - name: Install Uptime Kuma reconciliation dependencies
+      ansible.builtin.pip:
+        requirements: "{{ homelab_uptime_kuma_app_dir }}/requirements.txt"
+        virtualenv: "{{ homelab_uptime_kuma_venv }}"
+        virtualenv_command: "{{ ansible_playbook_python }} -m venv"
+      when: homelab_uptime_kuma_secrets_ready | bool
+
+    - name: Render Uptime Kuma desired state
+      ansible.builtin.template:
+        src: ../../apps/uptime-kuma/config/desired-state.yaml.j2
+        dest: "{{ homelab_uptime_kuma_desired_state_path }}"
+        mode: "0644"
+      when: homelab_uptime_kuma_secrets_ready | bool
+
+    - name: Reconcile Uptime Kuma desired state
+      ansible.builtin.command:
+        argv:
+          - "{{ homelab_uptime_kuma_venv }}/bin/python"
+          - "{{ homelab_uptime_kuma_app_dir }}/reconcile.py"
+          - --api-url
+          - "https://{{ homelab_effective.domain.kuma }}"
+          - --username
+          - "{{ homelab_effective.secrets.uptime_kuma_admin_name }}"
+          - --password
+          - "{{ homelab_effective.secrets.uptime_kuma_admin_password }}"
+          - --desired-state
+          - "{{ homelab_uptime_kuma_desired_state_path }}"
+      register: uptime_kuma_reconcile
+      changed_when: >-
+        '"created": []' not in uptime_kuma_reconcile.stdout
+        or '"updated": []' not in uptime_kuma_reconcile.stdout
+      when: homelab_uptime_kuma_secrets_ready | bool

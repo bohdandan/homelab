@@ -1,0 +1,99 @@
+monitors:
+  - name: Homepage
+    type: http
+    url: https://{{ homelab_effective.domain.homepage_internal }}
+    interval: 60
+    maxretries: 3
+    accepted_statuscodes:
+      - "200-299"
+      - "300-399"
+
+  - name: Docs
+    type: http
+    url: https://{{ homelab_effective.domain.docs_internal }}
+    interval: 60
+    maxretries: 3
+    accepted_statuscodes:
+      - "200-299"
+      - "300-399"
+
+  - name: n8n
+    type: http
+    url: https://{{ homelab_effective.domain.n8n_internal }}
+    interval: 60
+    maxretries: 3
+    accepted_statuscodes:
+      - "200-299"
+      - "300-399"
+
+  - name: QuickDrop
+    type: http
+    url: https://{{ homelab_effective.domain.share_internal }}
+    interval: 120
+    maxretries: 3
+    accepted_statuscodes:
+      - "200-299"
+      - "300-399"
+
+  - name: Home Assistant
+    type: http
+    url: https://{{ homelab_effective.domain.home_assistant }}
+    interval: 60
+    maxretries: 3
+    accepted_statuscodes:
+      - "200-299"
+      - "300-399"
+
+  - name: ChangeDetection
+    type: http
+    url: https://{{ homelab_effective.domain.changedetection }}
+    interval: 120
+    maxretries: 3
+    accepted_statuscodes:
+      - "200-299"
+      - "300-399"
+
+  - name: Uptime Kuma
+    type: http
+    url: https://{{ homelab_effective.domain.kuma }}
+    interval: 120
+    maxretries: 3
+    accepted_statuscodes:
+      - "200-299"
+      - "300-399"
+
+  - name: ntfy
+    type: http
+    url: https://{{ homelab_effective.domain.ntfy }}
+    interval: 120
+    maxretries: 3
+    accepted_statuscodes:
+      - "200-299"
+      - "300-399"
+
+  - name: Glances
+    type: http
+    url: https://{{ homelab_effective.domain.glances }}
+    interval: 60
+    maxretries: 3
+    accepted_statuscodes:
+      - "200-299"
+      - "300-399"
+
+  - name: CloudBeaver
+    type: http
+    url: https://{{ homelab_effective.domain.cloudbeaver }}
+    interval: 120
+    maxretries: 3
+    accepted_statuscodes:
+      - "200-299"
+      - "300-399"
+
+  - name: Zigbee2MQTT
+    type: http
+    url: https://{{ homelab_effective.domain.zigbee }}
+    interval: 60
+    maxretries: 3
+    accepted_statuscodes:
+      - "200-299"
+      - "300-399"
