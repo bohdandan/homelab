@@ -16,6 +16,16 @@ Infrastructure as code for a Proxmox-based homelab using:
 - MetalLB pool `192.168.10.120-192.168.10.129`
 - Traefik VIP `192.168.10.120`
 
+## Network Layout
+
+The current UniFi VLAN and subnet layout is documented in [docs/networking.md](/Users/bohdandanyliuk/Workspace/homelab/docs/networking.md).
+
+Current homelab placement:
+
+- the homelab stack currently lives on `Home Network` (`VLAN 10`, `192.168.10.0/24`)
+- fixed homelab infrastructure starts at `192.168.10.100`
+- MetalLB service IPs use `192.168.10.120-192.168.10.129`
+
 ## Applications
 
 - `docs.magnetic-marten.com`
