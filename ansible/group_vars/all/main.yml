@@ -93,6 +93,15 @@ homelab:
     cores: 2
     disk_size: 32G
 
+  home_assistant:
+    sync:
+      ssh_user: hassio
+      ssh_port: 22
+      ssh_private_key_file: "{{ homelab.ssh.private_key_path }}"
+      remote_config_path: /config
+      stage_dir: "{{ playbook_dir | default('.') }}/../runtime/home-assistant-config"
+      restart_after_sync: true
+
   dev_admin:
     vmid: 113
     name: dev-admin-01

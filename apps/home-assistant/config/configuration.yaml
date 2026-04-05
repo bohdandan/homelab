@@ -1,0 +1,18 @@
+default_config:
+
+homeassistant:
+  packages: !include_dir_named packages
+
+automation: !include automations.yaml
+script: !include scripts.yaml
+scene: !include scenes.yaml
+
+lovelace:
+  mode: yaml
+  dashboards:
+    homelab-main:
+      mode: yaml
+      filename: dashboards/main.yaml
+      title: Home
+      icon: mdi:home-assistant
+      show_in_sidebar: true

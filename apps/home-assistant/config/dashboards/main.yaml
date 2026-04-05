@@ -1,0 +1,15 @@
+title: Home
+views:
+  - title: Home
+    path: home
+    type: sections
+    sections:
+      - type: grid
+        cards:
+          - type: heading
+            heading: Homelab
+          - type: markdown
+            content: >-
+              This dashboard is sourced from
+              `/apps/home-assistant/config/dashboards/main.yaml` in the homelab
+              repo.

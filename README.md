@@ -83,6 +83,7 @@ Current homelab placement:
 Use `apps/<app>/` for app-owned content and configuration.
 
 - `apps/astro-docs/` is the current example.
+- `apps/home-assistant/` stores the repo-managed HAOS YAML config scaffold and sync workflow.
 - `apps/uptime-kuma/` stores the repo-managed Kuma desired state and reconciliation script.
 - Keep deployment manifests and IaC wiring in `kubernetes/`, `ansible/`, and `opentofu/` until a broader refactor is justified.
 
@@ -137,6 +138,8 @@ SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt sops -e -i ansible/group_vars/all/
   - API token for DNS and Zero Trust resources
   - Cloudflare Access allowlist emails in `ansible/group_vars/all/secrets.sops.yaml`
 - Uptime Kuma admin credentials in `ansible/group_vars/all/secrets.sops.yaml`
+- Home Assistant Community `SSH & Web Terminal` add-on enabled on `haos-01`
+  - SSH key installed for the `hassio` user
 - UniFi local DNS forward domain:
   - `homelab.magnetic-marten.com -> 192.168.10.121`
 - Router port forwards for direct-ingress services:
@@ -210,7 +213,10 @@ SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt ansible-playbook ansible/playbooks
 # 6. Deploy cert-manager, internal apps, Astro docs, Homepage, n8n, QuickDrop, Home Assistant proxy, and cloudflared
 SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt ansible-playbook ansible/playbooks/40-deploy-apps.yml
 
-# 7. Configure Proxmox backup storage and VM backup jobs
+# 7. Optionally sync repo-managed Home Assistant YAML config into HAOS
+SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt ansible-playbook ansible/playbooks/45-sync-home-assistant-config.yml
+
+# 8. Configure Proxmox backup storage and VM backup jobs
 SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt ansible-playbook ansible/playbooks/50-configure-backups.yml
 ```
 
@@ -232,6 +238,22 @@ The `40-deploy-apps.yml` playbook now:
 - renders the desired-state file into `ansible/runtime/`
 - installs the Python API client in a local runtime virtualenv
 - creates or updates the managed monitors in the live Kuma instance
+
+## Home Assistant Config As Code
+
+Repo-managed Home Assistant YAML now lives under:
+
+- [apps/home-assistant/](/Users/bohdandanyliuk/Workspace/homelab/apps/home-assistant/)
+
+Use [ansible/playbooks/45-sync-home-assistant-config.yml](/Users/bohdandanyliuk/Workspace/homelab/ansible/playbooks/45-sync-home-assistant-config.yml)
+to push the tracked config surface into HAOS `/config`.
+
+The sync playbook is intentionally conservative:
+
+- it manages the tracked YAML files and selected directories from `apps/home-assistant/config/`
+- it validates the resulting config with `ha core check`
+- it restarts Home Assistant only when the tracked config changed
+- it does not delete `.storage`, the Home Assistant database, logs, or other HA-generated runtime state
 
 ## Important Notes
 

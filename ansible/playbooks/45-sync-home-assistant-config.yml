@@ -1,0 +1,148 @@
+---
+- name: Sync repo-managed Home Assistant config to HAOS
+  hosts: localhost
+  gather_facts: false
+  vars:
+    homelab_home_assistant_root: "{{ playbook_dir }}/../../apps/home-assistant/config"
+  tasks:
+    - name: Load context
+      ansible.builtin.include_tasks: ../tasks/load_context.yml
+
+    - name: Build Home Assistant sync variables
+      ansible.builtin.set_fact:
+        homelab_home_assistant_stage_dir: "{{ homelab_effective.home_assistant.sync.stage_dir }}"
+        homelab_home_assistant_remote_root: "{{ homelab_effective.home_assistant.sync.remote_config_path }}"
+        homelab_home_assistant_ssh_target: >-
+          {{ homelab_effective.home_assistant.sync.ssh_user }}@{{ homelab_effective.haos.desired_ip }}
+        homelab_home_assistant_top_level_files:
+          - configuration.yaml
+          - automations.yaml
+          - scripts.yaml
+          - scenes.yaml
+        homelab_home_assistant_managed_dirs:
+          - packages
+          - dashboards
+          - blueprints
+          - www
+          - custom_components
+
+    - name: Ensure local Home Assistant staging directory exists
+      ansible.builtin.file:
+        path: "{{ homelab_home_assistant_stage_dir }}"
+        state: directory
+        mode: "0755"
+
+    - name: Ensure remote Home Assistant managed directories exist
+      ansible.builtin.command:
+        argv:
+          - ssh
+          - -i
+          - "{{ homelab_effective.home_assistant.sync.ssh_private_key_file }}"
+          - -o
+          - StrictHostKeyChecking=no
+          - -p
+          - "{{ homelab_effective.home_assistant.sync.ssh_port | string }}"
+          - "{{ homelab_home_assistant_ssh_target }}"
+          - mkdir
+          - -p
+          - "{{ homelab_home_assistant_remote_root }}"
+          - "{{ homelab_home_assistant_remote_root }}/packages"
+          - "{{ homelab_home_assistant_remote_root }}/dashboards"
+          - "{{ homelab_home_assistant_remote_root }}/blueprints"
+          - "{{ homelab_home_assistant_remote_root }}/www"
+          - "{{ homelab_home_assistant_remote_root }}/custom_components"
+
+    - name: Render Home Assistant secrets.yaml into the local stage
+      ansible.builtin.template:
+        src: ../../apps/home-assistant/config/secrets.yaml.j2
+        dest: "{{ homelab_home_assistant_stage_dir }}/secrets.yaml"
+        mode: "0600"
+
+    - name: Push rendered Home Assistant config to HAOS
+      ansible.posix.synchronize:
+        src: "{{ homelab_home_assistant_root }}/{{ item }}"
+        dest: "{{ homelab_home_assistant_ssh_target }}:{{ homelab_home_assistant_remote_root }}/{{ item }}"
+        mode: push
+        ssh_args: >-
+          -i {{ homelab_effective.home_assistant.sync.ssh_private_key_file }}
+          -o StrictHostKeyChecking=no
+          -p {{ homelab_effective.home_assistant.sync.ssh_port }}
+        archive: true
+      loop: "{{ homelab_home_assistant_top_level_files }}"
+      register: home_assistant_file_sync
+
+    - name: Push rendered Home Assistant secrets file to HAOS
+      ansible.posix.synchronize:
+        src: "{{ homelab_home_assistant_stage_dir }}/secrets.yaml"
+        dest: "{{ homelab_home_assistant_ssh_target }}:{{ homelab_home_assistant_remote_root }}/secrets.yaml"
+        mode: push
+        ssh_args: >-
+          -i {{ homelab_effective.home_assistant.sync.ssh_private_key_file }}
+          -o StrictHostKeyChecking=no
+          -p {{ homelab_effective.home_assistant.sync.ssh_port }}
+        archive: true
+      register: home_assistant_secret_sync
+
+    - name: Push managed Home Assistant directories to HAOS
+      ansible.posix.synchronize:
+        src: "{{ homelab_home_assistant_root }}/{{ item }}/"
+        dest: "{{ homelab_home_assistant_ssh_target }}:{{ homelab_home_assistant_remote_root }}/{{ item }}/"
+        mode: push
+        ssh_args: >-
+          -i {{ homelab_effective.home_assistant.sync.ssh_private_key_file }}
+          -o StrictHostKeyChecking=no
+          -p {{ homelab_effective.home_assistant.sync.ssh_port }}
+        archive: true
+        delete: true
+        rsync_opts:
+          - "--exclude=.gitkeep"
+      loop: "{{ homelab_home_assistant_managed_dirs }}"
+      register: home_assistant_dir_sync
+
+    - name: Check whether repo-managed Home Assistant config changed
+      ansible.builtin.set_fact:
+        home_assistant_sync_changed: >-
+          {{
+            home_assistant_secret_sync.changed
+            or (home_assistant_file_sync.results | selectattr('changed') | list | length) > 0
+            or (home_assistant_dir_sync.results | selectattr('changed') | list | length) > 0
+          }}
+
+    - name: Validate Home Assistant config on HAOS
+      ansible.builtin.command:
+        argv:
+          - ssh
+          - -i
+          - "{{ homelab_effective.home_assistant.sync.ssh_private_key_file }}"
+          - -o
+          - StrictHostKeyChecking=no
+          - -p
+          - "{{ homelab_effective.home_assistant.sync.ssh_port | string }}"
+          - "{{ homelab_home_assistant_ssh_target }}"
+          - ha
+          - core
+          - check
+      when: home_assistant_sync_changed | bool
+
+    - name: Restart Home Assistant after config sync
+      ansible.builtin.command:
+        argv:
+          - ssh
+          - -i
+          - "{{ homelab_effective.home_assistant.sync.ssh_private_key_file }}"
+          - -o
+          - StrictHostKeyChecking=no
+          - -p
+          - "{{ homelab_effective.home_assistant.sync.ssh_port | string }}"
+          - "{{ homelab_home_assistant_ssh_target }}"
+          - ha
+          - core
+          - restart
+      when:
+        - home_assistant_sync_changed | bool
+        - homelab_effective.home_assistant.sync.restart_after_sync | bool
+
+    - name: Report that Home Assistant config was already in sync
+      ansible.builtin.debug:
+        msg: Repo-managed Home Assistant config is already in sync.
+      when: not (home_assistant_sync_changed | bool)
