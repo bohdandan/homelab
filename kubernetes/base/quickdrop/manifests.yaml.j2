@@ -6,7 +6,7 @@ metadata:
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: quickdrop-data
+  name: quickdrop-metadata
   namespace: {{ homelab_effective.apps.quickdrop.namespace }}
 spec:
   accessModes:
@@ -14,7 +14,7 @@ spec:
   storageClassName: local-path
   resources:
     requests:
-      storage: {{ homelab_effective.apps.quickdrop.data_storage }}
+      storage: {{ homelab_effective.apps.quickdrop.metadata_storage }}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -35,6 +35,7 @@ spec:
     spec:
       nodeSelector:
         homelab.io/stateful: "true"
+        kubernetes.io/hostname: {{ homelab_effective.k3s.worker.name }}
       containers:
         - name: quickdrop
           image: {{ homelab_effective.apps.quickdrop.image }}
@@ -55,19 +56,22 @@ spec:
               cpu: 1000m
               memory: 1Gi
           volumeMounts:
-            - name: quickdrop-data
+            - name: quickdrop-metadata
               mountPath: /app/db
               subPath: db
-            - name: quickdrop-data
+            - name: quickdrop-share-files
               mountPath: /app/files
-              subPath: files
-            - name: quickdrop-data
+            - name: quickdrop-metadata
               mountPath: /app/log
               subPath: log
       volumes:
-        - name: quickdrop-data
+        - name: quickdrop-metadata
           persistentVolumeClaim:
-            claimName: quickdrop-data
+            claimName: quickdrop-metadata
+        - name: quickdrop-share-files
+          hostPath:
+            path: {{ homelab_effective.apps.quickdrop.files_host_path }}
+            type: DirectoryOrCreate
 ---
 apiVersion: v1
 kind: Service

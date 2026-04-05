@@ -1,0 +1,126 @@
+---
+- name: Load local context
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Load context
+      ansible.builtin.include_tasks: ../tasks/load_context.yml
+
+- name: Attach dedicated QuickDrop share disk to the stateful worker VM
+  hosts: proxmox
+  gather_facts: false
+  become: true
+  vars:
+    homelab_effective: "{{ hostvars['localhost'].homelab_effective }}"
+  tasks:
+    - name: Read current worker VM config
+      ansible.builtin.command: "qm config {{ homelab_effective.k3s.worker.vmid }}"
+      register: quickdrop_worker_vm_config
+      changed_when: false
+
+    - name: Fail if a different disk is already attached at scsi1
+      ansible.builtin.fail:
+        msg: >-
+          {{ homelab_effective.k3s.worker.name }} already has scsi1 configured with a different backing device.
+          Inspect `qm config {{ homelab_effective.k3s.worker.vmid }}` before proceeding.
+      when:
+        - "'scsi1:' in quickdrop_worker_vm_config.stdout"
+        - homelab_effective.storage.quickdrop_share.proxmox_device_by_id not in quickdrop_worker_vm_config.stdout
+
+    - name: Read old VG name from the dedicated QuickDrop share SSD when present
+      ansible.builtin.shell: |
+        if [ -b "{{ homelab_effective.storage.quickdrop_share.proxmox_device }}p3" ]; then
+          pvs --noheadings -o vg_name "{{ homelab_effective.storage.quickdrop_share.proxmox_device }}p3" 2>/dev/null | xargs
+        fi
+      register: quickdrop_old_vg
+      changed_when: false
+      when: "'scsi1:' not in quickdrop_worker_vm_config.stdout"
+
+    - name: Deactivate old VG on the dedicated QuickDrop share SSD
+      ansible.builtin.command: "vgchange -an {{ quickdrop_old_vg.stdout }}"
+      when:
+        - "'scsi1:' not in quickdrop_worker_vm_config.stdout"
+        - (quickdrop_old_vg.stdout | trim | length) > 0
+
+    - name: Wipe partition table from the dedicated QuickDrop share SSD
+      ansible.builtin.command: "sgdisk --zap-all {{ homelab_effective.storage.quickdrop_share.proxmox_device }}"
+      when: "'scsi1:' not in quickdrop_worker_vm_config.stdout"
+
+    - name: Wipe filesystem signatures from the dedicated QuickDrop share SSD
+      ansible.builtin.command: "wipefs -a -f {{ homelab_effective.storage.quickdrop_share.proxmox_device }}"
+      when: "'scsi1:' not in quickdrop_worker_vm_config.stdout"
+
+    - name: Re-read partition table after wiping the dedicated QuickDrop share SSD
+      ansible.builtin.shell: |
+        blockdev --rereadpt {{ homelab_effective.storage.quickdrop_share.proxmox_device }} || true
+        udevadm settle
+      when: "'scsi1:' not in quickdrop_worker_vm_config.stdout"
+
+    - name: Attach dedicated QuickDrop share disk to the stateful worker VM
+      ansible.builtin.command:
+        cmd: >-
+          qm set {{ homelab_effective.k3s.worker.vmid }}
+          --scsi1 {{ homelab_effective.storage.quickdrop_share.proxmox_device_by_id }},backup=0,discard=on,ssd=1
+      when: "'scsi1:' not in quickdrop_worker_vm_config.stdout"
+
+- name: Mount dedicated QuickDrop share disk on the stateful worker
+  hosts: k3s_worker
+  gather_facts: false
+  become: true
+  vars:
+    homelab_effective: "{{ hostvars['localhost'].homelab_effective }}"
+  tasks:
+    - name: Rescan SCSI bus for the dedicated QuickDrop share disk
+      ansible.builtin.shell: |
+        for host in /sys/class/scsi_host/host*; do
+          echo "- - -" > "${host}/scan"
+        done
+
+    - name: Wait for the dedicated QuickDrop share disk to appear
+      ansible.builtin.wait_for:
+        path: "{{ homelab_effective.storage.quickdrop_share.guest_device_by_id }}"
+        timeout: 120
+
+    - name: Read filesystem type for the dedicated QuickDrop share disk
+      ansible.builtin.command: "blkid -o value -s TYPE {{ homelab_effective.storage.quickdrop_share.guest_device_by_id }}"
+      register: quickdrop_share_fs_type
+      failed_when: false
+      changed_when: false
+
+    - name: Create ext4 filesystem on the dedicated QuickDrop share disk
+      community.general.filesystem:
+        dev: "{{ homelab_effective.storage.quickdrop_share.guest_device_by_id }}"
+        fstype: ext4
+      when: quickdrop_share_fs_type.rc != 0
+
+    - name: Read filesystem label for the dedicated QuickDrop share disk
+      ansible.builtin.command: "blkid -o value -s LABEL {{ homelab_effective.storage.quickdrop_share.guest_device_by_id }}"
+      register: quickdrop_share_fs_label
+      failed_when: false
+      changed_when: false
+
+    - name: Set filesystem label on the dedicated QuickDrop share disk
+      ansible.builtin.command: >-
+        e2label {{ homelab_effective.storage.quickdrop_share.guest_device_by_id }}
+        {{ homelab_effective.storage.quickdrop_share.filesystem_label }}
+      when: quickdrop_share_fs_label.stdout != homelab_effective.storage.quickdrop_share.filesystem_label
+
+    - name: Ensure dedicated QuickDrop share mountpoint exists
+      ansible.builtin.file:
+        path: "{{ homelab_effective.storage.quickdrop_share.mount_path }}"
+        state: directory
+        mode: "0755"
+
+    - name: Mount dedicated QuickDrop share disk
+      ansible.posix.mount:
+        path: "{{ homelab_effective.storage.quickdrop_share.mount_path }}"
+        src: "LABEL={{ homelab_effective.storage.quickdrop_share.filesystem_label }}"
+        fstype: ext4
+        opts: defaults
+        state: mounted
+
+    - name: Ensure QuickDrop files directory exists on dedicated share storage
+      ansible.builtin.file:
+        path: "{{ homelab_effective.apps.quickdrop.files_host_path }}"
+        state: directory
+        mode: "0755"

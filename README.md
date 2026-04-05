@@ -207,16 +207,19 @@ SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt ansible-playbook ansible/playbooks
 # 4. Configure K3s cluster
 SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt ansible-playbook ansible/playbooks/30-configure-k3s.yml
 
-# 5. Configure the dev/admin VM
+# 5. Attach and mount dedicated stateful storage such as the QuickDrop share disk
+SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt ansible-playbook ansible/playbooks/32-configure-stateful-storage.yml
+
+# 6. Configure the dev/admin VM
 SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt ansible-playbook ansible/playbooks/35-configure-dev-admin.yml
 
-# 6. Deploy cert-manager, internal apps, Astro docs, Homepage, n8n, QuickDrop, Home Assistant proxy, and cloudflared
+# 7. Deploy cert-manager, internal apps, Astro docs, Homepage, n8n, QuickDrop, Home Assistant proxy, and cloudflared
 SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt ansible-playbook ansible/playbooks/40-deploy-apps.yml
 
-# 7. Optionally sync repo-managed Home Assistant YAML config into HAOS
+# 8. Optionally sync repo-managed Home Assistant YAML config into HAOS
 SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt ansible-playbook ansible/playbooks/45-sync-home-assistant-config.yml
 
-# 8. Configure Proxmox backup storage and VM backup jobs
+# 9. Configure Proxmox backup storage and VM backup jobs
 SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt ansible-playbook ansible/playbooks/50-configure-backups.yml
 ```
 
@@ -265,6 +268,10 @@ The sync playbook is intentionally conservative:
   - `homepage` and `n8n` are protected by Cloudflare Access.
   - `share.magnetic-marten.com` is DNS-only direct ingress so large file uploads bypass Cloudflare upload limits.
   - LAN-only `*.homelab.magnetic-marten.com` hostnames resolve through UniFi -> CoreDNS -> Traefik.
+- QuickDrop storage is intentionally split:
+  - metadata stays on the normal backed-up worker disk
+  - uploaded files live on the dedicated second internal SSD mounted on `k3s-worker-01`
+  - that dedicated QuickDrop SSD is attached to the worker VM with `backup=0`, so the file content is excluded from Proxmox VM backups
 - Only encrypted secrets and source templates belong in git.
   - Generated runtime files under `ansible/runtime/`, `ansible/inventory/generated/`, and `packer/ubuntu-k3s-template/runtime/` are intentionally ignored.
 - Hosted Renovate is the recommended image update path for this repo.
