@@ -94,6 +94,12 @@
         state: directory
         mode: "0755"
 
+    - name: Ensure NFS exports directory exists
+      ansible.builtin.file:
+        path: /etc/exports.d
+        state: directory
+        mode: "0755"
+
     - name: Mount removable ingest SSD read-only when present
       ansible.posix.mount:
         path: "{{ homelab_effective.storage.copyparty_ingest.proxmox_mount_path }}"
@@ -199,7 +205,7 @@
     - name: Mount dedicated Copyparty share disk
       ansible.posix.mount:
         path: "{{ homelab_effective.storage.copyparty_share.mount_path }}"
-        src: "LABEL={{ homelab_effective.storage.copyparty_share.filesystem_label }}"
+        src: "{{ homelab_effective.storage.copyparty_share.guest_device_by_id }}"
         fstype: ext4
         opts: defaults
         state: mounted
@@ -228,9 +234,9 @@
         opts: bind
         state: mounted
 
-    - name: Ensure QuickDrop files directory exists on dedicated share storage
+    - name: Ensure QuickDrop compatibility files directory exists on dedicated share storage
       ansible.builtin.file:
-        path: "{{ homelab_effective.apps.quickdrop.files_host_path }}"
+        path: "{{ homelab_effective.storage.quickdrop_share.files_path }}"
         state: directory
         mode: "0755"
 

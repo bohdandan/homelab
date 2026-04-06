@@ -191,7 +191,7 @@
 
     - name: Check Copyparty share mount readiness on the worker
       ansible.builtin.command:
-        cmd: findmnt -n -M {{ homelab_effective.apps.copyparty.share_host_path }} -o FSTYPE
+        cmd: findmnt -n -M {{ homelab_effective.storage.copyparty_share.mount_path }} -o FSTYPE
       register: copyparty_share_mount
       changed_when: false
       failed_when: false
@@ -200,7 +200,7 @@
 
     - name: Check Copyparty ingest mount readiness on the worker
       ansible.builtin.command:
-        cmd: findmnt -n -M {{ homelab_effective.apps.copyparty.ingest_mount_path }} -o FSTYPE
+        cmd: findmnt -n -M {{ homelab_effective.storage.copyparty_ingest.worker_mount_path }} -o FSTYPE
       register: copyparty_ingest_mount
       changed_when: false
       failed_when: false
@@ -220,8 +220,8 @@
       ansible.builtin.debug:
         msg: >-
           Skipping Copyparty until the dedicated share and ingest mounts are ready on
-          {{ groups['k3s_worker'][0] }}. Expected ext4 at {{ homelab_effective.apps.copyparty.share_host_path }}
-          and nfs or nfs4 at {{ homelab_effective.apps.copyparty.ingest_mount_path }}.
+          {{ groups['k3s_worker'][0] }}. Expected ext4 at {{ homelab_effective.storage.copyparty_share.mount_path }}
+          and nfs or nfs4 at {{ homelab_effective.storage.copyparty_ingest.worker_mount_path }}.
       when:
         - hostvars['localhost'].homelab_copyparty_secrets_ready | bool
         - not (homelab_copyparty_storage_ready | bool)
@@ -247,7 +247,7 @@
       ansible.builtin.debug:
         msg: >-
           MetalLB and cert-manager are installed. Skipping ClusterIssuer, homepage, ChangeDetection,
-          Uptime Kuma, ntfy, Glances ingress, CloudBeaver, astro-docs, n8n, QuickDrop, Home Assistant proxy,
+          Uptime Kuma, ntfy, Glances ingress, CloudBeaver, astro-docs, n8n, Home Assistant proxy,
           and cloudflared
           until real Cloudflare and application secrets are present in ansible/group_vars/all/secrets.sops.yaml.
       when: not (hostvars['localhost'].homelab_app_secrets_ready | bool)
@@ -383,24 +383,19 @@
         - hostvars['localhost'].homelab_copyparty_secrets_ready | bool
         - homelab_copyparty_storage_ready | bool
 
+    - name: Delete legacy QuickDrop ingress before Copyparty hostname cutover
+      ansible.builtin.command:
+        cmd: kubectl delete ingress quickdrop -n quickdrop --ignore-not-found=true --wait=true --timeout=240s
+      when:
+        - hostvars['localhost'].homelab_copyparty_secrets_ready | bool
+        - homelab_copyparty_storage_ready | bool
+
     - name: Apply Copyparty manifest
       ansible.builtin.command:
         cmd: kubectl apply -f /tmp/copyparty.yaml
       when:
         - hostvars['localhost'].homelab_copyparty_secrets_ready | bool
         - homelab_copyparty_storage_ready | bool
-
-    - name: Render QuickDrop manifest
-      ansible.builtin.template:
-        src: ../../kubernetes/base/quickdrop/manifests.yaml.j2
-        dest: /tmp/quickdrop.yaml
-        mode: "0644"
-      when: hostvars['localhost'].homelab_app_secrets_ready | bool
-
-    - name: Apply QuickDrop manifest
-      ansible.builtin.command:
-        cmd: kubectl apply -f /tmp/quickdrop.yaml
-      when: hostvars['localhost'].homelab_app_secrets_ready | bool
 
     - name: Render Home Assistant proxy manifest
       ansible.builtin.template:
@@ -520,10 +515,12 @@
         - hostvars['localhost'].homelab_copyparty_secrets_ready | bool
         - homelab_copyparty_storage_ready | bool
 
-    - name: Wait for QuickDrop deployment
+    - name: Delete legacy QuickDrop namespace after Copyparty cutover
       ansible.builtin.command:
-        cmd: kubectl rollout status deployment/quickdrop -n {{ homelab_effective.apps.quickdrop.namespace }} --timeout=240s
-      when: hostvars['localhost'].homelab_app_secrets_ready | bool
+        cmd: kubectl delete namespace quickdrop --ignore-not-found=true --wait=true --timeout=240s
+      when:
+        - hostvars['localhost'].homelab_copyparty_secrets_ready | bool
+        - homelab_copyparty_storage_ready | bool
 
     - name: Wait for cloudflared deployment
       ansible.builtin.command:

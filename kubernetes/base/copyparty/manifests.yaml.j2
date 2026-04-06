@@ -78,11 +78,11 @@ spec:
             secretName: copyparty-config
         - name: copyparty-share
           hostPath:
-            path: {{ homelab_effective.apps.copyparty.share_host_path }}
+            path: {{ homelab_effective.storage.copyparty_share.mount_path }}
             type: Directory
         - name: copyparty-ingest
           hostPath:
-            path: {{ homelab_effective.apps.copyparty.ingest_mount_path }}
+            path: {{ homelab_effective.storage.copyparty_ingest.worker_mount_path }}
             type: Directory
 ---
 apiVersion: v1
@@ -97,3 +97,39 @@ spec:
     - name: http
       port: 80
       targetPort: http
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: copyparty
+  namespace: {{ homelab_effective.apps.copyparty.namespace }}
+  annotations:
+    cert-manager.io/cluster-issuer: "{{ homelab_effective.cert_manager.cluster_issuer_name }}"
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - {{ homelab_effective.domain.share }}
+        - {{ homelab_effective.domain.share_internal }}
+      secretName: homelab-wildcard-tls
+  rules:
+    - host: {{ homelab_effective.domain.share }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: copyparty
+                port:
+                  number: 80
+    - host: {{ homelab_effective.domain.share_internal }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: copyparty
+                port:
+                  number: 80

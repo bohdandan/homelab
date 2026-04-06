@@ -22,6 +22,8 @@ class UptimeKumaConfigurationTest(unittest.TestCase):
         self.assertIn("load_desired_state", reconcile)
         self.assertIn("api.add_monitor", reconcile)
         self.assertIn("api.edit_monitor", reconcile)
+        self.assertIn("api.delete_monitor", reconcile)
+        self.assertIn('"deleted": deleted', reconcile)
         self.assertIn("Managed by homelab repo", reconcile)
         self.assertIn("Homepage", desired_state)
         self.assertIn("Home Assistant", desired_state)

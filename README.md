@@ -41,9 +41,9 @@ Current homelab placement:
 - `n8n.homelab.magnetic-marten.com`
   - LAN only through CoreDNS and Traefik
 - `share.magnetic-marten.com`
-  - Public direct ingress for QuickDrop while the Copyparty migration is still in progress
+  - Public direct ingress for Copyparty so large file uploads bypass Cloudflare upload limits
 - `share.homelab.magnetic-marten.com`
-  - LAN only through CoreDNS and Traefik
+  - LAN only through CoreDNS and Traefik for Copyparty
 - `zigbee.homelab.magnetic-marten.com`
   - LAN only through CoreDNS and Traefik for Zigbee2MQTT
 - `changedetection.homelab.magnetic-marten.com`
@@ -213,10 +213,8 @@ SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt ansible-playbook ansible/playbooks
 # 6. Configure the dev/admin VM
 SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt ansible-playbook ansible/playbooks/35-configure-dev-admin.yml
 
-# 7. Deploy cert-manager, internal apps, Astro docs, Homepage, n8n, QuickDrop, Home Assistant proxy, and cloudflared
+# 7. Deploy cert-manager, internal apps, Astro docs, Homepage, n8n, Copyparty, Home Assistant proxy, and cloudflared
 SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt ansible-playbook ansible/playbooks/40-deploy-apps.yml
-
-This branch still deploys QuickDrop in step 7. Copyparty cutover happens later in the migration tasks.
 
 # 8. Optionally sync repo-managed Home Assistant YAML config into HAOS
 SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt ansible-playbook ansible/playbooks/45-sync-home-assistant-config.yml
@@ -268,11 +266,11 @@ The sync playbook is intentionally conservative:
 - Public exposure is intentionally mixed:
   - `docs.magnetic-marten.com`, `homepage.magnetic-marten.com`, and `n8n.magnetic-marten.com` are routed through Cloudflare Tunnel.
   - `homepage` and `n8n` are protected by Cloudflare Access.
-  - `share.magnetic-marten.com` is DNS-only direct ingress so large file uploads bypass Cloudflare upload limits.
+  - `share.magnetic-marten.com` is DNS-only direct ingress to Copyparty so large file uploads bypass Cloudflare upload limits.
   - LAN-only `*.homelab.magnetic-marten.com` hostnames resolve through UniFi -> CoreDNS -> Traefik.
 - The share migration is intentionally split:
-  - QuickDrop still uses the dedicated second internal SSD mounted on `k3s-worker-01`
-  - Copyparty is being prepared to take over that same class of storage in a later task
+  - Copyparty owns the dedicated second internal SSD mounted on `k3s-worker-01`
+  - the legacy QuickDrop filesystem path is kept only as a compatibility alias during the storage bridge
   - the dedicated share SSD is attached to the worker VM with `backup=0`, so the file content is excluded from Proxmox VM backups
 - Only encrypted secrets and source templates belong in git.
   - Generated runtime files under `ansible/runtime/`, `ansible/inventory/generated/`, and `packer/ubuntu-k3s-template/runtime/` are intentionally ignored.
@@ -306,7 +304,7 @@ The sync playbook is intentionally conservative:
 - Mosquitto
 - Zigbee2MQTT
 - n8n + PostgreSQL
-- QuickDrop, with Copyparty migration work in progress
+- Copyparty
 - Home Assistant LAN ingress proxy
 - Proxmox VM backup storage and backup jobs
 

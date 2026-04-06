@@ -8,7 +8,7 @@ class IngressTLSAnnotationsTest(unittest.TestCase):
             Path("kubernetes/base/homepage/manifests.yaml.j2"),
             Path("kubernetes/base/n8n/manifests.yaml.j2"),
             Path("kubernetes/base/home-assistant-proxy/manifests.yaml.j2"),
-            Path("kubernetes/base/quickdrop/manifests.yaml.j2"),
+            Path("kubernetes/base/copyparty/manifests.yaml.j2"),
             Path("kubernetes/base/changedetection/manifests.yaml.j2"),
             Path("kubernetes/base/uptime-kuma/manifests.yaml.j2"),
             Path("kubernetes/base/ntfy/manifests.yaml.j2"),

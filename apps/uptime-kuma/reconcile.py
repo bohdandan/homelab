@@ -56,10 +56,12 @@ def main() -> int:
     created: list[str] = []
     updated: list[str] = []
     unchanged: list[str] = []
+    deleted: list[str] = []
 
     with UptimeKumaApi(args.api_url) as api:
         api.login(args.username, args.password)
         existing_monitors = {monitor["name"]: monitor for monitor in api.get_monitors()}
+        desired_names = {monitor["name"] for monitor in desired_monitors}
 
         for desired in desired_monitors:
             name = desired["name"]
@@ -76,10 +78,19 @@ def main() -> int:
             else:
                 unchanged.append(name)
 
+        for existing in existing_monitors.values():
+            if existing.get("description") != MANAGED_DESCRIPTION:
+                continue
+            if existing["name"] in desired_names:
+                continue
+            api.delete_monitor(existing["id"])
+            deleted.append(existing["name"])
+
     print(
         json.dumps(
             {
                 "created": created,
+                "deleted": deleted,
                 "updated": updated,
                 "unchanged": unchanged,
             },
