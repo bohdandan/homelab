@@ -7,7 +7,7 @@ Replace QuickDrop with a single `copyparty` deployment that keeps the existing s
 - normal authenticated file sharing on permanent internal storage
 - read-only exposure of a removable external SSD for large video ingest/download workflows
 
-This migration should preserve the current uploaded QuickDrop files by copying them into the new permanent share volume, but it does not need to preserve QuickDrop users, settings, or existing share links.
+This migration does not need to preserve QuickDrop files, users, settings, or existing share links.
 
 ## Constraints
 
@@ -22,6 +22,11 @@ This migration should preserve the current uploaded QuickDrop files by copying t
 - Treat the removable external SSD as ingest media and expose it read-only.
 - Do not require QuickDrop DB migration or compatibility with existing QuickDrop share links.
 - Keep Homepage updated and operator-facing through the internal hostname.
+- The currently attached ingest SSD is visible on the Proxmox host as:
+  - `/dev/sdb1`
+  - `ext4`
+  - part label `Extreme SSD`
+  - UUID `c58cca5f-7a37-4e08-aa0e-ba02c66126be`
 
 ## Recommended Approach
 
@@ -69,7 +74,7 @@ Recommended path:
 
 - `/var/lib/copyparty/share`
 
-This path should hold the migrated QuickDrop files and all future normal uploads intended to live on internal storage.
+This path should hold all future normal uploads intended to live on internal storage.
 
 ### Removable ingest mount
 
@@ -80,6 +85,8 @@ Recommended path:
 - `/srv/ingest/current`
 
 `copyparty` should present this path as a read-only volume. The design should not assume the disk is always attached.
+
+The implementation should use a stable identifier for the removable disk, preferably its filesystem UUID, rather than assuming the Linux device name will always remain `sdb1`.
 
 If the external SSD is missing, the service should still remain healthy. The operator runbook should make it explicit that `/ingest` is only meaningful when the removable drive is mounted.
 
@@ -172,14 +179,7 @@ Perform the migration in two phases:
 
 ### Data migration
 
-Copy the current QuickDrop file contents into the new permanent Copyparty `/share` path.
-
-Do not migrate:
-
-- QuickDrop database state
-- QuickDrop users
-- QuickDrop passwords
-- QuickDrop share links
+Do not migrate QuickDrop application data.
 
 This keeps the migration simple and avoids preserving behavior that is not needed.
 
@@ -222,7 +222,6 @@ Implementation should verify:
 - the public share DNS/exposure wiring still points to direct ingress
 - Homepage and app catalog reference Copyparty instead of QuickDrop
 - Copyparty rollout succeeds in K3s
-- current QuickDrop files are present under the new `/share` volume after migration
 - `https://share.homelab.magnetic-marten.com` responds correctly
 - `https://share.magnetic-marten.com` responds correctly
 
