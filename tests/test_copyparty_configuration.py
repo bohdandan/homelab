@@ -22,6 +22,7 @@ class CopypartyConfigurationTest(unittest.TestCase):
         self.assertIn("xff-hdr: x-forwarded-for", config)
         self.assertIn("xff-src: 10.42.0.0/16", config)
         self.assertIn("rproxy: -1", config)
+        self.assertIn("dont-ban: any", config)
         self.assertIn("{% if homelab_copyparty_ingest_ready | default(false) %}", config)
 
     def test_copyparty_manifest_owns_live_share_surface(self) -> None:
