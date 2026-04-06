@@ -55,6 +55,24 @@
         | combine(homelab_discovered_vars.homelab | default({}), recursive=True)
         | combine(
             {
+              'ssh': {
+                'public_key_path': (lookup('env', 'HOME') ~ '/.ssh/' ~ homelab.ssh.public_key_name),
+                'private_key_path': (lookup('env', 'HOME') ~ '/.ssh/' ~ homelab.ssh.private_key_name)
+              },
+              'home_assistant': {
+                'sync': {
+                  'ssh_private_key_file': (lookup('env', 'HOME') ~ '/.ssh/' ~ homelab.ssh.private_key_name),
+                  'stage_dir': ((playbook_dir | default('.')) ~ '/../runtime/home-assistant-config')
+                }
+              },
+              'k3s': {
+                'token_file': ((playbook_dir | default('.')) ~ '/../runtime/k3s-token')
+              }
+            },
+            recursive=True
+          )
+        | combine(
+            {
               'secrets':
                 (homelab_loaded_secrets.homelab_secrets | default({}))
                 | combine(homelab_runtime_secret_vars.homelab_secrets | default({}), recursive=True)

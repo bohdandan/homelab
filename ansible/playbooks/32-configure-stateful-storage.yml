@@ -113,25 +113,6 @@
         state: mounted
       when: copyparty_ingest_device.rc == 0
 
-    - name: Unmount removable ingest SSD when disk is absent
-      ansible.posix.mount:
-        path: "{{ homelab_effective.storage.copyparty_ingest.proxmox_mount_path }}"
-        state: unmounted
-      when: copyparty_ingest_device.rc != 0
-
-    - name: Remove removable ingest fstab entry when disk is absent
-      ansible.posix.mount:
-        path: "{{ homelab_effective.storage.copyparty_ingest.proxmox_mount_path }}"
-        state: absent_from_fstab
-      when: copyparty_ingest_device.rc != 0
-
-    - name: Ensure removable ingest mount root remains harmless when disk is absent
-      ansible.builtin.file:
-        path: "{{ homelab_effective.storage.copyparty_ingest.proxmox_mount_path }}"
-        state: directory
-        mode: "0755"
-      when: copyparty_ingest_device.rc != 0
-
     - name: Manage read-only Samba ingest share for the worker
       ansible.builtin.blockinfile:
         path: /etc/samba/smb.conf
@@ -150,14 +131,6 @@
              hosts deny = 0.0.0.0/0
       register: copyparty_ingest_samba_share
       when: copyparty_ingest_device.rc == 0
-
-    - name: Remove read-only Samba ingest share when the removable SSD is absent
-      ansible.builtin.blockinfile:
-        path: /etc/samba/smb.conf
-        marker: "; {mark} ANSIBLE MANAGED COPYPARTY INGEST"
-        state: absent
-      register: copyparty_ingest_samba_share_removed
-      when: copyparty_ingest_device.rc != 0
 
     - name: Ensure Samba server is enabled and started
       ansible.builtin.service:
@@ -299,3 +272,45 @@
         opts: ro,guest,nofail,_netdev,x-systemd.automount,vers=3.0,uid=0,gid=0,file_mode=0444,dir_mode=0555,iocharset=utf8
         state: mounted
       when: hostvars[groups['proxmox'][0]].copyparty_ingest_device.rc == 0
+
+- name: Finalize removable Copyparty ingest teardown on the Proxmox host
+  hosts: proxmox
+  gather_facts: false
+  become: true
+  vars:
+    homelab_effective: "{{ hostvars['localhost'].homelab_effective }}"
+  tasks:
+    - name: Remove read-only Samba ingest share when the removable SSD is absent
+      ansible.builtin.blockinfile:
+        path: /etc/samba/smb.conf
+        marker: "; {mark} ANSIBLE MANAGED COPYPARTY INGEST"
+        state: absent
+      register: copyparty_ingest_samba_share_removed
+      when: copyparty_ingest_device.rc != 0
+
+    - name: Restart Samba when the ingest share definition is removed
+      ansible.builtin.service:
+        name: smbd
+        state: restarted
+      when:
+        - copyparty_ingest_device.rc != 0
+        - copyparty_ingest_samba_share_removed is defined
+        - copyparty_ingest_samba_share_removed.changed
+
+    - name: Force-unmount removable ingest SSD when disk is absent
+      ansible.builtin.shell: |
+        umount -lf {{ homelab_effective.storage.copyparty_ingest.proxmox_mount_path }} || true
+      when: copyparty_ingest_device.rc != 0
+
+    - name: Remove removable ingest fstab entry when disk is absent
+      ansible.posix.mount:
+        path: "{{ homelab_effective.storage.copyparty_ingest.proxmox_mount_path }}"
+        state: absent_from_fstab
+      when: copyparty_ingest_device.rc != 0
+
+    - name: Ensure removable ingest mount root remains harmless when disk is absent
+      ansible.builtin.file:
+        path: "{{ homelab_effective.storage.copyparty_ingest.proxmox_mount_path }}"
+        state: directory
+        mode: "0755"
+      when: copyparty_ingest_device.rc != 0

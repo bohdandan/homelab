@@ -12,6 +12,7 @@ export KUBECONFIG="/home/dev/.kube/config"
 export SOPS_AGE_KEY_FILE="/home/dev/.config/sops/age/keys.txt"
 
 LOCK_FILE="$REPO_ROOT/ansible/runtime/copyparty-ingest-reconcile.lock"
+RUNTIME_INVENTORY="$REPO_ROOT/ansible/runtime/copyparty-ingest-inventory.yml"
 MAIN_YML="$REPO_ROOT/ansible/group_vars/all/main.yml"
 STORAGE_PLAYBOOK="$REPO_ROOT/ansible/playbooks/32-configure-stateful-storage.yml"
 DEPLOY_PLAYBOOK="$REPO_ROOT/ansible/playbooks/40-deploy-apps.yml"
@@ -61,9 +62,70 @@ ensure_preflight
 PROXMOX_HOST=$(yq -r '.homelab.proxmox.ssh_host' "$MAIN_YML")
 PROXMOX_SSH_PORT=$(yq -r '.homelab.proxmox.ssh_port' "$MAIN_YML")
 PROXMOX_SSH_USER=$(yq -r '.homelab.proxmox.ssh_user' "$MAIN_YML")
+K3S_CONTROL_HOST=$(yq -r '.homelab.k3s.control.ip' "$MAIN_YML")
+K3S_CONTROL_NAME=$(yq -r '.homelab.k3s.control.name' "$MAIN_YML")
+K3S_CONTROL_VMID=$(yq -r '.homelab.k3s.control.vmid' "$MAIN_YML")
 WORKER_HOST=$(yq -r '.homelab.k3s.worker.ip' "$MAIN_YML")
+WORKER_NAME=$(yq -r '.homelab.k3s.worker.name' "$MAIN_YML")
+WORKER_VMID=$(yq -r '.homelab.k3s.worker.vmid' "$MAIN_YML")
 WORKER_SSH_USER=$(yq -r '.homelab.ssh.user' "$MAIN_YML")
+DEV_ADMIN_HOST=$(yq -r '.homelab.dev_admin.ip' "$MAIN_YML")
+DEV_ADMIN_NAME=$(yq -r '.homelab.dev_admin.name' "$MAIN_YML")
+DEV_ADMIN_VMID=$(yq -r '.homelab.dev_admin.vmid' "$MAIN_YML")
+DEV_ADMIN_LOGIN_USER=$(yq -r '.homelab.dev_admin.login_user' "$MAIN_YML")
+HAOS_HOST=$(yq -r '.homelab.haos.desired_ip' "$MAIN_YML")
+HAOS_NAME=$(yq -r '.homelab.haos.name' "$MAIN_YML")
+HAOS_VMID=$(yq -r '.homelab.haos.vmid' "$MAIN_YML")
+HAOS_MAC=$(yq -r '.homelab.haos.mac_address' "$MAIN_YML")
 INGEST_UUID=$(yq -r '.homelab.storage.copyparty_ingest.filesystem_uuid' "$MAIN_YML")
+
+write_runtime_inventory() {
+  cat >"$RUNTIME_INVENTORY" <<EOF
+all:
+  hosts:
+    localhost:
+      ansible_connection: local
+  vars:
+    ansible_user: $WORKER_SSH_USER
+    ansible_ssh_private_key_file: $SSH_KEY
+    ansible_ssh_common_args: "-o StrictHostKeyChecking=no"
+  children:
+    proxmox:
+      hosts:
+        proxmox-01:
+          ansible_host: $PROXMOX_HOST
+          ansible_user: $PROXMOX_SSH_USER
+          ansible_port: $PROXMOX_SSH_PORT
+    k3s_control:
+      hosts:
+        $K3S_CONTROL_NAME:
+          ansible_host: $K3S_CONTROL_HOST
+          node_role: control
+          vmid: $K3S_CONTROL_VMID
+    k3s_worker:
+      hosts:
+        $WORKER_NAME:
+          ansible_host: $WORKER_HOST
+          node_role: worker
+          vmid: $WORKER_VMID
+    dev_admin:
+      hosts:
+        $DEV_ADMIN_NAME:
+          ansible_host: $DEV_ADMIN_HOST
+          vmid: $DEV_ADMIN_VMID
+          remote_login_user: $DEV_ADMIN_LOGIN_USER
+    home_assistant:
+      hosts:
+        $HAOS_NAME:
+          ansible_host: $HAOS_HOST
+          vmid: $HAOS_VMID
+          mac_address: $HAOS_MAC
+    k3s_cluster:
+      children:
+        k3s_control: {}
+        k3s_worker: {}
+EOF
+}
 
 desired_state() {
   local result=""
@@ -173,12 +235,14 @@ current_state() {
 }
 
 run_reconcile() {
-  if ! ansible-playbook "$STORAGE_PLAYBOOK"; then
+  write_runtime_inventory
+
+  if ! ansible-playbook -i "$RUNTIME_INVENTORY" "$STORAGE_PLAYBOOK"; then
     log "reconcile failed"
     return 1
   fi
 
-  if ! ansible-playbook "$DEPLOY_PLAYBOOK"; then
+  if ! ansible-playbook -i "$RUNTIME_INVENTORY" "$DEPLOY_PLAYBOOK"; then
     log "reconcile failed"
     return 1
   fi

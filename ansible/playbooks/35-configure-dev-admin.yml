@@ -172,6 +172,12 @@
         name: "{{ hostvars[groups['k3s_worker'][0]].ansible_host }}"
         key: "{{ lookup('pipe', 'ssh-keyscan ' ~ hostvars[groups['k3s_worker'][0]].ansible_host ~ ' 2>/dev/null') }}"
 
+    - name: Add control-plane host key to dev known_hosts
+      ansible.builtin.known_hosts:
+        path: "/home/{{ dev_login_user }}/.ssh/known_hosts"
+        name: "{{ hostvars[groups['k3s_control'][0]].ansible_host }}"
+        key: "{{ lookup('pipe', 'ssh-keyscan ' ~ hostvars[groups['k3s_control'][0]].ansible_host ~ ' 2>/dev/null') }}"
+
     - name: Download Tailscale install script
       ansible.builtin.get_url:
         url: https://tailscale.com/install.sh
@@ -370,9 +376,15 @@
           - -a
           - --delete
           - --exclude=runtime/copyparty-ingest-reconcile.lock
+          - --exclude=runtime/venvs/
           - "{{ playbook_dir }}/../"
           - "dev@{{ ansible_host }}:{{ homelab_effective.dev_admin.workspace_dir }}/homelab/ansible/"
       delegate_to: localhost
+
+    - name: Remove locally generated runtime virtualenvs from the dev workspace checkout
+      ansible.builtin.file:
+        path: "{{ homelab_effective.dev_admin.workspace_dir }}/homelab/ansible/runtime/venvs"
+        state: absent
 
     - name: Synchronize app-owned content into the dev workspace checkout
       become: false
@@ -524,6 +536,21 @@
       {{ hostvars[groups['dev_admin'][0]].copyparty_ingest_automation_public_key.content | b64decode }}
   tasks:
     - name: Authorize dedicated automation key on the stateful worker
+      ansible.posix.authorized_key:
+        user: "{{ homelab_effective.ssh.user }}"
+        state: present
+        key: "{{ copyparty_ingest_automation_key }}"
+
+- name: Authorize Copyparty ingest automation SSH key on the control-plane node
+  hosts: k3s_control
+  gather_facts: false
+  become: true
+  vars:
+    homelab_effective: "{{ hostvars['localhost'].homelab_effective }}"
+    copyparty_ingest_automation_key: >-
+      {{ hostvars[groups['dev_admin'][0]].copyparty_ingest_automation_public_key.content | b64decode }}
+  tasks:
+    - name: Authorize dedicated automation key on the control-plane node
       ansible.posix.authorized_key:
         user: "{{ homelab_effective.ssh.user }}"
         state: present

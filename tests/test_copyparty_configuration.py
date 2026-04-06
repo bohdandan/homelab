@@ -144,11 +144,18 @@ class CopypartyConfigurationTest(unittest.TestCase):
         playbook = Path("ansible/playbooks/35-configure-dev-admin.yml").read_text()
 
         self.assertIn("ansible/runtime/copyparty-ingest-reconcile.lock", script)
+        self.assertIn("ansible/runtime/copyparty-ingest-inventory.yml", script)
         self.assertIn("flock", script)
         self.assertIn("ansible/playbooks/32-configure-stateful-storage.yml", script)
         self.assertIn("ansible/playbooks/40-deploy-apps.yml", script)
         self.assertIn("preflight: missing ssh key", script)
         self.assertIn("id_ed25519_copyparty_ingest", script)
+        self.assertIn("write_runtime_inventory()", script)
+        self.assertIn("ansible-playbook -i \"$RUNTIME_INVENTORY\"", script)
+        self.assertIn("ansible_connection: local", script)
+        self.assertIn("ansible_ssh_private_key_file: $SSH_KEY", script)
+        self.assertIn("proxmox-01:", script)
+        self.assertIn("k3s_cluster:", script)
         self.assertIn("state unknown, skipping reconcile", script)
         self.assertIn("ingest attached, reconciling", script)
         self.assertIn("ingest removed, reconciling", script)
@@ -169,12 +176,16 @@ class CopypartyConfigurationTest(unittest.TestCase):
         self.assertIn("id_ed25519_copyparty_ingest", playbook)
         self.assertIn("copyparty_ingest_automation_public_key", playbook)
         self.assertIn("ansible.builtin.known_hosts", playbook)
+        self.assertIn("groups['k3s_control'][0]", playbook)
         self.assertIn("argv:", playbook)
         self.assertIn("rsync", playbook)
+        self.assertIn("--exclude=runtime/venvs/", playbook)
         self.assertIn("homelab/ansible/", playbook)
         self.assertIn("homelab/apps/", playbook)
         self.assertIn("homelab/kubernetes/", playbook)
+        self.assertIn("Remove locally generated runtime virtualenvs from the dev workspace checkout", playbook)
         self.assertIn("ansible.posix.authorized_key", playbook)
+        self.assertIn("Authorize Copyparty ingest automation SSH key on the control-plane node", playbook)
         self.assertIn("daemon_reload: true", playbook)
         self.assertIn("name: copyparty-ingest-reconcile.timer", playbook)
         self.assertIn("enabled: true", playbook)
@@ -182,6 +193,20 @@ class CopypartyConfigurationTest(unittest.TestCase):
 
     def test_quickdrop_manifest_is_removed(self) -> None:
         self.assertFalse(Path("kubernetes/base/quickdrop/manifests.yaml.j2").exists())
+
+    def test_load_context_derives_runtime_paths_instead_of_storing_jinja_in_main_yml(self) -> None:
+        main_yml = Path("ansible/group_vars/all/main.yml").read_text()
+        load_context = Path("ansible/tasks/load_context.yml").read_text()
+
+        self.assertNotIn("lookup('env', 'HOME')", main_yml)
+        self.assertNotIn("{{ homelab.ssh.private_key_path }}", main_yml)
+        self.assertNotIn("{{ playbook_dir | default('.') }}", main_yml)
+
+        self.assertIn("'public_key_path': (lookup('env', 'HOME')", load_context)
+        self.assertIn("'private_key_path': (lookup('env', 'HOME')", load_context)
+        self.assertIn("'ssh_private_key_file': (lookup('env', 'HOME')", load_context)
+        self.assertIn("'stage_dir': ((playbook_dir | default('.'))", load_context)
+        self.assertIn("'token_file': ((playbook_dir | default('.'))", load_context)
 
 
 if __name__ == "__main__":

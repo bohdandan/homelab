@@ -27,8 +27,8 @@ homelab:
 
   ssh:
     user: ubuntu
-    public_key_path: "{{ lookup('env', 'HOME') }}/.ssh/id_ed25519.pub"
-    private_key_path: "{{ lookup('env', 'HOME') }}/.ssh/id_ed25519"
+    public_key_name: id_ed25519.pub
+    private_key_name: id_ed25519
 
   proxmox:
     ssh_host: 192.168.10.100
@@ -119,9 +119,7 @@ homelab:
     sync:
       ssh_user: hassio
       ssh_port: 22
-      ssh_private_key_file: "{{ homelab.ssh.private_key_path }}"
       remote_config_path: /config
-      stage_dir: "{{ playbook_dir | default('.') }}/../runtime/home-assistant-config"
       restart_after_sync: true
 
   dev_admin:
@@ -144,7 +142,6 @@ homelab:
 
   k3s:
     version: v1.35.0+k3s1
-    token_file: "{{ playbook_dir | default('.') }}/../runtime/k3s-token"
     control:
       vmid: 110
       name: k3s-control-01
