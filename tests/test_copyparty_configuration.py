@@ -19,6 +19,7 @@ class CopypartyConfigurationTest(unittest.TestCase):
         self.assertIn("/srv/share", config)
         self.assertIn("[/ingest]", config)
         self.assertIn("/srv/ingest", config)
+        self.assertIn("hist: /srv/share/.hist/ingest", config)
         self.assertIn("rw: {{ copyparty_admin_name }}, manager", config)
         self.assertIn("r: {{ copyparty_admin_name }}", config)
         self.assertIn("rw:", config)
