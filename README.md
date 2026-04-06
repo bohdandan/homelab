@@ -213,8 +213,10 @@ SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt ansible-playbook ansible/playbooks
 # 6. Configure the dev/admin VM
 SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt ansible-playbook ansible/playbooks/35-configure-dev-admin.yml
 
-# 7. Deploy cert-manager, internal apps, Astro docs, Homepage, n8n, Home Assistant proxy, and cloudflared
+# 7. Deploy cert-manager, internal apps, Astro docs, Homepage, n8n, QuickDrop, Home Assistant proxy, and cloudflared
 SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt ansible-playbook ansible/playbooks/40-deploy-apps.yml
+
+This branch still deploys QuickDrop in step 7. Copyparty cutover happens later in the migration tasks.
 
 # 8. Optionally sync repo-managed Home Assistant YAML config into HAOS
 SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt ansible-playbook ansible/playbooks/45-sync-home-assistant-config.yml

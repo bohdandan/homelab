@@ -65,6 +65,8 @@ homelab:
     metallb_range: 192.168.10.120-192.168.10.129
 
   storage:
+    # Staged Copyparty permanent-share state; the QuickDrop compatibility alias
+    # below stays on the legacy path until the later cutover tasks remove it.
     copyparty_share:
       proxmox_device: /dev/nvme0n1
       proxmox_device_by_id: /dev/disk/by-id/nvme-CT1000P3PSSD8_25044DC818B6
