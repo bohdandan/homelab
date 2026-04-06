@@ -65,13 +65,18 @@ homelab:
     metallb_range: 192.168.10.120-192.168.10.129
 
   storage:
-    copyparty_share: &copyparty_share
+    copyparty_share:
       proxmox_device: /dev/nvme0n1
       proxmox_device_by_id: /dev/disk/by-id/nvme-CT1000P3PSSD8_25044DC818B6
       guest_device_by_id: /dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_drive-scsi1
       filesystem_label: copyparty-share
       mount_path: /var/lib/copyparty/share
-    quickdrop_share: *copyparty_share
+    quickdrop_share:
+      proxmox_device: /dev/nvme0n1
+      proxmox_device_by_id: /dev/disk/by-id/nvme-CT1000P3PSSD8_25044DC818B6
+      guest_device_by_id: /dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_drive-scsi1
+      filesystem_label: quickdrop-share
+      mount_path: /var/lib/quickdrop-share
     copyparty_ingest:
       proxmox_device: /dev/sdb1
       filesystem_type: ext4
@@ -197,7 +202,7 @@ homelab:
       namespace: n8n
       image: n8nio/n8n:2.2.6
       data_storage: 10Gi
-    copyparty: &copyparty_app
+    copyparty:
       namespace: copyparty
       image: copyparty/ac:v1.19.21
       share_host_path: /var/lib/copyparty/share
@@ -208,7 +213,7 @@ homelab:
       namespace: quickdrop
       image: roastslav/quickdrop:v1.5.2
       metadata_storage: 5Gi
-      files_host_path: /var/lib/copyparty/share
+      files_host_path: /var/lib/quickdrop-share/files
     mosquitto:
       namespace: mqtt
       image: eclipse-mosquitto:2.1.2-alpine

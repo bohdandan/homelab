@@ -15,6 +15,7 @@ class RenovateConfigurationTest(unittest.TestCase):
         main_yml = Path("ansible/group_vars/all/main.yml").read_text()
         self.assertNotIn(":latest", main_yml)
         self.assertIn("n8nio/n8n:", main_yml)
+        self.assertIn("roastslav/quickdrop:", main_yml)
         self.assertIn("copyparty/ac:", main_yml)
         self.assertIn("dgtlmoon/changedetection.io:", main_yml)
         self.assertIn("louislam/uptime-kuma:", main_yml)

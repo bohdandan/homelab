@@ -41,7 +41,7 @@ Current homelab placement:
 - `n8n.homelab.magnetic-marten.com`
   - LAN only through CoreDNS and Traefik
 - `share.magnetic-marten.com`
-  - Public direct ingress for Copyparty file sharing
+  - Public direct ingress for QuickDrop while the Copyparty migration is still in progress
 - `share.homelab.magnetic-marten.com`
   - LAN only through CoreDNS and Traefik
 - `zigbee.homelab.magnetic-marten.com`
@@ -207,13 +207,13 @@ SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt ansible-playbook ansible/playbooks
 # 4. Configure K3s cluster
 SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt ansible-playbook ansible/playbooks/30-configure-k3s.yml
 
-# 5. Attach and mount dedicated stateful storage such as the Copyparty share disk
+# 5. Attach and mount dedicated stateful storage for the current share service
 SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt ansible-playbook ansible/playbooks/32-configure-stateful-storage.yml
 
 # 6. Configure the dev/admin VM
 SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt ansible-playbook ansible/playbooks/35-configure-dev-admin.yml
 
-# 7. Deploy cert-manager, internal apps, Astro docs, Homepage, n8n, Copyparty, Home Assistant proxy, and cloudflared
+# 7. Deploy cert-manager, internal apps, Astro docs, Homepage, n8n, Home Assistant proxy, and cloudflared
 SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt ansible-playbook ansible/playbooks/40-deploy-apps.yml
 
 # 8. Optionally sync repo-managed Home Assistant YAML config into HAOS
@@ -268,10 +268,10 @@ The sync playbook is intentionally conservative:
   - `homepage` and `n8n` are protected by Cloudflare Access.
   - `share.magnetic-marten.com` is DNS-only direct ingress so large file uploads bypass Cloudflare upload limits.
   - LAN-only `*.homelab.magnetic-marten.com` hostnames resolve through UniFi -> CoreDNS -> Traefik.
-- Copyparty storage is intentionally split:
-  - metadata stays on the normal backed-up worker disk
-  - uploaded files live on the dedicated second internal SSD mounted on `k3s-worker-01`
-  - that dedicated Copyparty SSD is attached to the worker VM with `backup=0`, so the file content is excluded from Proxmox VM backups
+- The share migration is intentionally split:
+  - QuickDrop still uses the dedicated second internal SSD mounted on `k3s-worker-01`
+  - Copyparty is being prepared to take over that same class of storage in a later task
+  - the dedicated share SSD is attached to the worker VM with `backup=0`, so the file content is excluded from Proxmox VM backups
 - Only encrypted secrets and source templates belong in git.
   - Generated runtime files under `ansible/runtime/`, `ansible/inventory/generated/`, and `packer/ubuntu-k3s-template/runtime/` are intentionally ignored.
 - Hosted Renovate is the recommended image update path for this repo.
@@ -304,7 +304,7 @@ The sync playbook is intentionally conservative:
 - Mosquitto
 - Zigbee2MQTT
 - n8n + PostgreSQL
-- Copyparty
+- QuickDrop, with Copyparty migration work in progress
 - Home Assistant LAN ingress proxy
 - Proxmox VM backup storage and backup jobs
 
