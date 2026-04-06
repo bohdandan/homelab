@@ -22,6 +22,7 @@ class CopypartyConfigurationTest(unittest.TestCase):
         self.assertIn("xff-hdr: x-forwarded-for", config)
         self.assertIn("xff-src: 10.42.0.0/16", config)
         self.assertIn("rproxy: -1", config)
+        self.assertIn("{% if homelab_copyparty_ingest_ready | default(false) %}", config)
 
     def test_copyparty_manifest_owns_live_share_surface(self) -> None:
         manifest = Path("kubernetes/base/copyparty/manifests.yaml.j2").read_text()
@@ -38,6 +39,7 @@ class CopypartyConfigurationTest(unittest.TestCase):
         self.assertIn("mountPath: /srv/share", manifest)
         self.assertIn("mountPath: /srv/ingest", manifest)
         self.assertIn("mountPath: /srv/ingest/lost+found", manifest)
+        self.assertIn("{% if homelab_copyparty_ingest_ready | default(false) %}", manifest)
         self.assertIn("checksum/copyparty-config", manifest)
         self.assertIn("mountPath: /etc/copyparty/copyparty.conf", manifest)
         self.assertIn("secretName: copyparty-config", manifest)
@@ -73,16 +75,20 @@ class CopypartyConfigurationTest(unittest.TestCase):
         playbook = Path("ansible/playbooks/40-deploy-apps.yml").read_text()
 
         self.assertIn("homelab_copyparty_secrets_ready", playbook)
+        self.assertIn("homelab_copyparty_share_ready", playbook)
+        self.assertIn("homelab_copyparty_ingest_ready", playbook)
         self.assertIn("homelab_copyparty_storage_ready", playbook)
         self.assertIn("Check Copyparty share mount readiness on the worker", playbook)
         self.assertIn("Check Copyparty ingest mount readiness on the worker", playbook)
         self.assertIn("findmnt -n -M {{ homelab_effective.storage.copyparty_share.mount_path }}", playbook)
         self.assertIn("findmnt -n -M {{ homelab_effective.storage.copyparty_ingest.worker_mount_path }}", playbook)
         self.assertIn("delegate_to: \"{{ groups['k3s_worker'][0] }}\"", playbook)
-        self.assertIn("Skipping Copyparty until the dedicated share and ingest mounts are ready", playbook)
+        self.assertIn("The removable ingest", playbook)
         self.assertIn("copyparty_ingest_mount.stdout in ['nfs', 'nfs4']", playbook)
+        self.assertIn("copyparty_share_mount.stdout == 'ext4'", playbook)
         self.assertIn("Render Copyparty manifest", playbook)
         self.assertIn("../../kubernetes/base/copyparty/manifests.yaml.j2", playbook)
+        self.assertIn("homelab_copyparty_ingest_ready: \"{{ homelab_copyparty_ingest_ready | bool }}\"", playbook)
         self.assertIn("Delete legacy QuickDrop ingress before Copyparty hostname cutover", playbook)
         self.assertIn("kubectl delete ingress quickdrop -n quickdrop --ignore-not-found=true --wait=true --timeout=240s", playbook)
         self.assertIn("Apply Copyparty manifest", playbook)
@@ -93,6 +99,17 @@ class CopypartyConfigurationTest(unittest.TestCase):
         self.assertNotIn("Apply QuickDrop manifest", playbook)
         self.assertNotIn("Wait for QuickDrop deployment", playbook)
         self.assertNotIn("apps.quickdrop", playbook)
+
+    def test_stateful_storage_playbook_handles_missing_ingest_disk(self) -> None:
+        playbook = Path("ansible/playbooks/32-configure-stateful-storage.yml").read_text()
+
+        self.assertIn("sg3-utils", playbook)
+        self.assertIn("rescan-scsi-bus -r", playbook)
+        self.assertIn("Remove ingest NFS export when the removable SSD is absent", playbook)
+        self.assertIn("Force-unmount worker ingest path when the removable SSD is absent", playbook)
+        self.assertIn("Remove worker ingest fstab entry when the removable SSD is absent", playbook)
+        self.assertIn("Remove stale worker ingest mountpoint when the removable SSD is absent", playbook)
+        self.assertIn("hostvars[groups['proxmox'][0]].copyparty_ingest_device.rc != 0", playbook)
 
     def test_quickdrop_manifest_is_removed(self) -> None:
         self.assertFalse(Path("kubernetes/base/quickdrop/manifests.yaml.j2").exists())

@@ -77,9 +77,15 @@
       ansible.builtin.apt:
         name:
           - nfs-kernel-server
+          - sg3-utils
         state: present
         update_cache: true
         cache_valid_time: 3600
+
+    - name: Rescan SCSI bus and remove stale removable ingest devices
+      ansible.builtin.command: rescan-scsi-bus -r
+      changed_when: false
+      failed_when: false
 
     - name: Detect removable ingest SSD by UUID
       ansible.builtin.command: >-
@@ -135,6 +141,14 @@
         content: |
           {{ copyparty_ingest_export_line }}
       register: copyparty_ingest_export
+      when: copyparty_ingest_device.rc == 0
+
+    - name: Remove ingest NFS export when the removable SSD is absent
+      ansible.builtin.file:
+        path: /etc/exports.d/copyparty-ingest.exports
+        state: absent
+      register: copyparty_ingest_export_removed
+      when: copyparty_ingest_device.rc != 0
 
     - name: Ensure NFS server is enabled and started
       ansible.builtin.service:
@@ -144,7 +158,9 @@
 
     - name: Reload NFS exports when the export definition changes
       ansible.builtin.command: exportfs -ra
-      when: copyparty_ingest_export.changed
+      when:
+        - (copyparty_ingest_export is defined and copyparty_ingest_export.changed)
+          or (copyparty_ingest_export_removed is defined and copyparty_ingest_export_removed.changed)
 
 - name: Mount dedicated Copyparty share disk and ingest export on the stateful worker
   hosts: k3s_worker
@@ -240,6 +256,23 @@
         state: directory
         mode: "0755"
 
+    - name: Force-unmount worker ingest path when the removable SSD is absent
+      ansible.builtin.shell: |
+        umount -lf {{ homelab_effective.storage.copyparty_ingest.worker_mount_path }} || true
+      when: hostvars[groups['proxmox'][0]].copyparty_ingest_device.rc != 0
+
+    - name: Remove worker ingest fstab entry when the removable SSD is absent
+      ansible.posix.mount:
+        path: "{{ homelab_effective.storage.copyparty_ingest.worker_mount_path }}"
+        state: absent_from_fstab
+      when: hostvars[groups['proxmox'][0]].copyparty_ingest_device.rc != 0
+
+    - name: Remove stale worker ingest mountpoint when the removable SSD is absent
+      ansible.builtin.file:
+        path: "{{ homelab_effective.storage.copyparty_ingest.worker_mount_path }}"
+        state: absent
+      when: hostvars[groups['proxmox'][0]].copyparty_ingest_device.rc != 0
+
     - name: Ensure worker ingest mountpoint exists
       ansible.builtin.file:
         path: "{{ homelab_effective.storage.copyparty_ingest.worker_mount_path }}"
@@ -254,3 +287,4 @@
         fstype: nfs
         opts: ro,nofail,_netdev,x-systemd.automount
         state: mounted
+      when: hostvars[groups['proxmox'][0]].copyparty_ingest_device.rc == 0

@@ -19,7 +19,9 @@
     e2d: true
     scan: 60
 
+{% if homelab_copyparty_ingest_ready | default(false) %}
 [/ingest]
   /srv/ingest
   accs:
     r: @acct
+{% endif %}

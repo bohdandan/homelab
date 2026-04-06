@@ -180,6 +180,8 @@
 
     - name: Default Copyparty storage readiness to false
       ansible.builtin.set_fact:
+        homelab_copyparty_share_ready: false
+        homelab_copyparty_ingest_ready: false
         homelab_copyparty_storage_ready: false
 
     - name: Report skipped Copyparty rollout
@@ -209,19 +211,21 @@
 
     - name: Record Copyparty storage readiness
       ansible.builtin.set_fact:
+        homelab_copyparty_share_ready: "{{ copyparty_share_mount.stdout == 'ext4' }}"
+        homelab_copyparty_ingest_ready: "{{ copyparty_ingest_mount.stdout in ['nfs', 'nfs4'] }}"
         homelab_copyparty_storage_ready: >-
           {{
             copyparty_share_mount.stdout == 'ext4'
-            and copyparty_ingest_mount.stdout in ['nfs', 'nfs4']
           }}
       when: hostvars['localhost'].homelab_copyparty_secrets_ready | bool
 
     - name: Report skipped Copyparty rollout because storage is not mounted
       ansible.builtin.debug:
         msg: >-
-          Skipping Copyparty until the dedicated share and ingest mounts are ready on
-          {{ groups['k3s_worker'][0] }}. Expected ext4 at {{ homelab_effective.storage.copyparty_share.mount_path }}
-          and nfs or nfs4 at {{ homelab_effective.storage.copyparty_ingest.worker_mount_path }}.
+          Skipping Copyparty until the dedicated share mount is ready on {{ groups['k3s_worker'][0] }}.
+          Expected ext4 at {{ homelab_effective.storage.copyparty_share.mount_path }}. The removable ingest
+          mount at {{ homelab_effective.storage.copyparty_ingest.worker_mount_path }} is optional and only
+          rendered when present.
       when:
         - hostvars['localhost'].homelab_copyparty_secrets_ready | bool
         - not (homelab_copyparty_storage_ready | bool)
@@ -379,6 +383,8 @@
         src: ../../kubernetes/base/copyparty/manifests.yaml.j2
         dest: /tmp/copyparty.yaml
         mode: "0644"
+      vars:
+        homelab_copyparty_ingest_ready: "{{ homelab_copyparty_ingest_ready | bool }}"
       when:
         - hostvars['localhost'].homelab_copyparty_secrets_ready | bool
         - homelab_copyparty_storage_ready | bool
