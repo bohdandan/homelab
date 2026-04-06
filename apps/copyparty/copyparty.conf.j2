@@ -1,5 +1,7 @@
 {% set copyparty_admin_name = homelab_effective.secrets[homelab_effective.apps.copyparty.admin_name_secret] %}
 {% set copyparty_admin_password = homelab_effective.secrets[homelab_effective.apps.copyparty.admin_password_secret] %}
+{% set copyparty_guest_password = homelab_effective.secrets.copyparty_guest_password %}
+{% set copyparty_manager_password = homelab_effective.secrets.copyparty_manager_password %}
 [global]
   name: magnetic-marten-share
   shr: /shr
@@ -10,12 +12,14 @@
 
 [accounts]
   {{ copyparty_admin_name }}: {{ copyparty_admin_password }}
+  guest: {{ copyparty_guest_password }}
+  manager: {{ copyparty_manager_password }}
 
 [/share]
   /srv/share
   accs:
     r: @acct
-    rw: {{ copyparty_admin_name }}
+    rw: {{ copyparty_admin_name }}, manager
   flags:
     e2d: true
     scan: 60
@@ -24,5 +28,5 @@
 [/ingest]
   /srv/ingest
   accs:
-    r: @acct
+    r: {{ copyparty_admin_name }}
 {% endif %}

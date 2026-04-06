@@ -11,12 +11,16 @@ class CopypartyConfigurationTest(unittest.TestCase):
         self.assertIn("# Copyparty", readme)
         self.assertIn("port-forward svc/copyparty 8088:80", readme)
         self.assertIn("[accounts]", config)
+        self.assertIn("guest:", config)
+        self.assertIn("manager:", config)
         self.assertIn("[global]", config)
         self.assertIn("shr", config)
         self.assertIn("[/share]", config)
         self.assertIn("/srv/share", config)
         self.assertIn("[/ingest]", config)
         self.assertIn("/srv/ingest", config)
+        self.assertIn("rw: {{ copyparty_admin_name }}, manager", config)
+        self.assertIn("r: {{ copyparty_admin_name }}", config)
         self.assertIn("rw:", config)
         self.assertIn("r:", config)
         self.assertIn("xff-hdr: x-forwarded-for", config)
@@ -72,6 +76,12 @@ class CopypartyConfigurationTest(unittest.TestCase):
         self.assertNotIn("Public direct ingress for QuickDrop", readme)
         self.assertNotIn("deploys QuickDrop", readme)
         self.assertNotIn("QuickDrop, with Copyparty migration work in progress", readme)
+
+    def test_copyparty_role_passwords_are_stored_in_sops(self) -> None:
+        secrets = Path("ansible/group_vars/all/secrets.sops.yaml").read_text()
+
+        self.assertIn("copyparty_guest_password:", secrets)
+        self.assertIn("copyparty_manager_password:", secrets)
 
     def test_copyparty_ingest_disk_config_matches_the_current_recording_ssd(self) -> None:
         main_yml = Path("ansible/group_vars/all/main.yml").read_text()
