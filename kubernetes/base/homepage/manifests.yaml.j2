@@ -26,12 +26,12 @@ data:
             description: Homelab documentation
             namespace: {{ homelab_effective.apps.astro_docs.namespace }}
             podSelector: app=astro-docs
-        - QuickDrop:
+        - Copyparty:
             href: https://{{ homelab_effective.domain.share_internal }}
             siteMonitor: https://{{ homelab_effective.domain.share_internal }}/
             description: Large file sharing
-            namespace: {{ homelab_effective.apps.quickdrop.namespace }}
-            podSelector: app=quickdrop
+            namespace: {{ homelab_effective.apps.copyparty.namespace }}
+            podSelector: app=copyparty
         - n8n:
             href: https://{{ homelab_effective.domain.n8n_internal }}
             siteMonitor: https://{{ homelab_effective.domain.n8n_internal }}/
