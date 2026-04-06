@@ -19,6 +19,9 @@ class CopypartyConfigurationTest(unittest.TestCase):
         self.assertIn("/srv/ingest", config)
         self.assertIn("rw:", config)
         self.assertIn("r:", config)
+        self.assertIn("xff-hdr: x-forwarded-for", config)
+        self.assertIn("xff-src: 10.42.0.0/16", config)
+        self.assertIn("rproxy: -1", config)
 
     def test_copyparty_manifest_owns_live_share_surface(self) -> None:
         manifest = Path("kubernetes/base/copyparty/manifests.yaml.j2").read_text()
