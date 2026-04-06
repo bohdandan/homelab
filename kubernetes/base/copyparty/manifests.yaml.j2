@@ -72,6 +72,10 @@ spec:
             - name: copyparty-ingest
               mountPath: /srv/ingest
               readOnly: true
+            # Hide the ext4 maintenance directory from the removable ingest disk.
+            - name: copyparty-ingest-lost-found-shadow
+              mountPath: /srv/ingest/lost+found
+              readOnly: true
       volumes:
         - name: copyparty-config
           secret:
@@ -84,6 +88,8 @@ spec:
           hostPath:
             path: {{ homelab_effective.storage.copyparty_ingest.worker_mount_path }}
             type: Directory
+        - name: copyparty-ingest-lost-found-shadow
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service
