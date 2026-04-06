@@ -1,0 +1,99 @@
+{% set copyparty_rendered_config = lookup("template", playbook_dir ~ "/../../apps/copyparty/copyparty.conf.j2") %}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ homelab_effective.apps.copyparty.namespace }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: copyparty-config
+  namespace: {{ homelab_effective.apps.copyparty.namespace }}
+type: Opaque
+stringData:
+  copyparty.conf: |
+{{ copyparty_rendered_config | indent(4, true) }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: copyparty
+  namespace: {{ homelab_effective.apps.copyparty.namespace }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: copyparty
+  template:
+    metadata:
+      annotations:
+        checksum/copyparty-config: "{{ copyparty_rendered_config | hash('sha256') }}"
+      labels:
+        app: copyparty
+    spec:
+      nodeSelector:
+        homelab.io/stateful: "true"
+        kubernetes.io/hostname: {{ homelab_effective.k3s.worker.name }}
+      containers:
+        - name: copyparty
+          image: {{ homelab_effective.apps.copyparty.image }}
+          args:
+            - -c
+            - /etc/copyparty/copyparty.conf
+            - -i
+            - 0.0.0.0
+            - -p
+            - "3923"
+          ports:
+            - containerPort: 3923
+              name: http
+          readinessProbe:
+            tcpSocket:
+              port: http
+          livenessProbe:
+            tcpSocket:
+              port: http
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 2Gi
+          volumeMounts:
+            - name: copyparty-config
+              mountPath: /etc/copyparty/copyparty.conf
+              subPath: copyparty.conf
+              readOnly: true
+            - name: copyparty-share
+              mountPath: /srv/share
+            - name: copyparty-ingest
+              mountPath: /srv/ingest
+              readOnly: true
+      volumes:
+        - name: copyparty-config
+          secret:
+            secretName: copyparty-config
+        - name: copyparty-share
+          hostPath:
+            path: {{ homelab_effective.apps.copyparty.share_host_path }}
+            type: Directory
+        - name: copyparty-ingest
+          hostPath:
+            path: {{ homelab_effective.apps.copyparty.ingest_mount_path }}
+            type: Directory
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: copyparty
+  namespace: {{ homelab_effective.apps.copyparty.namespace }}
+spec:
+  selector:
+    app: copyparty
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

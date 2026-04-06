@@ -63,6 +63,11 @@
             and homelab_effective.secrets.uptime_kuma_admin_password is defined
             and homelab_effective.secrets.uptime_kuma_admin_password != 'replace-me'
           }}
+        homelab_copyparty_secrets_ready: >-
+          {{
+            (homelab_effective.secrets[homelab_effective.apps.copyparty.admin_name_secret] | default('replace-me')) != 'replace-me'
+            and (homelab_effective.secrets[homelab_effective.apps.copyparty.admin_password_secret] | default('replace-me')) != 'replace-me'
+          }}
 
 - name: Install cluster add-ons and workloads
   hosts: k3s_control
@@ -172,6 +177,54 @@
           Skipping Zigbee2MQTT until the SLZB-MR4 IP is recorded in ansible/group_vars/all/main.yml
           with a real LAN address instead of 0.0.0.0.
       when: not (hostvars['localhost'].homelab_zigbee_stack_ready | bool)
+
+    - name: Default Copyparty storage readiness to false
+      ansible.builtin.set_fact:
+        homelab_copyparty_storage_ready: false
+
+    - name: Report skipped Copyparty rollout
+      ansible.builtin.debug:
+        msg: >-
+          Skipping Copyparty until copyparty_admin_name and copyparty_admin_password are populated
+          in ansible/group_vars/all/secrets.sops.yaml.
+      when: not (hostvars['localhost'].homelab_copyparty_secrets_ready | bool)
+
+    - name: Check Copyparty share mount readiness on the worker
+      ansible.builtin.command:
+        cmd: findmnt -n -M {{ homelab_effective.apps.copyparty.share_host_path }} -o FSTYPE
+      register: copyparty_share_mount
+      changed_when: false
+      failed_when: false
+      delegate_to: "{{ groups['k3s_worker'][0] }}"
+      when: hostvars['localhost'].homelab_copyparty_secrets_ready | bool
+
+    - name: Check Copyparty ingest mount readiness on the worker
+      ansible.builtin.command:
+        cmd: findmnt -n -M {{ homelab_effective.apps.copyparty.ingest_mount_path }} -o FSTYPE
+      register: copyparty_ingest_mount
+      changed_when: false
+      failed_when: false
+      delegate_to: "{{ groups['k3s_worker'][0] }}"
+      when: hostvars['localhost'].homelab_copyparty_secrets_ready | bool
+
+    - name: Record Copyparty storage readiness
+      ansible.builtin.set_fact:
+        homelab_copyparty_storage_ready: >-
+          {{
+            copyparty_share_mount.stdout == 'ext4'
+            and copyparty_ingest_mount.stdout in ['nfs', 'nfs4']
+          }}
+      when: hostvars['localhost'].homelab_copyparty_secrets_ready | bool
+
+    - name: Report skipped Copyparty rollout because storage is not mounted
+      ansible.builtin.debug:
+        msg: >-
+          Skipping Copyparty until the dedicated share and ingest mounts are ready on
+          {{ groups['k3s_worker'][0] }}. Expected ext4 at {{ homelab_effective.apps.copyparty.share_host_path }}
+          and nfs or nfs4 at {{ homelab_effective.apps.copyparty.ingest_mount_path }}.
+      when:
+        - hostvars['localhost'].homelab_copyparty_secrets_ready | bool
+        - not (homelab_copyparty_storage_ready | bool)
 
     - name: Render Zigbee2MQTT manifest
       ansible.builtin.template:
@@ -321,6 +374,22 @@
         cmd: kubectl apply -f /tmp/n8n.yaml
       when: hostvars['localhost'].homelab_app_secrets_ready | bool
 
+    - name: Render Copyparty manifest
+      ansible.builtin.template:
+        src: ../../kubernetes/base/copyparty/manifests.yaml.j2
+        dest: /tmp/copyparty.yaml
+        mode: "0644"
+      when:
+        - hostvars['localhost'].homelab_copyparty_secrets_ready | bool
+        - homelab_copyparty_storage_ready | bool
+
+    - name: Apply Copyparty manifest
+      ansible.builtin.command:
+        cmd: kubectl apply -f /tmp/copyparty.yaml
+      when:
+        - hostvars['localhost'].homelab_copyparty_secrets_ready | bool
+        - homelab_copyparty_storage_ready | bool
+
     - name: Render QuickDrop manifest
       ansible.builtin.template:
         src: ../../kubernetes/base/quickdrop/manifests.yaml.j2
@@ -443,6 +512,13 @@
       ansible.builtin.command:
         cmd: kubectl rollout status deployment/n8n -n {{ homelab_effective.apps.n8n.namespace }} --timeout=240s
       when: hostvars['localhost'].homelab_app_secrets_ready | bool
+
+    - name: Wait for Copyparty deployment
+      ansible.builtin.command:
+        cmd: kubectl rollout status deployment/copyparty -n {{ homelab_effective.apps.copyparty.namespace }} --timeout=240s
+      when:
+        - hostvars['localhost'].homelab_copyparty_secrets_ready | bool
+        - homelab_copyparty_storage_ready | bool
 
     - name: Wait for QuickDrop deployment
       ansible.builtin.command:

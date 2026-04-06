@@ -204,6 +204,16 @@
         opts: defaults
         state: mounted
 
+    - name: Unmount legacy QuickDrop direct filesystem mount before compatibility bind mount
+      ansible.posix.mount:
+        path: "{{ homelab_effective.storage.quickdrop_share.mount_path }}"
+        state: unmounted
+
+    - name: Remove legacy QuickDrop direct filesystem fstab entry before compatibility bind mount
+      ansible.posix.mount:
+        path: "{{ homelab_effective.storage.quickdrop_share.mount_path }}"
+        state: absent_from_fstab
+
     - name: Ensure QuickDrop compatibility mountpoint exists
       ansible.builtin.file:
         path: "{{ homelab_effective.storage.quickdrop_share.mount_path }}"
