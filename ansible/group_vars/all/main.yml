@@ -78,9 +78,10 @@ homelab:
       files_path: /var/lib/quickdrop-share/files
     copyparty_ingest:
       proxmox_device: /dev/sdb1
-      filesystem_type: ext4
-      filesystem_label: Extreme SSD
-      filesystem_uuid: c58cca5f-7a37-4e08-aa0e-ba02c66126be
+      filesystem_type: exfat
+      filesystem_label: NINJA
+      filesystem_uuid: 651F-B1B5
+      samba_share_name: copyparty-ingest
       proxmox_mount_path: /srv/ingest/current
       proxmox_export_path: /srv/ingest/current
       worker_mount_path: /srv/ingest/current

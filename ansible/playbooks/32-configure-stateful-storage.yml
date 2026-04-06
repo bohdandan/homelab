@@ -63,20 +63,18 @@
           --scsi1 {{ homelab_effective.storage.copyparty_share.proxmox_device_by_id }},backup=0,discard=on,ssd=1
       when: "'scsi1:' not in copyparty_worker_vm_config.stdout"
 
-- name: Configure removable Copyparty ingest storage and NFS export on the Proxmox host
+- name: Configure removable Copyparty ingest storage and Samba share on the Proxmox host
   hosts: proxmox
   gather_facts: false
   become: true
   vars:
     homelab_effective: "{{ hostvars['localhost'].homelab_effective }}"
-    copyparty_ingest_export_line: >-
-      {{ homelab_effective.storage.copyparty_ingest.proxmox_export_path }}
-      {{ homelab_effective.k3s.worker.ip }}(ro,sync,no_subtree_check,root_squash)
+    copyparty_ingest_samba_share_name: "{{ homelab_effective.storage.copyparty_ingest.samba_share_name }}"
   tasks:
-    - name: Install minimal NFS server support
+    - name: Install minimal Samba server support
       ansible.builtin.apt:
         name:
-          - nfs-kernel-server
+          - samba
           - sg3-utils
         state: present
         update_cache: true
@@ -100,9 +98,9 @@
         state: directory
         mode: "0755"
 
-    - name: Ensure NFS exports directory exists
+    - name: Ensure removable ingest mount root exists after unmounting when disk is absent
       ansible.builtin.file:
-        path: /etc/exports.d
+        path: "{{ homelab_effective.storage.copyparty_ingest.proxmox_mount_path }}"
         state: directory
         mode: "0755"
 
@@ -134,33 +132,46 @@
         mode: "0755"
       when: copyparty_ingest_device.rc != 0
 
-    - name: Configure read-only ingest NFS export for the worker
-      ansible.builtin.copy:
-        dest: /etc/exports.d/copyparty-ingest.exports
-        mode: "0644"
-        content: |
-          {{ copyparty_ingest_export_line }}
-      register: copyparty_ingest_export
+    - name: Manage read-only Samba ingest share for the worker
+      ansible.builtin.blockinfile:
+        path: /etc/samba/smb.conf
+        marker: "; {mark} ANSIBLE MANAGED COPYPARTY INGEST"
+        insertafter: EOF
+        block: |
+          [{{ copyparty_ingest_samba_share_name }}]
+             path = {{ homelab_effective.storage.copyparty_ingest.proxmox_export_path }}
+             browseable = yes
+             read only = yes
+             guest ok = yes
+             guest only = yes
+             force user = root
+             force group = root
+             hosts allow = {{ homelab_effective.k3s.worker.ip }}
+             hosts deny = 0.0.0.0/0
+      register: copyparty_ingest_samba_share
       when: copyparty_ingest_device.rc == 0
 
-    - name: Remove ingest NFS export when the removable SSD is absent
-      ansible.builtin.file:
-        path: /etc/exports.d/copyparty-ingest.exports
+    - name: Remove read-only Samba ingest share when the removable SSD is absent
+      ansible.builtin.blockinfile:
+        path: /etc/samba/smb.conf
+        marker: "; {mark} ANSIBLE MANAGED COPYPARTY INGEST"
         state: absent
-      register: copyparty_ingest_export_removed
+      register: copyparty_ingest_samba_share_removed
       when: copyparty_ingest_device.rc != 0
 
-    - name: Ensure NFS server is enabled and started
+    - name: Ensure Samba server is enabled and started
       ansible.builtin.service:
-        name: nfs-kernel-server
+        name: smbd
         state: started
         enabled: true
 
-    - name: Reload NFS exports when the export definition changes
-      ansible.builtin.command: exportfs -ra
+    - name: Restart Samba when the ingest share definition changes
+      ansible.builtin.service:
+        name: smbd
+        state: restarted
       when:
-        - (copyparty_ingest_export is defined and copyparty_ingest_export.changed)
-          or (copyparty_ingest_export_removed is defined and copyparty_ingest_export_removed.changed)
+        - (copyparty_ingest_samba_share is defined and copyparty_ingest_samba_share.changed)
+          or (copyparty_ingest_samba_share_removed is defined and copyparty_ingest_samba_share_removed.changed)
 
 - name: Mount dedicated Copyparty share disk and ingest export on the stateful worker
   hosts: k3s_worker
@@ -169,10 +180,10 @@
   vars:
     homelab_effective: "{{ hostvars['localhost'].homelab_effective }}"
   tasks:
-    - name: Install NFS client support
+    - name: Install CIFS client support
       ansible.builtin.apt:
         name:
-          - nfs-common
+          - cifs-utils
         state: present
         update_cache: true
         cache_valid_time: 3600
@@ -279,12 +290,12 @@
         state: directory
         mode: "0755"
 
-    - name: Mount Proxmox-host ingest export read-only on the worker
+    - name: Mount Proxmox-host ingest share read-only on the worker
       ansible.posix.mount:
         path: "{{ homelab_effective.storage.copyparty_ingest.worker_mount_path }}"
         src: >-
-          {{ homelab_effective.proxmox.ssh_host }}:{{ homelab_effective.storage.copyparty_ingest.proxmox_export_path }}
-        fstype: nfs
-        opts: ro,nofail,_netdev,x-systemd.automount
+          //{{ homelab_effective.proxmox.ssh_host }}/{{ homelab_effective.storage.copyparty_ingest.samba_share_name }}
+        fstype: cifs
+        opts: ro,guest,nofail,_netdev,x-systemd.automount,vers=3.0,uid=0,gid=0,file_mode=0444,dir_mode=0555,iocharset=utf8
         state: mounted
       when: hostvars[groups['proxmox'][0]].copyparty_ingest_device.rc == 0

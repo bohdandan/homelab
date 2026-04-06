@@ -212,7 +212,7 @@
     - name: Record Copyparty storage readiness
       ansible.builtin.set_fact:
         homelab_copyparty_share_ready: "{{ copyparty_share_mount.stdout == 'ext4' }}"
-        homelab_copyparty_ingest_ready: "{{ copyparty_ingest_mount.stdout in ['nfs', 'nfs4'] }}"
+        homelab_copyparty_ingest_ready: "{{ copyparty_ingest_mount.stdout == 'cifs' }}"
         homelab_copyparty_storage_ready: >-
           {{
             copyparty_share_mount.stdout == 'ext4'

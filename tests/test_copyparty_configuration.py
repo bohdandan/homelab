@@ -39,6 +39,7 @@ class CopypartyConfigurationTest(unittest.TestCase):
         self.assertIn("path: {{ homelab_effective.storage.copyparty_ingest.worker_mount_path }}", manifest)
         self.assertIn("mountPath: /srv/share", manifest)
         self.assertIn("mountPath: /srv/ingest", manifest)
+        self.assertIn("{% if homelab_effective.storage.copyparty_ingest.filesystem_type == 'ext4' %}", manifest)
         self.assertIn("mountPath: /srv/ingest/lost+found", manifest)
         self.assertIn("{% if homelab_copyparty_ingest_ready | default(false) %}", manifest)
         self.assertIn("checksum/copyparty-config", manifest)
@@ -72,6 +73,15 @@ class CopypartyConfigurationTest(unittest.TestCase):
         self.assertNotIn("deploys QuickDrop", readme)
         self.assertNotIn("QuickDrop, with Copyparty migration work in progress", readme)
 
+    def test_copyparty_ingest_disk_config_matches_the_current_recording_ssd(self) -> None:
+        main_yml = Path("ansible/group_vars/all/main.yml").read_text()
+
+        self.assertIn("copyparty_ingest:", main_yml)
+        self.assertIn("proxmox_device: /dev/sdb1", main_yml)
+        self.assertIn("filesystem_type: exfat", main_yml)
+        self.assertIn("filesystem_label: NINJA", main_yml)
+        self.assertIn("filesystem_uuid: 651F-B1B5", main_yml)
+
     def test_deploy_playbook_wires_copyparty_rollout(self) -> None:
         playbook = Path("ansible/playbooks/40-deploy-apps.yml").read_text()
 
@@ -85,7 +95,7 @@ class CopypartyConfigurationTest(unittest.TestCase):
         self.assertIn("findmnt -n -M {{ homelab_effective.storage.copyparty_ingest.worker_mount_path }}", playbook)
         self.assertIn("delegate_to: \"{{ groups['k3s_worker'][0] }}\"", playbook)
         self.assertIn("The removable ingest", playbook)
-        self.assertIn("copyparty_ingest_mount.stdout in ['nfs', 'nfs4']", playbook)
+        self.assertIn("copyparty_ingest_mount.stdout == 'cifs'", playbook)
         self.assertIn("copyparty_share_mount.stdout == 'ext4'", playbook)
         self.assertIn("Render Copyparty manifest", playbook)
         self.assertIn("../../kubernetes/base/copyparty/manifests.yaml.j2", playbook)
@@ -106,7 +116,12 @@ class CopypartyConfigurationTest(unittest.TestCase):
 
         self.assertIn("sg3-utils", playbook)
         self.assertIn("rescan-scsi-bus -r", playbook)
-        self.assertIn("Remove ingest NFS export when the removable SSD is absent", playbook)
+        self.assertIn("samba", playbook)
+        self.assertIn("cifs-utils", playbook)
+        self.assertIn("Manage read-only Samba ingest share for the worker", playbook)
+        self.assertIn("Remove read-only Samba ingest share when the removable SSD is absent", playbook)
+        self.assertIn("name: smbd", playbook)
+        self.assertIn("fstype: cifs", playbook)
         self.assertIn("Force-unmount worker ingest path when the removable SSD is absent", playbook)
         self.assertIn("Remove worker ingest fstab entry when the removable SSD is absent", playbook)
         self.assertIn("Remove stale worker ingest mountpoint when the removable SSD is absent", playbook)
