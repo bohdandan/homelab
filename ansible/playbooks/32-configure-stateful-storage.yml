@@ -6,7 +6,7 @@
     - name: Load context
       ansible.builtin.include_tasks: ../tasks/load_context.yml
 
-- name: Attach dedicated QuickDrop share disk to the stateful worker VM
+- name: Attach dedicated Copyparty share disk to the stateful worker VM
   hosts: proxmox
   gather_facts: false
   become: true
@@ -15,7 +15,7 @@
   tasks:
     - name: Read current worker VM config
       ansible.builtin.command: "qm config {{ homelab_effective.k3s.worker.vmid }}"
-      register: quickdrop_worker_vm_config
+      register: copyparty_worker_vm_config
       changed_when: false
 
     - name: Fail if a different disk is already attached at scsi1
@@ -24,99 +24,185 @@
           {{ homelab_effective.k3s.worker.name }} already has scsi1 configured with a different backing device.
           Inspect `qm config {{ homelab_effective.k3s.worker.vmid }}` before proceeding.
       when:
-        - "'scsi1:' in quickdrop_worker_vm_config.stdout"
-        - homelab_effective.storage.quickdrop_share.proxmox_device_by_id not in quickdrop_worker_vm_config.stdout
+        - "'scsi1:' in copyparty_worker_vm_config.stdout"
+        - homelab_effective.storage.copyparty_share.proxmox_device_by_id not in copyparty_worker_vm_config.stdout
 
-    - name: Read old VG name from the dedicated QuickDrop share SSD when present
+    - name: Read old VG name from the dedicated Copyparty share SSD when present
       ansible.builtin.shell: |
-        if [ -b "{{ homelab_effective.storage.quickdrop_share.proxmox_device }}p3" ]; then
-          pvs --noheadings -o vg_name "{{ homelab_effective.storage.quickdrop_share.proxmox_device }}p3" 2>/dev/null | xargs
+        if [ -b "{{ homelab_effective.storage.copyparty_share.proxmox_device }}p3" ]; then
+          pvs --noheadings -o vg_name "{{ homelab_effective.storage.copyparty_share.proxmox_device }}p3" 2>/dev/null | xargs
         fi
-      register: quickdrop_old_vg
+      register: copyparty_old_vg
       changed_when: false
-      when: "'scsi1:' not in quickdrop_worker_vm_config.stdout"
+      when: "'scsi1:' not in copyparty_worker_vm_config.stdout"
 
-    - name: Deactivate old VG on the dedicated QuickDrop share SSD
-      ansible.builtin.command: "vgchange -an {{ quickdrop_old_vg.stdout }}"
+    - name: Deactivate old VG on the dedicated Copyparty share SSD
+      ansible.builtin.command: "vgchange -an {{ copyparty_old_vg.stdout }}"
       when:
-        - "'scsi1:' not in quickdrop_worker_vm_config.stdout"
-        - (quickdrop_old_vg.stdout | trim | length) > 0
+        - "'scsi1:' not in copyparty_worker_vm_config.stdout"
+        - (copyparty_old_vg.stdout | trim | length) > 0
 
-    - name: Wipe partition table from the dedicated QuickDrop share SSD
-      ansible.builtin.command: "sgdisk --zap-all {{ homelab_effective.storage.quickdrop_share.proxmox_device }}"
-      when: "'scsi1:' not in quickdrop_worker_vm_config.stdout"
+    - name: Wipe partition table from the dedicated Copyparty share SSD
+      ansible.builtin.command: "sgdisk --zap-all {{ homelab_effective.storage.copyparty_share.proxmox_device }}"
+      when: "'scsi1:' not in copyparty_worker_vm_config.stdout"
 
-    - name: Wipe filesystem signatures from the dedicated QuickDrop share SSD
-      ansible.builtin.command: "wipefs -a -f {{ homelab_effective.storage.quickdrop_share.proxmox_device }}"
-      when: "'scsi1:' not in quickdrop_worker_vm_config.stdout"
+    - name: Wipe filesystem signatures from the dedicated Copyparty share SSD
+      ansible.builtin.command: "wipefs -a -f {{ homelab_effective.storage.copyparty_share.proxmox_device }}"
+      when: "'scsi1:' not in copyparty_worker_vm_config.stdout"
 
-    - name: Re-read partition table after wiping the dedicated QuickDrop share SSD
+    - name: Re-read partition table after wiping the dedicated Copyparty share SSD
       ansible.builtin.shell: |
-        blockdev --rereadpt {{ homelab_effective.storage.quickdrop_share.proxmox_device }} || true
+        blockdev --rereadpt {{ homelab_effective.storage.copyparty_share.proxmox_device }} || true
         udevadm settle
-      when: "'scsi1:' not in quickdrop_worker_vm_config.stdout"
+      when: "'scsi1:' not in copyparty_worker_vm_config.stdout"
 
-    - name: Attach dedicated QuickDrop share disk to the stateful worker VM
+    - name: Attach dedicated Copyparty share disk to the stateful worker VM
       ansible.builtin.command:
         cmd: >-
           qm set {{ homelab_effective.k3s.worker.vmid }}
-          --scsi1 {{ homelab_effective.storage.quickdrop_share.proxmox_device_by_id }},backup=0,discard=on,ssd=1
-      when: "'scsi1:' not in quickdrop_worker_vm_config.stdout"
+          --scsi1 {{ homelab_effective.storage.copyparty_share.proxmox_device_by_id }},backup=0,discard=on,ssd=1
+      when: "'scsi1:' not in copyparty_worker_vm_config.stdout"
 
-- name: Mount dedicated QuickDrop share disk on the stateful worker
+- name: Configure removable Copyparty ingest storage and NFS export on the Proxmox host
+  hosts: proxmox
+  gather_facts: false
+  become: true
+  vars:
+    homelab_effective: "{{ hostvars['localhost'].homelab_effective }}"
+    copyparty_ingest_export_line: >-
+      {{ homelab_effective.storage.copyparty_ingest.proxmox_export_path }}
+      {{ homelab_effective.k3s.worker.ip }}(ro,sync,no_subtree_check,root_squash)
+  tasks:
+    - name: Install minimal NFS server support
+      ansible.builtin.apt:
+        name:
+          - nfs-kernel-server
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Ensure removable ingest mount root exists
+      ansible.builtin.file:
+        path: "{{ homelab_effective.storage.copyparty_ingest.proxmox_mount_path }}"
+        state: directory
+        mode: "0755"
+
+    - name: Detect removable ingest SSD by UUID
+      ansible.builtin.command: >-
+        blkid -U {{ homelab_effective.storage.copyparty_ingest.filesystem_uuid }}
+      register: copyparty_ingest_device
+      failed_when: false
+      changed_when: false
+
+    - name: Mount removable ingest SSD read-only when present
+      ansible.posix.mount:
+        path: "{{ homelab_effective.storage.copyparty_ingest.proxmox_mount_path }}"
+        src: "UUID={{ homelab_effective.storage.copyparty_ingest.filesystem_uuid }}"
+        fstype: "{{ homelab_effective.storage.copyparty_ingest.filesystem_type }}"
+        opts: ro,nofail,x-systemd.device-timeout=5s
+        state: mounted
+      when: copyparty_ingest_device.rc == 0
+
+    - name: Remove removable ingest fstab entry when disk is absent
+      ansible.posix.mount:
+        path: "{{ homelab_effective.storage.copyparty_ingest.proxmox_mount_path }}"
+        state: absent_from_fstab
+      when: copyparty_ingest_device.rc != 0
+
+    - name: Configure read-only ingest NFS export for the worker
+      ansible.builtin.copy:
+        dest: /etc/exports.d/copyparty-ingest.exports
+        mode: "0644"
+        content: |
+          {{ copyparty_ingest_export_line }}
+      register: copyparty_ingest_export
+
+    - name: Ensure NFS server is enabled and started
+      ansible.builtin.service:
+        name: nfs-kernel-server
+        state: started
+        enabled: true
+
+    - name: Reload NFS exports when the export definition changes
+      ansible.builtin.command: exportfs -ra
+      when: copyparty_ingest_export.changed
+
+- name: Mount dedicated Copyparty share disk and ingest export on the stateful worker
   hosts: k3s_worker
   gather_facts: false
   become: true
   vars:
     homelab_effective: "{{ hostvars['localhost'].homelab_effective }}"
   tasks:
-    - name: Rescan SCSI bus for the dedicated QuickDrop share disk
+    - name: Install NFS client support
+      ansible.builtin.apt:
+        name:
+          - nfs-common
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Rescan SCSI bus for the dedicated Copyparty share disk
       ansible.builtin.shell: |
         for host in /sys/class/scsi_host/host*; do
           echo "- - -" > "${host}/scan"
         done
 
-    - name: Wait for the dedicated QuickDrop share disk to appear
+    - name: Wait for the dedicated Copyparty share disk to appear
       ansible.builtin.wait_for:
-        path: "{{ homelab_effective.storage.quickdrop_share.guest_device_by_id }}"
+        path: "{{ homelab_effective.storage.copyparty_share.guest_device_by_id }}"
         timeout: 120
 
-    - name: Read filesystem type for the dedicated QuickDrop share disk
-      ansible.builtin.command: "blkid -o value -s TYPE {{ homelab_effective.storage.quickdrop_share.guest_device_by_id }}"
-      register: quickdrop_share_fs_type
+    - name: Read filesystem type for the dedicated Copyparty share disk
+      ansible.builtin.command: "blkid -o value -s TYPE {{ homelab_effective.storage.copyparty_share.guest_device_by_id }}"
+      register: copyparty_share_fs_type
       failed_when: false
       changed_when: false
 
-    - name: Create ext4 filesystem on the dedicated QuickDrop share disk
+    - name: Create ext4 filesystem on the dedicated Copyparty share disk
       community.general.filesystem:
-        dev: "{{ homelab_effective.storage.quickdrop_share.guest_device_by_id }}"
+        dev: "{{ homelab_effective.storage.copyparty_share.guest_device_by_id }}"
         fstype: ext4
-      when: quickdrop_share_fs_type.rc != 0
+      when: copyparty_share_fs_type.rc != 0
 
-    - name: Read filesystem label for the dedicated QuickDrop share disk
-      ansible.builtin.command: "blkid -o value -s LABEL {{ homelab_effective.storage.quickdrop_share.guest_device_by_id }}"
-      register: quickdrop_share_fs_label
+    - name: Read filesystem label for the dedicated Copyparty share disk
+      ansible.builtin.command: "blkid -o value -s LABEL {{ homelab_effective.storage.copyparty_share.guest_device_by_id }}"
+      register: copyparty_share_fs_label
       failed_when: false
       changed_when: false
 
-    - name: Set filesystem label on the dedicated QuickDrop share disk
+    - name: Set filesystem label on the dedicated Copyparty share disk
       ansible.builtin.command: >-
-        e2label {{ homelab_effective.storage.quickdrop_share.guest_device_by_id }}
-        {{ homelab_effective.storage.quickdrop_share.filesystem_label }}
-      when: quickdrop_share_fs_label.stdout != homelab_effective.storage.quickdrop_share.filesystem_label
+        e2label {{ homelab_effective.storage.copyparty_share.guest_device_by_id }}
+        {{ homelab_effective.storage.copyparty_share.filesystem_label }}
+      when: copyparty_share_fs_label.stdout != homelab_effective.storage.copyparty_share.filesystem_label
 
-    - name: Ensure dedicated QuickDrop share mountpoint exists
+    - name: Ensure dedicated Copyparty share mountpoint exists
+      ansible.builtin.file:
+        path: "{{ homelab_effective.storage.copyparty_share.mount_path }}"
+        state: directory
+        mode: "0755"
+
+    - name: Mount dedicated Copyparty share disk
+      ansible.posix.mount:
+        path: "{{ homelab_effective.storage.copyparty_share.mount_path }}"
+        src: "LABEL={{ homelab_effective.storage.copyparty_share.filesystem_label }}"
+        fstype: ext4
+        opts: defaults
+        state: mounted
+
+    - name: Ensure QuickDrop compatibility mountpoint exists
       ansible.builtin.file:
         path: "{{ homelab_effective.storage.quickdrop_share.mount_path }}"
         state: directory
         mode: "0755"
 
-    - name: Mount dedicated QuickDrop share disk
+    - name: Bind QuickDrop compatibility path to the Copyparty share
       ansible.posix.mount:
         path: "{{ homelab_effective.storage.quickdrop_share.mount_path }}"
-        src: "LABEL={{ homelab_effective.storage.quickdrop_share.filesystem_label }}"
-        fstype: ext4
-        opts: defaults
+        src: "{{ homelab_effective.storage.copyparty_share.mount_path }}"
+        fstype: none
+        opts: bind
         state: mounted
 
     - name: Ensure QuickDrop files directory exists on dedicated share storage
@@ -124,3 +210,18 @@
         path: "{{ homelab_effective.apps.quickdrop.files_host_path }}"
         state: directory
         mode: "0755"
+
+    - name: Ensure worker ingest mountpoint exists
+      ansible.builtin.file:
+        path: "{{ homelab_effective.storage.copyparty_ingest.worker_mount_path }}"
+        state: directory
+        mode: "0755"
+
+    - name: Mount Proxmox-host ingest export read-only on the worker
+      ansible.posix.mount:
+        path: "{{ homelab_effective.storage.copyparty_ingest.worker_mount_path }}"
+        src: >-
+          {{ homelab_effective.proxmox.ssh_host }}:{{ homelab_effective.storage.copyparty_ingest.proxmox_export_path }}
+        fstype: nfs
+        opts: ro,nofail,_netdev,x-systemd.automount
+        state: mounted
