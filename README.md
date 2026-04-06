@@ -272,6 +272,9 @@ The sync playbook is intentionally conservative:
   - Copyparty owns the dedicated second internal SSD mounted on `k3s-worker-01`
   - the legacy QuickDrop filesystem path is kept only as a compatibility alias during the storage bridge
   - the dedicated share SSD is attached to the worker VM with `backup=0`, so the file content is excluded from Proxmox VM backups
+- Removable ingest media is reconciled automatically from `dev-admin-01`.
+  - `copyparty-ingest-reconcile.timer` checks every minute and makes `/ingest` appear or disappear based on whether the recording SSD is attached.
+  - Manual debug commands live in [apps/copyparty/README.md](/Users/bohdandanyliuk/Workspace/homelab/apps/copyparty/README.md).
 - Only encrypted secrets and source templates belong in git.
   - Generated runtime files under `ansible/runtime/`, `ansible/inventory/generated/`, and `packer/ubuntu-k3s-template/runtime/` are intentionally ignored.
 - Hosted Renovate is the recommended image update path for this repo.

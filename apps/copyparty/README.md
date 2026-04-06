@@ -24,3 +24,23 @@ kubectl --kubeconfig ansible/runtime/kubeconfig.raw -n copyparty get pods,svc
 kubectl --kubeconfig ansible/runtime/kubeconfig.raw -n copyparty port-forward svc/copyparty 8088:80
 curl -sI http://127.0.0.1:8088
 ```
+
+## Automatic Ingest Reconciliation
+
+- `apps/copyparty/bin/reconcile-ingest.sh` is the repo-managed reconcile entrypoint for ingest attach/remove events on `dev-admin-01`.
+- `copyparty-ingest-reconcile.timer` runs the reconcile service every one minute and also one minute after boot.
+- In normal operation, `/ingest` is eventual-consistency driven: after the removable SSD is attached or removed, Copyparty should reflect the change within about one minute.
+- If the dev-admin checkout, kubeconfig, or age key is not ready yet, the reconcile pass safely no-ops and waits for the next one-minute timer tick instead of forcing a failing loop.
+- A manual debug run on `dev-admin-01` is:
+
+```bash
+~/workspace/homelab/apps/copyparty/bin/reconcile-ingest.sh
+```
+
+- Timer status commands on `dev-admin-01`:
+
+```bash
+systemctl status copyparty-ingest-reconcile.timer --no-pager
+systemctl list-timers copyparty-ingest-reconcile.timer --no-pager
+journalctl -u copyparty-ingest-reconcile.service -n 50 --no-pager
+```

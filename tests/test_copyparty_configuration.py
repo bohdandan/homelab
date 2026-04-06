@@ -137,6 +137,49 @@ class CopypartyConfigurationTest(unittest.TestCase):
         self.assertIn("Remove stale worker ingest mountpoint when the removable SSD is absent", playbook)
         self.assertIn("hostvars[groups['proxmox'][0]].copyparty_ingest_device.rc != 0", playbook)
 
+    def test_copyparty_ingest_reconcile_automation_is_repo_managed(self) -> None:
+        script = Path("apps/copyparty/bin/reconcile-ingest.sh").read_text()
+        service = Path("ansible/templates/copyparty-ingest-reconcile.service.j2").read_text()
+        timer = Path("ansible/templates/copyparty-ingest-reconcile.timer.j2").read_text()
+        playbook = Path("ansible/playbooks/35-configure-dev-admin.yml").read_text()
+
+        self.assertIn("ansible/runtime/copyparty-ingest-reconcile.lock", script)
+        self.assertIn("flock", script)
+        self.assertIn("ansible/playbooks/32-configure-stateful-storage.yml", script)
+        self.assertIn("ansible/playbooks/40-deploy-apps.yml", script)
+        self.assertIn("preflight: missing ssh key", script)
+        self.assertIn("id_ed25519_copyparty_ingest", script)
+        self.assertIn("state unknown, skipping reconcile", script)
+        self.assertIn("ingest attached, reconciling", script)
+        self.assertIn("ingest removed, reconciling", script)
+        self.assertIn("ingest present, no change", script)
+        self.assertIn("ingest absent, no change", script)
+
+        self.assertIn("Type=oneshot", service)
+        self.assertIn("User=dev", service)
+        self.assertIn("ConditionPathExists=/home/dev/.ssh/id_ed25519_copyparty_ingest", service)
+
+        self.assertIn("OnBootSec=1min", timer)
+        self.assertIn("OnUnitActiveSec=1min", timer)
+
+        self.assertIn("../templates/copyparty-ingest-reconcile.service.j2", playbook)
+        self.assertIn("../templates/copyparty-ingest-reconcile.timer.j2", playbook)
+        self.assertIn("apps/copyparty/bin/reconcile-ingest.sh", playbook)
+        self.assertIn("ssh-keygen -t ed25519", playbook)
+        self.assertIn("id_ed25519_copyparty_ingest", playbook)
+        self.assertIn("copyparty_ingest_automation_public_key", playbook)
+        self.assertIn("ansible.builtin.known_hosts", playbook)
+        self.assertIn("argv:", playbook)
+        self.assertIn("rsync", playbook)
+        self.assertIn("homelab/ansible/", playbook)
+        self.assertIn("homelab/apps/", playbook)
+        self.assertIn("homelab/kubernetes/", playbook)
+        self.assertIn("ansible.posix.authorized_key", playbook)
+        self.assertIn("daemon_reload: true", playbook)
+        self.assertIn("name: copyparty-ingest-reconcile.timer", playbook)
+        self.assertIn("enabled: true", playbook)
+        self.assertIn("state: >", playbook)
+
     def test_quickdrop_manifest_is_removed(self) -> None:
         self.assertFalse(Path("kubernetes/base/quickdrop/manifests.yaml.j2").exists())
 

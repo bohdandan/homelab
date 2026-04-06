@@ -1,0 +1,17 @@
+[Unit]
+Description=Reconcile Copyparty ingest availability
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=/home/dev/workspace/homelab/ansible/group_vars/all/main.yml
+ConditionPathExists=/home/dev/.kube/config
+ConditionPathExists=/home/dev/.config/sops/age/keys.txt
+ConditionPathExists=/home/dev/.ssh/id_ed25519_copyparty_ingest
+
+[Service]
+Type=oneshot
+User=dev
+Group=dev
+Environment=HOME=/home/dev
+Environment=KUBECONFIG=/home/dev/.kube/config
+WorkingDirectory=/home/dev/workspace/homelab
+ExecStart=/home/dev/workspace/homelab/apps/copyparty/bin/reconcile-ingest.sh

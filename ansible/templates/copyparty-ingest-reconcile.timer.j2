@@ -1,0 +1,10 @@
+[Unit]
+Description=Run Copyparty ingest reconciliation every minute
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=1min
+Unit=copyparty-ingest-reconcile.service
+
+[Install]
+WantedBy=timers.target
