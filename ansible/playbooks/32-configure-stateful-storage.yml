@@ -81,18 +81,18 @@
         update_cache: true
         cache_valid_time: 3600
 
-    - name: Ensure removable ingest mount root exists
-      ansible.builtin.file:
-        path: "{{ homelab_effective.storage.copyparty_ingest.proxmox_mount_path }}"
-        state: directory
-        mode: "0755"
-
     - name: Detect removable ingest SSD by UUID
       ansible.builtin.command: >-
         blkid -U {{ homelab_effective.storage.copyparty_ingest.filesystem_uuid }}
       register: copyparty_ingest_device
       failed_when: false
       changed_when: false
+
+    - name: Ensure removable ingest mount root exists
+      ansible.builtin.file:
+        path: "{{ homelab_effective.storage.copyparty_ingest.proxmox_mount_path }}"
+        state: directory
+        mode: "0755"
 
     - name: Mount removable ingest SSD read-only when present
       ansible.posix.mount:
@@ -103,10 +103,23 @@
         state: mounted
       when: copyparty_ingest_device.rc == 0
 
+    - name: Unmount removable ingest SSD when disk is absent
+      ansible.posix.mount:
+        path: "{{ homelab_effective.storage.copyparty_ingest.proxmox_mount_path }}"
+        state: unmounted
+      when: copyparty_ingest_device.rc != 0
+
     - name: Remove removable ingest fstab entry when disk is absent
       ansible.posix.mount:
         path: "{{ homelab_effective.storage.copyparty_ingest.proxmox_mount_path }}"
         state: absent_from_fstab
+      when: copyparty_ingest_device.rc != 0
+
+    - name: Ensure removable ingest mount root remains harmless when disk is absent
+      ansible.builtin.file:
+        path: "{{ homelab_effective.storage.copyparty_ingest.proxmox_mount_path }}"
+        state: directory
+        mode: "0755"
       when: copyparty_ingest_device.rc != 0
 
     - name: Configure read-only ingest NFS export for the worker
