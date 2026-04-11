@@ -12,6 +12,12 @@
   become: true
   vars:
     homelab_effective: "{{ hostvars['localhost'].homelab_effective }}"
+    backup_mount_src: >-
+      {{
+        homelab_effective.proxmox.backup_mount_src
+        | default(homelab_effective.proxmox.backup_device | default(''), true)
+      }}
+    backup_format_device: "{{ homelab_effective.proxmox.backup_format_device | default('', true) }}"
     backup_vmids: >-
       {{
         [
@@ -33,34 +39,39 @@
       failed_when: false
       changed_when: false
 
-    - name: Format backup SSD if requested and not yet mounted
+    - name: Fail when backup mount source is not configured
+      ansible.builtin.fail:
+        msg: >-
+          Backup storage mount source is not configured for
+          {{ homelab_effective.proxmox.backup_mount_path }}.
+          Set homelab.proxmox.backup_mount_src before running the backup playbook.
+      when: backup_mount_src | length == 0
+
+    - name: Format backup SSD if explicitly requested and not yet mounted
       community.general.filesystem:
         fstype: ext4
-        dev: "{{ homelab_effective.proxmox.backup_device }}"
+        dev: "{{ backup_format_device }}"
         force: true
       when:
         - backup_mountpoint.rc != 0
-        - homelab_effective.proxmox.backup_device | length > 0
+        - backup_format_device | length > 0
 
-    - name: Mount backup SSD if a device is configured
+    - name: Persist backup SSD mount in fstab
       ansible.posix.mount:
         path: "{{ homelab_effective.proxmox.backup_mount_path }}"
-        src: "{{ homelab_effective.proxmox.backup_device }}"
+        src: "{{ backup_mount_src }}"
+        fstype: ext4
+        opts: defaults
+        state: present
+
+    - name: Mount backup SSD if it is not already mounted
+      ansible.posix.mount:
+        path: "{{ homelab_effective.proxmox.backup_mount_path }}"
+        src: "{{ backup_mount_src }}"
         fstype: ext4
         opts: defaults
         state: mounted
-      when:
-        - backup_mountpoint.rc != 0
-        - homelab_effective.proxmox.backup_device | length > 0
-
-    - name: Fail when backup storage is not mounted and no device was configured
-      ansible.builtin.fail:
-        msg: >-
-          Backup storage is not mounted at {{ homelab_effective.proxmox.backup_mount_path }}.
-          Set homelab.proxmox.backup_device before running the backup playbook.
-      when:
-        - backup_mountpoint.rc != 0
-        - homelab_effective.proxmox.backup_device | length == 0
+      when: backup_mountpoint.rc != 0
 
     - name: Check whether Proxmox backup storage already exists
       ansible.builtin.command: "pvesm status --storage {{ homelab_effective.proxmox.backup_storage_name }}"

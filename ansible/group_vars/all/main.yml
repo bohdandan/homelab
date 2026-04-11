@@ -50,7 +50,9 @@ homelab:
     haos_template_vmid: 9010
     backup_storage_name: homelab-backup
     backup_mount_path: /mnt/homelab-backups
-    backup_device: /dev/sda1
+    backup_mount_src: UUID=c58cca5f-7a37-4e08-aa0e-ba02c66126be
+    # Leave empty unless intentionally formatting a new backup disk.
+    backup_format_device: ""
     backup_schedule: sat 03:00
     backup_retention: keep-last=4,keep-weekly=8,keep-monthly=3
     backup_mode: snapshot
