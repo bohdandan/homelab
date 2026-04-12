@@ -44,6 +44,8 @@ Current homelab placement:
   - Public direct ingress for Copyparty so large file uploads bypass Cloudflare upload limits
 - `share.homelab.magnetic-marten.com`
   - LAN only through CoreDNS and Traefik for Copyparty
+- `vaultwarden.homelab.magnetic-marten.com`
+  - LAN only through CoreDNS and Traefik with a Traefik IP allowlist
 - `zigbee.homelab.magnetic-marten.com`
   - LAN only through CoreDNS and Traefik for Zigbee2MQTT
 - `changedetection.homelab.magnetic-marten.com`
@@ -85,6 +87,7 @@ Use `apps/<app>/` for app-owned content and configuration.
 - `apps/astro-docs/` is the current example.
 - `apps/home-assistant/` stores the repo-managed HAOS YAML config scaffold and sync workflow.
 - `apps/uptime-kuma/` stores the repo-managed Kuma desired state and reconciliation script.
+- `apps/vaultwarden/` stores the LAN-only password vault operator notes.
 - Keep deployment manifests and IaC wiring in `kubernetes/`, `ansible/`, and `opentofu/` until a broader refactor is justified.
 
 ## Secrets
@@ -138,6 +141,7 @@ SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt sops -e -i ansible/group_vars/all/
   - API token for DNS and Zero Trust resources
   - Cloudflare Access allowlist emails in `ansible/group_vars/all/secrets.sops.yaml`
 - Uptime Kuma admin credentials in `ansible/group_vars/all/secrets.sops.yaml`
+- Vaultwarden admin token in `ansible/group_vars/all/secrets.sops.yaml`
 - Home Assistant Community `SSH & Web Terminal` add-on enabled on `haos-01`
   - SSH key installed for the `hassio` user
 - UniFi local DNS forward domain:
@@ -166,6 +170,7 @@ LAN-only names are resolved by a dedicated CoreDNS service in K3s.
   - `ntfy.homelab.magnetic-marten.com -> 192.168.10.120`
   - `zigbee.homelab.magnetic-marten.com -> 192.168.10.120`
   - `share.homelab.magnetic-marten.com -> 192.168.10.120`
+  - `vaultwarden.homelab.magnetic-marten.com -> 192.168.10.120`
   - `slzb-mr4.homelab.magnetic-marten.com -> <device IP>`
 
 In UniFi, keep clients using the gateway as DNS and add one `Forward Domain`

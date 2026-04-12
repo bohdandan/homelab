@@ -32,6 +32,12 @@ data:
             description: Large file sharing
             namespace: {{ homelab_effective.apps.copyparty.namespace }}
             podSelector: app=copyparty
+        - Vaultwarden:
+            href: https://{{ homelab_effective.domain.vaultwarden }}
+            siteMonitor: https://{{ homelab_effective.domain.vaultwarden }}/
+            description: LAN password vault
+            namespace: {{ homelab_effective.apps.vaultwarden.namespace }}
+            podSelector: app=vaultwarden
         - n8n:
             href: https://{{ homelab_effective.domain.n8n_internal }}
             siteMonitor: https://{{ homelab_effective.domain.n8n_internal }}/

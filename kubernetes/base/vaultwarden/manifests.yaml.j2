@@ -1,0 +1,145 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ homelab_effective.apps.vaultwarden.namespace }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: vaultwarden-admin
+  namespace: {{ homelab_effective.apps.vaultwarden.namespace }}
+type: Opaque
+stringData:
+  admin-token-hash: {{ homelab_effective.secrets.vaultwarden_admin_token_hash | quote }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: vaultwarden-data
+  namespace: {{ homelab_effective.apps.vaultwarden.namespace }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: {{ homelab_effective.apps.vaultwarden.data_storage }}
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: vaultwarden-lan-only
+  namespace: {{ homelab_effective.apps.vaultwarden.namespace }}
+spec:
+  ipAllowList:
+    sourceRange:
+      - 192.168.0.0/16
+      - 10.42.0.0/16
+      - 10.43.0.0/16
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vaultwarden
+  namespace: {{ homelab_effective.apps.vaultwarden.namespace }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: vaultwarden
+  template:
+    metadata:
+      annotations:
+        checksum/vaultwarden-admin: "{{ homelab_effective.secrets.vaultwarden_admin_token_hash | hash('sha256') }}"
+      labels:
+        app: vaultwarden
+    spec:
+      nodeSelector:
+        homelab.io/stateful: "true"
+      containers:
+        - name: vaultwarden
+          image: {{ homelab_effective.apps.vaultwarden.image }}
+          env:
+            - name: DOMAIN
+              value: "https://{{ homelab_effective.domain.vaultwarden }}"
+            - name: ROCKET_ADDRESS
+              value: "0.0.0.0"
+            - name: ROCKET_PORT
+              value: "80"
+            - name: WEBSOCKET_ENABLED
+              value: "true"
+            - name: SIGNUPS_ALLOWED
+              value: "{{ homelab_effective.apps.vaultwarden.signups_allowed | string | lower }}"
+            - name: INVITATIONS_ALLOWED
+              value: "false"
+            - name: SHOW_PASSWORD_HINT
+              value: "false"
+            - name: ADMIN_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: vaultwarden-admin
+                  key: admin-token-hash
+          ports:
+            - containerPort: 80
+              name: http
+          readinessProbe:
+            tcpSocket:
+              port: http
+          livenessProbe:
+            tcpSocket:
+              port: http
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+          volumeMounts:
+            - name: vaultwarden-data
+              mountPath: /data
+      volumes:
+        - name: vaultwarden-data
+          persistentVolumeClaim:
+            claimName: vaultwarden-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vaultwarden
+  namespace: {{ homelab_effective.apps.vaultwarden.namespace }}
+spec:
+  selector:
+    app: vaultwarden
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: vaultwarden
+  namespace: {{ homelab_effective.apps.vaultwarden.namespace }}
+  annotations:
+    cert-manager.io/cluster-issuer: "{{ homelab_effective.cert_manager.cluster_issuer_name }}"
+    traefik.ingress.kubernetes.io/router.middlewares: vaultwarden-vaultwarden-lan-only@kubernetescrd
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - {{ homelab_effective.domain.vaultwarden }}
+      secretName: homelab-wildcard-tls
+  rules:
+    - host: {{ homelab_effective.domain.vaultwarden }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: vaultwarden
+                port:
+                  number: 80

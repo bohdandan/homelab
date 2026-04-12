@@ -68,6 +68,13 @@
             (homelab_effective.secrets[homelab_effective.apps.copyparty.admin_name_secret] | default('replace-me')) != 'replace-me'
             and (homelab_effective.secrets[homelab_effective.apps.copyparty.admin_password_secret] | default('replace-me')) != 'replace-me'
           }}
+        homelab_vaultwarden_secrets_ready: >-
+          {{
+            homelab_effective.secrets.vaultwarden_admin_token is defined
+            and homelab_effective.secrets.vaultwarden_admin_token != 'replace-me'
+            and homelab_effective.secrets.vaultwarden_admin_token_hash is defined
+            and homelab_effective.secrets.vaultwarden_admin_token_hash != 'replace-me'
+          }}
 
 - name: Install cluster add-ons and workloads
   hosts: k3s_control
@@ -251,10 +258,19 @@
       ansible.builtin.debug:
         msg: >-
           MetalLB and cert-manager are installed. Skipping ClusterIssuer, homepage, ChangeDetection,
-          Uptime Kuma, ntfy, Glances ingress, CloudBeaver, astro-docs, n8n, Home Assistant proxy,
-          and cloudflared
+          Uptime Kuma, ntfy, Glances ingress, Vaultwarden, CloudBeaver, astro-docs, n8n,
+          Home Assistant proxy, and cloudflared
           until real Cloudflare and application secrets are present in ansible/group_vars/all/secrets.sops.yaml.
       when: not (hostvars['localhost'].homelab_app_secrets_ready | bool)
+
+    - name: Report skipped Vaultwarden rollout
+      ansible.builtin.debug:
+        msg: >-
+          Skipping Vaultwarden until vaultwarden_admin_token and vaultwarden_admin_token_hash
+          are populated in ansible/group_vars/all/secrets.sops.yaml.
+      when:
+        - hostvars['localhost'].homelab_app_secrets_ready | bool
+        - not (hostvars['localhost'].homelab_vaultwarden_secrets_ready | bool)
 
     - name: Create Cloudflare API token secret for cert-manager
       ansible.builtin.shell: |
@@ -329,6 +345,29 @@
       ansible.builtin.command:
         cmd: kubectl apply -f /tmp/ntfy.yaml
       when: hostvars['localhost'].homelab_app_secrets_ready | bool
+
+    - name: Render Vaultwarden manifest
+      ansible.builtin.template:
+        src: ../../kubernetes/base/vaultwarden/manifests.yaml.j2
+        dest: /tmp/vaultwarden.yaml
+        mode: "0644"
+      when:
+        - hostvars['localhost'].homelab_app_secrets_ready | bool
+        - hostvars['localhost'].homelab_vaultwarden_secrets_ready | bool
+
+    - name: Delete Vaultwarden admin secret before apply to drop removed keys
+      ansible.builtin.command:
+        cmd: kubectl delete secret vaultwarden-admin -n {{ homelab_effective.apps.vaultwarden.namespace }} --ignore-not-found=true
+      when:
+        - hostvars['localhost'].homelab_app_secrets_ready | bool
+        - hostvars['localhost'].homelab_vaultwarden_secrets_ready | bool
+
+    - name: Apply Vaultwarden manifest
+      ansible.builtin.command:
+        cmd: kubectl apply -f /tmp/vaultwarden.yaml
+      when:
+        - hostvars['localhost'].homelab_app_secrets_ready | bool
+        - hostvars['localhost'].homelab_vaultwarden_secrets_ready | bool
 
     - name: Render Glances ingress manifest
       ansible.builtin.template:
@@ -488,6 +527,13 @@
       ansible.builtin.command:
         cmd: kubectl rollout status deployment/ntfy -n {{ homelab_effective.apps.ntfy.namespace }} --timeout=240s
       when: hostvars['localhost'].homelab_app_secrets_ready | bool
+
+    - name: Wait for Vaultwarden deployment
+      ansible.builtin.command:
+        cmd: kubectl rollout status deployment/vaultwarden -n {{ homelab_effective.apps.vaultwarden.namespace }} --timeout=240s
+      when:
+        - hostvars['localhost'].homelab_app_secrets_ready | bool
+        - hostvars['localhost'].homelab_vaultwarden_secrets_ready | bool
 
     - name: Wait for Mosquitto deployment
       ansible.builtin.command:

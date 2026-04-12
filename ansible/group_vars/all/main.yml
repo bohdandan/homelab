@@ -10,6 +10,7 @@ homelab:
     n8n_internal: n8n.homelab.magnetic-marten.com
     share: share.magnetic-marten.com
     share_internal: share.homelab.magnetic-marten.com
+    vaultwarden: vaultwarden.homelab.magnetic-marten.com
     zigbee: zigbee.homelab.magnetic-marten.com
     slzb_mr4: slzb-mr4.homelab.magnetic-marten.com
     changedetection: changedetection.homelab.magnetic-marten.com
@@ -209,6 +210,11 @@ homelab:
       image: copyparty/ac:1.19.20
       admin_name_secret: copyparty_admin_name
       admin_password_secret: copyparty_admin_password
+    vaultwarden:
+      namespace: vaultwarden
+      image: vaultwarden/server:1.35.4
+      data_storage: 10Gi
+      signups_allowed: true
     mosquitto:
       namespace: mqtt
       image: eclipse-mosquitto:2.1.2-alpine
