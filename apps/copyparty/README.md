@@ -11,7 +11,7 @@ Tracked app-owned config for the staged Copyparty migration.
 - `/share` is read-write for authenticated accounts.
 - `/ingest` is read-only and disappears from the rendered config when no removable ingest SSD is mounted.
 - `admin` can read/write `/share` and read `/ingest`.
-- `guest` can read `/share` only.
+- `guest` can read `/share` and `/ingest` only.
 - `manager` can read/write `/share` only.
 - Temporary share links are enabled in Copyparty itself; Task 4 does not expose them on the live `share.*` hostnames yet.
 

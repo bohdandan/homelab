@@ -21,7 +21,7 @@ class CopypartyConfigurationTest(unittest.TestCase):
         self.assertIn("/srv/ingest", config)
         self.assertIn("hist: /srv/share/.hist/ingest", config)
         self.assertIn("rw: {{ copyparty_admin_name }}, manager", config)
-        self.assertIn("r: {{ copyparty_admin_name }}", config)
+        self.assertIn("r: {{ copyparty_admin_name }}, guest", config)
         self.assertIn("rw:", config)
         self.assertIn("r:", config)
         self.assertIn("xff-hdr: x-forwarded-for", config)
