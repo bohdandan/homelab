@@ -7,16 +7,158 @@
   "labels": [
     "dependencies"
   ],
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": [
+      "before 6am on monday"
+    ]
+  },
   "customManagers": [
     {
       "customType": "regex",
-      "fileMatch": [
-        "^ansible/group_vars/all/main\\.yml$"
+      "managerFilePatterns": [
+        "/^ansible\\/group_vars\\/all\\/main\\.yml$/"
       ],
       "matchStrings": [
-        "(?m)^\\s*(?:[a-z_]*image):\\s+(?<depName>\\S+?):(?<currentValue>[^\\s]+)"
+        "(?:^|\\n)\\s*(?:image|init_image):\\s+\"?(?<depName>\\S+?):(?<currentValue>[^\\s\"']+)\"?"
       ],
-      "datasourceTemplate": "docker"
+      "datasourceTemplate": "docker",
+      "versioningTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^ansible\\/group_vars\\/all\\/main\\.yml$/"
+      ],
+      "matchStrings": [
+        "(?:^|\\n)  haos:\\n(?:\\s+[^\\n]+\\n)*?\\s+image_version:\\s+\"(?<currentValue>[^\"]+)\""
+      ],
+      "depNameTemplate": "home-assistant/operating-system",
+      "datasourceTemplate": "github-releases",
+      "versioningTemplate": "loose"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^ansible\\/group_vars\\/all\\/main\\.yml$/"
+      ],
+      "matchStrings": [
+        "(?:^|\\n)\\s+image_url:\\s+\"https://github\\.com/home-assistant/operating-system/releases/download/(?<currentValue>[^/]+)/haos_ova-[^\"]+\\.qcow2\\.xz\""
+      ],
+      "depNameTemplate": "home-assistant/operating-system",
+      "datasourceTemplate": "github-releases",
+      "versioningTemplate": "loose",
+      "autoReplaceStringTemplate": "    image_url: \"https://github.com/home-assistant/operating-system/releases/download/{{{newValue}}}/haos_ova-{{{newValue}}}.qcow2.xz\""
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^ansible\\/group_vars\\/all\\/main\\.yml$/"
+      ],
+      "matchStrings": [
+        "(?:^|\\n)  k3s:\\n\\s+version:\\s+(?<currentValue>\\S+)"
+      ],
+      "depNameTemplate": "k3s-io/k3s",
+      "datasourceTemplate": "github-releases",
+      "versioningTemplate": "semver"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^ansible\\/group_vars\\/all\\/main\\.yml$/"
+      ],
+      "matchStrings": [
+        "(?:^|\\n)  cert_manager:\\n(?:\\s+[^\\n]+\\n)*?\\s+version:\\s+(?<currentValue>\\S+)"
+      ],
+      "depNameTemplate": "cert-manager/cert-manager",
+      "datasourceTemplate": "github-releases",
+      "versioningTemplate": "semver"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^ansible\\/playbooks\\/40-deploy-apps\\.yml$/"
+      ],
+      "matchStrings": [
+        "https://raw\\.githubusercontent\\.com/metallb/metallb/(?<currentValue>v[^/]+)/config/manifests/metallb-native\\.yaml"
+      ],
+      "depNameTemplate": "metallb/metallb",
+      "datasourceTemplate": "github-releases",
+      "versioningTemplate": "semver"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^ansible\\/group_vars\\/all\\/main\\.yml$/"
+      ],
+      "matchStrings": [
+        "(?:^|\\n)\\s+codex_version:\\s+(?<currentValue>\\S+)"
+      ],
+      "depNameTemplate": "@openai/codex",
+      "datasourceTemplate": "npm",
+      "versioningTemplate": "npm"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^ansible\\/group_vars\\/all\\/main\\.yml$/"
+      ],
+      "matchStrings": [
+        "(?:^|\\n)\\s+glances_version:\\s+(?<currentValue>\\S+)"
+      ],
+      "depNameTemplate": "glances",
+      "datasourceTemplate": "pypi",
+      "versioningTemplate": "pep440"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^ansible\\/group_vars\\/all\\/main\\.yml$/"
+      ],
+      "matchStrings": [
+        "(?:^|\\n)\\s+helm_version:\\s+(?<currentValue>\\S+)"
+      ],
+      "depNameTemplate": "helm/helm",
+      "datasourceTemplate": "github-releases",
+      "versioningTemplate": "semver"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^ansible\\/group_vars\\/all\\/main\\.yml$/"
+      ],
+      "matchStrings": [
+        "(?:^|\\n)\\s+helix_version:\\s+(?<currentValue>\\S+)"
+      ],
+      "depNameTemplate": "helix-editor/helix",
+      "datasourceTemplate": "github-releases",
+      "versioningTemplate": "semver"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^ansible\\/group_vars\\/all\\/main\\.yml$/"
+      ],
+      "matchStrings": [
+        "(?:^|\\n)\\s+lazygit_version:\\s+(?<currentValue>\\S+)"
+      ],
+      "depNameTemplate": "jesseduffield/lazygit",
+      "datasourceTemplate": "github-releases",
+      "versioningTemplate": "semver",
+      "extractVersionTemplate": "^v(?<version>.*)$"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^ansible\\/group_vars\\/all\\/main\\.yml$/"
+      ],
+      "matchStrings": [
+        "(?:^|\\n)\\s+sops_version:\\s+(?<currentValue>\\S+)"
+      ],
+      "depNameTemplate": "getsops/sops",
+      "datasourceTemplate": "github-releases",
+      "versioningTemplate": "semver",
+      "extractVersionTemplate": "^v(?<version>.*)$"
     }
   ],
   "packageRules": [
@@ -29,6 +171,62 @@
       ],
       "groupName": "docker image updates",
       "groupSlug": "docker-images",
+      "rangeStrategy": "pin",
+      "automerge": false
+    },
+    {
+      "matchPackageNames": [
+        "home-assistant/operating-system"
+      ],
+      "groupName": "home assistant os updates",
+      "groupSlug": "home-assistant-os",
+      "automerge": false
+    },
+    {
+      "matchPackageNames": [
+        "k3s-io/k3s",
+        "cert-manager/cert-manager",
+        "metallb/metallb"
+      ],
+      "groupName": "cluster platform updates",
+      "groupSlug": "cluster-platform",
+      "automerge": false
+    },
+    {
+      "matchPackageNames": [
+        "helm/helm",
+        "helix-editor/helix",
+        "jesseduffield/lazygit",
+        "getsops/sops",
+        "@openai/codex",
+        "glances"
+      ],
+      "groupName": "dev admin tool updates",
+      "groupSlug": "dev-admin-tools",
+      "automerge": false
+    },
+    {
+      "matchManagers": [
+        "terraform"
+      ],
+      "groupName": "infrastructure provider updates",
+      "groupSlug": "infrastructure-providers",
+      "automerge": false
+    },
+    {
+      "matchManagers": [
+        "github-actions"
+      ],
+      "groupName": "github action updates",
+      "groupSlug": "github-actions",
+      "automerge": false
+    },
+    {
+      "matchManagers": [
+        "ansible-galaxy"
+      ],
+      "groupName": "ansible collection updates",
+      "groupSlug": "ansible-collections",
       "rangeStrategy": "pin",
       "automerge": false
     }
