@@ -10,6 +10,7 @@ Tracked app-owned config for the staged Copyparty migration.
 - The removable ingest SSD is mounted read-only on Proxmox and bridged to the worker over read-only Samba/CIFS so `exfat` media can be exposed without reformatting.
 - `/share` is read-write for authenticated accounts.
 - `/ingest` is read-only and disappears from the rendered config when no removable ingest SSD is mounted.
+- Browser audio conversion defaults to MP3 because Atomos/Ninja MOV files can carry 4-channel PCM audio which Copyparty's Opus transcode path cannot encode reliably.
 - `admin` can read/write `/share` and read `/ingest`.
 - `guest` can read `/share` and `/ingest` only.
 - `manager` can read/write `/share` only.
