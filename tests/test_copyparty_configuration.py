@@ -3,6 +3,13 @@ from pathlib import Path
 
 
 class CopypartyConfigurationTest(unittest.TestCase):
+    def _section(self, content: str, heading: str) -> str:
+        start = content.index(heading)
+        next_heading = content.find("\n[/", start + len(heading))
+        if next_heading == -1:
+            return content[start:]
+        return content[start:next_heading]
+
     def test_copyparty_app_owned_config_covers_accounts_and_volumes(self) -> None:
         copyparty_dir = Path("apps/copyparty")
         readme = (copyparty_dir / "README.md").read_text()
@@ -31,6 +38,20 @@ class CopypartyConfigurationTest(unittest.TestCase):
         self.assertIn('localStorage.getItem("acode2")', config)
         self.assertIn('localStorage.setItem("acode2","mp3")', config)
         self.assertIn("{% if homelab_copyparty_ingest_ready | default(false) %}", config)
+
+    def test_copyparty_admin_can_manage_internal_share_only(self) -> None:
+        config = Path("apps/copyparty/copyparty.conf.j2").read_text()
+        share_config = self._section(config, "[/share]")
+        ingest_config = self._section(config, "[/ingest]")
+
+        self.assertIn("rw: {{ copyparty_admin_name }}, manager", share_config)
+        self.assertIn("m: {{ copyparty_admin_name }}", share_config)
+        self.assertIn("d: {{ copyparty_admin_name }}", share_config)
+
+        self.assertIn("r: {{ copyparty_admin_name }}, guest", ingest_config)
+        self.assertNotIn("rw:", ingest_config)
+        self.assertNotIn("m:", ingest_config)
+        self.assertNotIn("d:", ingest_config)
 
     def test_copyparty_manifest_owns_live_share_surface(self) -> None:
         manifest = Path("kubernetes/base/copyparty/manifests.yaml.j2").read_text()

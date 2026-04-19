@@ -8,10 +8,10 @@ Tracked app-owned config for the staged Copyparty migration.
 - `/share` maps to the permanent internal share storage mounted at `/srv/share`.
 - `/ingest` maps to the removable ingest storage mounted at `/srv/ingest` when the SSD is attached.
 - The removable ingest SSD is mounted read-only on Proxmox and bridged to the worker over read-only Samba/CIFS so `exfat` media can be exposed without reformatting.
-- `/share` is read-write for authenticated accounts.
+- `/share` is read-write for authenticated accounts; `admin` can also move/cut-paste and delete files there.
 - `/ingest` is read-only and disappears from the rendered config when no removable ingest SSD is mounted.
 - Browser audio conversion defaults to MP3 because Atomos/Ninja MOV files can carry 4-channel PCM audio which Copyparty's Opus transcode path cannot encode reliably.
-- `admin` can read/write `/share` and read `/ingest`.
+- `admin` can read/write, move, and delete in `/share`, and can read `/ingest`.
 - `guest` can read `/share` and `/ingest` only.
 - `manager` can read/write `/share` only.
 - Temporary share links are enabled in Copyparty itself; Task 4 does not expose them on the live `share.*` hostnames yet.
