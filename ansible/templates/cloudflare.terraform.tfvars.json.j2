@@ -7,8 +7,6 @@
   "docs_hostname": "{{ homelab_effective.domain.docs }}",
   "homepage_hostname": "{{ homelab_effective.domain.homepage }}",
   "n8n_hostname": "{{ homelab_effective.domain.n8n }}",
-  "share_hostname": "{{ homelab_effective.domain.share }}",
-  "share_origin_ipv4": "{{ homelab_effective.network.public_ipv4 }}",
   "docs_origin_service": "http://traefik.kube-system.svc.cluster.local:80",
   "homepage_origin_service": "{{ homelab_effective.cloudflare.homepage_service }}",
   "n8n_origin_service": "{{ homelab_effective.cloudflare.n8n_service }}",

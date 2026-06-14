@@ -26,15 +26,6 @@ monitors:
       - "200-299"
       - "300-399"
 
-  - name: Copyparty
-    type: http
-    url: https://{{ homelab_effective.domain.share_internal }}
-    interval: 120
-    maxretries: 3
-    accepted_statuscodes:
-      - "200-299"
-      - "300-399"
-
   - name: Vaultwarden
     type: http
     url: https://{{ homelab_effective.domain.vaultwarden }}

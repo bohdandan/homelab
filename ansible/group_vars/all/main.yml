@@ -8,8 +8,6 @@ homelab:
     homepage_internal: homepage.homelab.magnetic-marten.com
     n8n: n8n.magnetic-marten.com
     n8n_internal: n8n.homelab.magnetic-marten.com
-    share: share.magnetic-marten.com
-    share_internal: share.homelab.magnetic-marten.com
     vaultwarden: vaultwarden.homelab.magnetic-marten.com
     zigbee: zigbee.homelab.magnetic-marten.com
     slzb_mr4: slzb-mr4.homelab.magnetic-marten.com
@@ -66,28 +64,6 @@ homelab:
     public_ipv4: 86.18.122.115
     traefik_lb_ip: 192.168.10.120
     metallb_range: 192.168.10.120-192.168.10.129
-
-  storage:
-    # Keep the legacy QuickDrop path only as a storage bridge while the worker
-    # filesystem layout settles around Copyparty-owned storage.
-    copyparty_share:
-      proxmox_device: /dev/nvme0n1
-      proxmox_device_by_id: /dev/disk/by-id/nvme-CT1000P3PSSD8_25044DC818B6
-      guest_device_by_id: /dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_drive-scsi1
-      filesystem_label: copyparty-share
-      mount_path: /var/lib/copyparty/share
-    quickdrop_share:
-      mount_path: /var/lib/quickdrop-share
-      files_path: /var/lib/quickdrop-share/files
-    copyparty_ingest:
-      proxmox_device: /dev/sdb1
-      filesystem_type: exfat
-      filesystem_label: NINJA
-      filesystem_uuid: 651F-B1B5
-      samba_share_name: copyparty-ingest
-      proxmox_mount_path: /srv/ingest/current
-      proxmox_export_path: /srv/ingest/current
-      worker_mount_path: /srv/ingest/current
 
   iot:
     slzb_mr4:
@@ -201,16 +177,7 @@ homelab:
     n8n:
       namespace: n8n
       image: n8nio/n8n:2.2.6
-      data_storage: 10Gi
-    copyparty:
-      namespace: copyparty
-      # Upstream released v1.19.21, but Docker Hub has not published the
-      # corresponding copyparty/ac image tag yet, so pin to the latest
-      # available published image until the registry catches up.
-      image: copyparty/ac:1.19.20
-      admin_name_secret: copyparty_admin_name
-      admin_password_secret: copyparty_admin_password
-    vaultwarden:
+      data_storage: 10Gi    vaultwarden:
       namespace: vaultwarden
       image: vaultwarden/server:1.35.4
       data_storage: 10Gi

@@ -41,11 +41,10 @@ This keeps the homelab service layer separated from ordinary LAN clients without
 ## DNS and Exposure
 
 - UniFi forwards `homelab.magnetic-marten.com` to CoreDNS at `192.168.10.121`
-- CoreDNS resolves internal `*.homelab.magnetic-marten.com` names
+- CoreDNS resolves internal `*.homelab.magnetic-marten.com` names, with explicit tombstones for retired names that should not fall through to Traefik
 - Traefik terminates and routes internal HTTPS traffic on `192.168.10.120`
 - public apps are split between:
   - Cloudflare Tunnel: `docs`, `homepage`, `n8n`
-  - direct ingress / DNS-only: `share`
 
 ## Current Limitation
 

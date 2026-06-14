@@ -26,12 +26,6 @@ data:
             description: Homelab documentation
             namespace: {{ homelab_effective.apps.astro_docs.namespace }}
             podSelector: app=astro-docs
-        - Copyparty:
-            href: https://{{ homelab_effective.domain.share_internal }}
-            siteMonitor: https://{{ homelab_effective.domain.share_internal }}/
-            description: Large file sharing
-            namespace: {{ homelab_effective.apps.copyparty.namespace }}
-            podSelector: app=copyparty
         - Vaultwarden:
             href: https://{{ homelab_effective.domain.vaultwarden }}
             siteMonitor: https://{{ homelab_effective.domain.vaultwarden }}/

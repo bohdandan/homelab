@@ -132,19 +132,6 @@
         group: "{{ dev_login_user }}"
         mode: "0700"
 
-    - name: Generate dedicated Copyparty ingest automation SSH keypair
-      become_user: "{{ dev_login_user }}"
-      ansible.builtin.command:
-        cmd: >-
-          ssh-keygen -t ed25519 -N '' -f /home/{{ dev_login_user }}/.ssh/id_ed25519_copyparty_ingest
-          -C copyparty-ingest-reconcile
-        creates: "/home/{{ dev_login_user }}/.ssh/id_ed25519_copyparty_ingest"
-
-    - name: Read dedicated Copyparty ingest automation public key
-      ansible.builtin.slurp:
-        src: "/home/{{ dev_login_user }}/.ssh/id_ed25519_copyparty_ingest.pub"
-      register: copyparty_ingest_automation_public_key
-
     - name: Add Proxmox host key to dev known_hosts
       ansible.builtin.known_hosts:
         path: "/home/{{ dev_login_user }}/.ssh/known_hosts"
@@ -375,7 +362,6 @@
           - rsync
           - -a
           - --delete
-          - --exclude=runtime/copyparty-ingest-reconcile.lock
           - --exclude=runtime/venvs/
           - "{{ playbook_dir }}/../"
           - "dev@{{ ansible_host }}:{{ homelab_effective.dev_admin.workspace_dir }}/homelab/ansible/"
@@ -416,52 +402,55 @@
         group: "{{ dev_login_user }}"
         mode: "0644"
 
-    - name: Ensure Copyparty repo bin directory exists in the checked-out workspace
+    - name: Remove legacy Copyparty app checkout from the dev workspace
       ansible.builtin.file:
-        path: "{{ homelab_effective.dev_admin.workspace_dir }}/homelab/apps/copyparty/bin"
-        state: directory
-        owner: "{{ dev_login_user }}"
-        group: "{{ dev_login_user }}"
-        mode: "0755"
+        path: "{{ homelab_effective.dev_admin.workspace_dir }}/homelab/apps/copyparty"
+        state: absent
 
-    - name: Render Copyparty ingest reconcile script into the checked-out workspace
-      ansible.builtin.template:
-        src: ../../apps/copyparty/bin/reconcile-ingest.sh
-        dest: "{{ homelab_effective.dev_admin.workspace_dir }}/homelab/apps/copyparty/bin/reconcile-ingest.sh"
-        owner: "{{ dev_login_user }}"
-        group: "{{ dev_login_user }}"
-        mode: "0755"
-      register: copyparty_ingest_reconcile_script
+    - name: Remove legacy Copyparty manifest checkout from the dev workspace
+      ansible.builtin.file:
+        path: "{{ homelab_effective.dev_admin.workspace_dir }}/homelab/kubernetes/base/copyparty"
+        state: absent
 
-    - name: Render Copyparty ingest reconcile service
-      ansible.builtin.template:
-        src: ../templates/copyparty-ingest-reconcile.service.j2
-        dest: /etc/systemd/system/copyparty-ingest-reconcile.service
-        mode: "0644"
-      register: copyparty_ingest_reconcile_service
+    - name: Remove legacy Copyparty tests from the dev workspace
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - "{{ homelab_effective.dev_admin.workspace_dir }}/homelab/tests/test_copyparty_configuration.py"
+        - "{{ homelab_effective.dev_admin.workspace_dir }}/homelab/tests/__pycache__/test_copyparty_configuration.cpython-314.pyc"
 
-    - name: Render Copyparty ingest reconcile timer
-      ansible.builtin.template:
-        src: ../templates/copyparty-ingest-reconcile.timer.j2
-        dest: /etc/systemd/system/copyparty-ingest-reconcile.timer
-        mode: "0644"
-      register: copyparty_ingest_reconcile_timer
-
-    - name: Enable and start Copyparty ingest reconcile timer
+    - name: Stop and disable legacy Copyparty ingest reconcile timer
       ansible.builtin.systemd:
         name: copyparty-ingest-reconcile.timer
         daemon_reload: true
-        enabled: true
-        state: >-
-          {{
-            'restarted'
-            if (
-              copyparty_ingest_reconcile_script.changed
-              or copyparty_ingest_reconcile_service.changed
-              or copyparty_ingest_reconcile_timer.changed
-            )
-            else 'started'
-          }}
+        enabled: false
+        state: stopped
+      failed_when: false
+
+    - name: Remove legacy Copyparty ingest reconcile systemd units
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/systemd/system/copyparty-ingest-reconcile.service
+        - /etc/systemd/system/copyparty-ingest-reconcile.timer
+
+    - name: Remove legacy Copyparty ingest automation SSH keys from the dev account
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - "/home/{{ dev_login_user }}/.ssh/id_ed25519_copyparty_ingest"
+        - "/home/{{ dev_login_user }}/.ssh/id_ed25519_copyparty_ingest.pub"
+
+    - name: Remove legacy Copyparty ingest runtime files from the dev workspace
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - "{{ homelab_effective.dev_admin.workspace_dir }}/homelab/ansible/runtime/copyparty-ingest-reconcile.lock"
+        - "{{ homelab_effective.dev_admin.workspace_dir }}/homelab/ansible/runtime/copyparty-ingest-inventory.yml"
 
     - name: Ensure dev .kube directory exists
       ansible.builtin.file:
@@ -512,46 +501,39 @@
       register: dev_admin_tool_versions
       changed_when: false
 
-- name: Authorize Copyparty ingest automation SSH key on Proxmox
+- name: Remove legacy Copyparty ingest automation SSH key from Proxmox
   hosts: proxmox
   gather_facts: false
   become: true
-  vars:
-    copyparty_ingest_automation_key: >-
-      {{ hostvars[groups['dev_admin'][0]].copyparty_ingest_automation_public_key.content | b64decode }}
   tasks:
-    - name: Authorize dedicated automation key for root on Proxmox
-      ansible.posix.authorized_key:
-        user: root
-        state: present
-        key: "{{ copyparty_ingest_automation_key }}"
+    - name: Remove dedicated automation key for root on Proxmox
+      ansible.builtin.lineinfile:
+        path: /root/.ssh/authorized_keys
+        regexp: '.*copyparty-ingest-reconcile$'
+        state: absent
 
-- name: Authorize Copyparty ingest automation SSH key on the stateful worker
+- name: Remove legacy Copyparty ingest automation SSH key from the stateful worker
   hosts: k3s_worker
   gather_facts: false
   become: true
   vars:
     homelab_effective: "{{ hostvars['localhost'].homelab_effective }}"
-    copyparty_ingest_automation_key: >-
-      {{ hostvars[groups['dev_admin'][0]].copyparty_ingest_automation_public_key.content | b64decode }}
   tasks:
-    - name: Authorize dedicated automation key on the stateful worker
-      ansible.posix.authorized_key:
-        user: "{{ homelab_effective.ssh.user }}"
-        state: present
-        key: "{{ copyparty_ingest_automation_key }}"
+    - name: Remove dedicated automation key on the stateful worker
+      ansible.builtin.lineinfile:
+        path: "/home/{{ homelab_effective.ssh.user }}/.ssh/authorized_keys"
+        regexp: '.*copyparty-ingest-reconcile$'
+        state: absent
 
-- name: Authorize Copyparty ingest automation SSH key on the control-plane node
+- name: Remove legacy Copyparty ingest automation SSH key from the control-plane node
   hosts: k3s_control
   gather_facts: false
   become: true
   vars:
     homelab_effective: "{{ hostvars['localhost'].homelab_effective }}"
-    copyparty_ingest_automation_key: >-
-      {{ hostvars[groups['dev_admin'][0]].copyparty_ingest_automation_public_key.content | b64decode }}
   tasks:
-    - name: Authorize dedicated automation key on the control-plane node
-      ansible.posix.authorized_key:
-        user: "{{ homelab_effective.ssh.user }}"
-        state: present
-        key: "{{ copyparty_ingest_automation_key }}"
+    - name: Remove dedicated automation key on the control-plane node
+      ansible.builtin.lineinfile:
+        path: "/home/{{ homelab_effective.ssh.user }}/.ssh/authorized_keys"
+        regexp: '.*copyparty-ingest-reconcile$'
+        state: absent

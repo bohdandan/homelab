@@ -35,7 +35,6 @@ data:
     docs 300 IN A {{ homelab_effective.network.traefik_lb_ip }}
     homepage 300 IN A {{ homelab_effective.network.traefik_lb_ip }}
     n8n 300 IN A {{ homelab_effective.network.traefik_lb_ip }}
-    share 300 IN A {{ homelab_effective.network.traefik_lb_ip }}
     vaultwarden 300 IN A {{ homelab_effective.network.traefik_lb_ip }}
     zigbee 300 IN A {{ homelab_effective.network.traefik_lb_ip }}
     changedetection 300 IN A {{ homelab_effective.network.traefik_lb_ip }}
@@ -50,6 +49,7 @@ data:
     slzb-mr4 300 IN A {{ homelab_effective.iot.slzb_mr4.ip }}
     k3s-control 300 IN A {{ homelab_effective.k3s.control.ip }}
     k3s-worker 300 IN A {{ homelab_effective.k3s.worker.ip }}
+    share 300 IN TXT "retired hostname"
     * 300 IN A {{ homelab_effective.network.traefik_lb_ip }}
 ---
 apiVersion: apps/v1

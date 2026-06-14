@@ -40,10 +40,6 @@ Current homelab placement:
   - Public through Cloudflare Tunnel and protected by Cloudflare Access
 - `n8n.homelab.magnetic-marten.com`
   - LAN only through CoreDNS and Traefik
-- `share.magnetic-marten.com`
-  - Public direct ingress for Copyparty so large file uploads bypass Cloudflare upload limits
-- `share.homelab.magnetic-marten.com`
-  - LAN only through CoreDNS and Traefik for Copyparty
 - `vaultwarden.homelab.magnetic-marten.com`
   - LAN only through CoreDNS and Traefik with a Traefik IP allowlist
 - `zigbee.homelab.magnetic-marten.com`
@@ -156,6 +152,7 @@ LAN-only names are resolved by a dedicated CoreDNS service in K3s.
 
 - CoreDNS service IP: `192.168.10.121`
 - Wildcard: `*.homelab.magnetic-marten.com -> 192.168.10.120`
+- Retired hostnames such as `share.homelab.magnetic-marten.com` are explicitly suppressed so stale links fail DNS instead of falling through to Traefik.
 - Explicit overrides:
   - `proxmox.homelab.magnetic-marten.com -> 192.168.10.100`
   - `haos.homelab.magnetic-marten.com -> 192.168.10.112`
@@ -169,7 +166,6 @@ LAN-only names are resolved by a dedicated CoreDNS service in K3s.
   - `kuma.homelab.magnetic-marten.com -> 192.168.10.120`
   - `ntfy.homelab.magnetic-marten.com -> 192.168.10.120`
   - `zigbee.homelab.magnetic-marten.com -> 192.168.10.120`
-  - `share.homelab.magnetic-marten.com -> 192.168.10.120`
   - `vaultwarden.homelab.magnetic-marten.com -> 192.168.10.120`
   - `slzb-mr4.homelab.magnetic-marten.com -> <device IP>`
 
@@ -212,13 +208,13 @@ SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt ansible-playbook ansible/playbooks
 # 4. Configure K3s cluster
 SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt ansible-playbook ansible/playbooks/30-configure-k3s.yml
 
-# 5. Attach and mount dedicated stateful storage for the current share service
+# 5. Remove any legacy local file-sharing wiring
 SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt ansible-playbook ansible/playbooks/32-configure-stateful-storage.yml
 
 # 6. Configure the dev/admin VM
 SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt ansible-playbook ansible/playbooks/35-configure-dev-admin.yml
 
-# 7. Deploy cert-manager, internal apps, Astro docs, Homepage, n8n, Copyparty, Home Assistant proxy, and cloudflared
+# 7. Deploy cert-manager, internal apps, Astro docs, Homepage, n8n, Home Assistant proxy, and cloudflared
 SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt ansible-playbook ansible/playbooks/40-deploy-apps.yml
 
 # 8. Optionally sync repo-managed Home Assistant YAML config into HAOS
@@ -271,15 +267,7 @@ The sync playbook is intentionally conservative:
 - Public exposure is intentionally mixed:
   - `docs.magnetic-marten.com`, `homepage.magnetic-marten.com`, and `n8n.magnetic-marten.com` are routed through Cloudflare Tunnel.
   - `homepage` and `n8n` are protected by Cloudflare Access.
-  - `share.magnetic-marten.com` is DNS-only direct ingress to Copyparty so large file uploads bypass Cloudflare upload limits.
   - LAN-only `*.homelab.magnetic-marten.com` hostnames resolve through UniFi -> CoreDNS -> Traefik.
-- The share migration is intentionally split:
-  - Copyparty owns the dedicated second internal SSD mounted on `k3s-worker-01`
-  - the legacy QuickDrop filesystem path is kept only as a compatibility alias during the storage bridge
-  - the dedicated share SSD is attached to the worker VM with `backup=0`, so the file content is excluded from Proxmox VM backups
-- Removable ingest media is reconciled automatically from `dev-admin-01`.
-  - `copyparty-ingest-reconcile.timer` checks every minute and makes `/ingest` appear or disappear based on whether the recording SSD is attached.
-  - Manual debug commands live in [apps/copyparty/README.md](/Users/bohdandanyliuk/Workspace/homelab/apps/copyparty/README.md).
 - Only encrypted secrets and source templates belong in git.
   - Generated runtime files under `ansible/runtime/`, `ansible/inventory/generated/`, and `packer/ubuntu-k3s-template/runtime/` are intentionally ignored.
 - Hosted Renovate is the recommended image update path for this repo.
@@ -312,7 +300,6 @@ The sync playbook is intentionally conservative:
 - Mosquitto
 - Zigbee2MQTT
 - n8n + PostgreSQL
-- Copyparty
 - Home Assistant LAN ingress proxy
 - Proxmox VM backup storage and backup jobs
 
@@ -320,7 +307,6 @@ The sync playbook is intentionally conservative:
 
 - Real encrypted secret values
 - Proxmox node/storage names if they differ from defaults
-- SSD device selection and formatting policy
 - Cloudflare account and zone identifiers
 - Stable SLZB-MR4 LAN IP and Thread/OTBR endpoint details
 - Installing the hosted Renovate GitHub app on the repository

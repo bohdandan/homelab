@@ -31,14 +31,6 @@ variable "n8n_hostname" {
   type = string
 }
 
-variable "share_hostname" {
-  type = string
-}
-
-variable "share_origin_ipv4" {
-  type = string
-}
-
 variable "docs_origin_service" {
   type = string
 }

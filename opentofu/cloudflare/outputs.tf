@@ -16,6 +16,5 @@ output "public_hostnames" {
     var.docs_hostname,
     var.homepage_hostname,
     var.n8n_hostname,
-    var.share_hostname,
   ]
 }

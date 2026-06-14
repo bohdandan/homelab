@@ -6,311 +6,113 @@
     - name: Load context
       ansible.builtin.include_tasks: ../tasks/load_context.yml
 
-- name: Attach dedicated Copyparty share disk to the stateful worker VM
-  hosts: proxmox
-  gather_facts: false
-  become: true
-  vars:
-    homelab_effective: "{{ hostvars['localhost'].homelab_effective }}"
-  tasks:
-    - name: Read current worker VM config
-      ansible.builtin.command: "qm config {{ homelab_effective.k3s.worker.vmid }}"
-      register: copyparty_worker_vm_config
-      changed_when: false
-
-    - name: Fail if a different disk is already attached at scsi1
-      ansible.builtin.fail:
-        msg: >-
-          {{ homelab_effective.k3s.worker.name }} already has scsi1 configured with a different backing device.
-          Inspect `qm config {{ homelab_effective.k3s.worker.vmid }}` before proceeding.
-      when:
-        - "'scsi1:' in copyparty_worker_vm_config.stdout"
-        - homelab_effective.storage.copyparty_share.proxmox_device_by_id not in copyparty_worker_vm_config.stdout
-
-    - name: Read old VG name from the dedicated Copyparty share SSD when present
-      ansible.builtin.shell: |
-        if [ -b "{{ homelab_effective.storage.copyparty_share.proxmox_device }}p3" ]; then
-          pvs --noheadings -o vg_name "{{ homelab_effective.storage.copyparty_share.proxmox_device }}p3" 2>/dev/null | xargs
-        fi
-      register: copyparty_old_vg
-      changed_when: false
-      when: "'scsi1:' not in copyparty_worker_vm_config.stdout"
-
-    - name: Deactivate old VG on the dedicated Copyparty share SSD
-      ansible.builtin.command: "vgchange -an {{ copyparty_old_vg.stdout }}"
-      when:
-        - "'scsi1:' not in copyparty_worker_vm_config.stdout"
-        - (copyparty_old_vg.stdout | trim | length) > 0
-
-    - name: Wipe partition table from the dedicated Copyparty share SSD
-      ansible.builtin.command: "sgdisk --zap-all {{ homelab_effective.storage.copyparty_share.proxmox_device }}"
-      when: "'scsi1:' not in copyparty_worker_vm_config.stdout"
-
-    - name: Wipe filesystem signatures from the dedicated Copyparty share SSD
-      ansible.builtin.command: "wipefs -a -f {{ homelab_effective.storage.copyparty_share.proxmox_device }}"
-      when: "'scsi1:' not in copyparty_worker_vm_config.stdout"
-
-    - name: Re-read partition table after wiping the dedicated Copyparty share SSD
-      ansible.builtin.shell: |
-        blockdev --rereadpt {{ homelab_effective.storage.copyparty_share.proxmox_device }} || true
-        udevadm settle
-      when: "'scsi1:' not in copyparty_worker_vm_config.stdout"
-
-    - name: Attach dedicated Copyparty share disk to the stateful worker VM
-      ansible.builtin.command:
-        cmd: >-
-          qm set {{ homelab_effective.k3s.worker.vmid }}
-          --scsi1 {{ homelab_effective.storage.copyparty_share.proxmox_device_by_id }},backup=0,discard=on,ssd=1
-      when: "'scsi1:' not in copyparty_worker_vm_config.stdout"
-
-- name: Configure removable Copyparty ingest storage and Samba share on the Proxmox host
-  hosts: proxmox
-  gather_facts: false
-  become: true
-  vars:
-    homelab_effective: "{{ hostvars['localhost'].homelab_effective }}"
-    copyparty_ingest_samba_share_name: "{{ homelab_effective.storage.copyparty_ingest.samba_share_name }}"
-  tasks:
-    - name: Install minimal Samba server support
-      ansible.builtin.apt:
-        name:
-          - samba
-          - sg3-utils
-        state: present
-        update_cache: true
-        cache_valid_time: 3600
-
-    - name: Rescan SCSI bus and remove stale removable ingest devices
-      ansible.builtin.command: rescan-scsi-bus -r
-      changed_when: false
-      failed_when: false
-
-    - name: Detect removable ingest SSD by UUID
-      ansible.builtin.command: >-
-        blkid -U {{ homelab_effective.storage.copyparty_ingest.filesystem_uuid }}
-      register: copyparty_ingest_device
-      failed_when: false
-      changed_when: false
-
-    - name: Ensure removable ingest mount root exists
-      ansible.builtin.file:
-        path: "{{ homelab_effective.storage.copyparty_ingest.proxmox_mount_path }}"
-        state: directory
-        mode: "0755"
-
-    - name: Ensure removable ingest mount root exists after unmounting when disk is absent
-      ansible.builtin.file:
-        path: "{{ homelab_effective.storage.copyparty_ingest.proxmox_mount_path }}"
-        state: directory
-        mode: "0755"
-
-    - name: Mount removable ingest SSD read-only when present
-      ansible.posix.mount:
-        path: "{{ homelab_effective.storage.copyparty_ingest.proxmox_mount_path }}"
-        src: "UUID={{ homelab_effective.storage.copyparty_ingest.filesystem_uuid }}"
-        fstype: "{{ homelab_effective.storage.copyparty_ingest.filesystem_type }}"
-        opts: ro,nofail,x-systemd.device-timeout=5s
-        state: mounted
-      when: copyparty_ingest_device.rc == 0
-
-    - name: Manage read-only Samba ingest share for the worker
-      ansible.builtin.blockinfile:
-        path: /etc/samba/smb.conf
-        marker: "; {mark} ANSIBLE MANAGED COPYPARTY INGEST"
-        insertafter: EOF
-        block: |
-          [{{ copyparty_ingest_samba_share_name }}]
-             path = {{ homelab_effective.storage.copyparty_ingest.proxmox_export_path }}
-             browseable = yes
-             read only = yes
-             guest ok = yes
-             guest only = yes
-             force user = root
-             force group = root
-             hosts allow = {{ homelab_effective.k3s.worker.ip }}
-             hosts deny = 0.0.0.0/0
-      register: copyparty_ingest_samba_share
-      when: copyparty_ingest_device.rc == 0
-
-    - name: Ensure Samba server is enabled and started
-      ansible.builtin.service:
-        name: smbd
-        state: started
-        enabled: true
-
-    - name: Restart Samba when the ingest share definition changes
-      ansible.builtin.service:
-        name: smbd
-        state: restarted
-      when:
-        - (copyparty_ingest_samba_share is defined and copyparty_ingest_samba_share.changed)
-          or (copyparty_ingest_samba_share_removed is defined and copyparty_ingest_samba_share_removed.changed)
-
-- name: Mount dedicated Copyparty share disk and ingest export on the stateful worker
+- name: Remove legacy local file-sharing mounts from the stateful worker
   hosts: k3s_worker
   gather_facts: false
   become: true
   vars:
-    homelab_effective: "{{ hostvars['localhost'].homelab_effective }}"
+    legacy_copyparty_share_device: /dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_drive-scsi1
+    legacy_copyparty_share_mount_path: /var/lib/copyparty/share
+    legacy_quickdrop_mount_path: /var/lib/quickdrop-share
+    legacy_ingest_mount_path: /srv/ingest/current
   tasks:
-    - name: Install CIFS client support
-      ansible.builtin.apt:
-        name:
-          - cifs-utils
-        state: present
-        update_cache: true
-        cache_valid_time: 3600
-
-    - name: Rescan SCSI bus for the dedicated Copyparty share disk
+    - name: Delete Copyparty share contents before unmounting the dedicated share disk
       ansible.builtin.shell: |
-        for host in /sys/class/scsi_host/host*; do
-          echo "- - -" > "${host}/scan"
-        done
+        set -eu
+        if findmnt -n -M "{{ legacy_copyparty_share_mount_path }}" >/dev/null 2>&1; then
+          find "{{ legacy_copyparty_share_mount_path }}" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
+        fi
+      args:
+        executable: /bin/bash
 
-    - name: Wait for the dedicated Copyparty share disk to appear
-      ansible.builtin.wait_for:
-        path: "{{ homelab_effective.storage.copyparty_share.guest_device_by_id }}"
-        timeout: 120
+    - name: Force-unmount legacy QuickDrop compatibility mount
+      ansible.builtin.shell: |
+        umount -lf "{{ legacy_quickdrop_mount_path }}" || true
+      args:
+        executable: /bin/bash
 
-    - name: Read filesystem type for the dedicated Copyparty share disk
-      ansible.builtin.command: "blkid -o value -s TYPE {{ homelab_effective.storage.copyparty_share.guest_device_by_id }}"
-      register: copyparty_share_fs_type
-      failed_when: false
-      changed_when: false
-
-    - name: Create ext4 filesystem on the dedicated Copyparty share disk
-      community.general.filesystem:
-        dev: "{{ homelab_effective.storage.copyparty_share.guest_device_by_id }}"
-        fstype: ext4
-      when: copyparty_share_fs_type.rc != 0
-
-    - name: Read filesystem label for the dedicated Copyparty share disk
-      ansible.builtin.command: "blkid -o value -s LABEL {{ homelab_effective.storage.copyparty_share.guest_device_by_id }}"
-      register: copyparty_share_fs_label
-      failed_when: false
-      changed_when: false
-
-    - name: Set filesystem label on the dedicated Copyparty share disk
-      ansible.builtin.command: >-
-        e2label {{ homelab_effective.storage.copyparty_share.guest_device_by_id }}
-        {{ homelab_effective.storage.copyparty_share.filesystem_label }}
-      when: copyparty_share_fs_label.stdout != homelab_effective.storage.copyparty_share.filesystem_label
-
-    - name: Ensure dedicated Copyparty share mountpoint exists
-      ansible.builtin.file:
-        path: "{{ homelab_effective.storage.copyparty_share.mount_path }}"
-        state: directory
-        mode: "0755"
-
-    - name: Mount dedicated Copyparty share disk
+    - name: Remove legacy QuickDrop compatibility fstab entry
       ansible.posix.mount:
-        path: "{{ homelab_effective.storage.copyparty_share.mount_path }}"
-        src: "{{ homelab_effective.storage.copyparty_share.guest_device_by_id }}"
-        fstype: ext4
-        opts: defaults
-        state: mounted
-
-    - name: Unmount legacy QuickDrop direct filesystem mount before compatibility bind mount
-      ansible.posix.mount:
-        path: "{{ homelab_effective.storage.quickdrop_share.mount_path }}"
-        state: unmounted
-
-    - name: Remove legacy QuickDrop direct filesystem fstab entry before compatibility bind mount
-      ansible.posix.mount:
-        path: "{{ homelab_effective.storage.quickdrop_share.mount_path }}"
+        path: "{{ legacy_quickdrop_mount_path }}"
         state: absent_from_fstab
 
-    - name: Ensure QuickDrop compatibility mountpoint exists
-      ansible.builtin.file:
-        path: "{{ homelab_effective.storage.quickdrop_share.mount_path }}"
-        state: directory
-        mode: "0755"
-
-    - name: Bind QuickDrop compatibility path to the Copyparty share
-      ansible.posix.mount:
-        path: "{{ homelab_effective.storage.quickdrop_share.mount_path }}"
-        src: "{{ homelab_effective.storage.copyparty_share.mount_path }}"
-        fstype: none
-        opts: bind
-        state: mounted
-
-    - name: Ensure QuickDrop compatibility files directory exists on dedicated share storage
-      ansible.builtin.file:
-        path: "{{ homelab_effective.storage.quickdrop_share.files_path }}"
-        state: directory
-        mode: "0755"
-
-    - name: Force-unmount worker ingest path when the removable SSD is absent
+    - name: Force-unmount legacy removable ingest path on the worker
       ansible.builtin.shell: |
-        umount -lf {{ homelab_effective.storage.copyparty_ingest.worker_mount_path }} || true
-      when: hostvars[groups['proxmox'][0]].copyparty_ingest_device.rc != 0
+        umount -lf "{{ legacy_ingest_mount_path }}" || true
+      args:
+        executable: /bin/bash
 
-    - name: Remove worker ingest fstab entry when the removable SSD is absent
+    - name: Remove legacy removable ingest fstab entry on the worker
       ansible.posix.mount:
-        path: "{{ homelab_effective.storage.copyparty_ingest.worker_mount_path }}"
+        path: "{{ legacy_ingest_mount_path }}"
         state: absent_from_fstab
-      when: hostvars[groups['proxmox'][0]].copyparty_ingest_device.rc != 0
 
-    - name: Remove stale worker ingest mountpoint when the removable SSD is absent
+    - name: Force-unmount legacy Copyparty share disk
+      ansible.builtin.shell: |
+        umount -lf "{{ legacy_copyparty_share_mount_path }}" || true
+      args:
+        executable: /bin/bash
+
+    - name: Remove legacy Copyparty share fstab entry
+      ansible.posix.mount:
+        path: "{{ legacy_copyparty_share_mount_path }}"
+        state: absent_from_fstab
+
+    - name: Remove legacy share mountpoints from the worker
       ansible.builtin.file:
-        path: "{{ homelab_effective.storage.copyparty_ingest.worker_mount_path }}"
+        path: "{{ item }}"
         state: absent
-      when: hostvars[groups['proxmox'][0]].copyparty_ingest_device.rc != 0
+      loop:
+        - "{{ legacy_copyparty_share_mount_path }}"
+        - "{{ legacy_quickdrop_mount_path }}"
+        - "{{ legacy_ingest_mount_path }}"
 
-    - name: Ensure worker ingest mountpoint exists
-      ansible.builtin.file:
-        path: "{{ homelab_effective.storage.copyparty_ingest.worker_mount_path }}"
-        state: directory
-        mode: "0755"
-
-    - name: Mount Proxmox-host ingest share read-only on the worker
-      ansible.posix.mount:
-        path: "{{ homelab_effective.storage.copyparty_ingest.worker_mount_path }}"
-        src: >-
-          //{{ homelab_effective.proxmox.ssh_host }}/{{ homelab_effective.storage.copyparty_ingest.samba_share_name }}
-        fstype: cifs
-        opts: ro,guest,nofail,_netdev,x-systemd.automount,vers=3.0,uid=0,gid=0,file_mode=0444,dir_mode=0555,iocharset=utf8
-        state: mounted
-      when: hostvars[groups['proxmox'][0]].copyparty_ingest_device.rc == 0
-
-- name: Finalize removable Copyparty ingest teardown on the Proxmox host
+- name: Remove legacy local file-sharing wiring from the Proxmox host
   hosts: proxmox
   gather_facts: false
   become: true
   vars:
     homelab_effective: "{{ hostvars['localhost'].homelab_effective }}"
+    legacy_copyparty_share_device_by_id: /dev/disk/by-id/nvme-CT1000P3PSSD8_25044DC818B6
+    legacy_ingest_mount_path: /srv/ingest/current
   tasks:
-    - name: Remove read-only Samba ingest share when the removable SSD is absent
+    - name: Remove legacy Copyparty ingest Samba share definition
       ansible.builtin.blockinfile:
         path: /etc/samba/smb.conf
         marker: "; {mark} ANSIBLE MANAGED COPYPARTY INGEST"
         state: absent
-      register: copyparty_ingest_samba_share_removed
-      when: copyparty_ingest_device.rc != 0
+      register: legacy_copyparty_ingest_samba_share_removed
 
-    - name: Restart Samba when the ingest share definition is removed
+    - name: Restart Samba when the legacy ingest share definition changes
       ansible.builtin.service:
         name: smbd
         state: restarted
-      when:
-        - copyparty_ingest_device.rc != 0
-        - copyparty_ingest_samba_share_removed is defined
-        - copyparty_ingest_samba_share_removed.changed
+      when: legacy_copyparty_ingest_samba_share_removed.changed
 
-    - name: Force-unmount removable ingest SSD when disk is absent
+    - name: Force-unmount legacy removable ingest mount on Proxmox
       ansible.builtin.shell: |
-        umount -lf {{ homelab_effective.storage.copyparty_ingest.proxmox_mount_path }} || true
-      when: copyparty_ingest_device.rc != 0
+        umount -lf "{{ legacy_ingest_mount_path }}" || true
+      args:
+        executable: /bin/bash
 
-    - name: Remove removable ingest fstab entry when disk is absent
+    - name: Remove legacy removable ingest fstab entry on Proxmox
       ansible.posix.mount:
-        path: "{{ homelab_effective.storage.copyparty_ingest.proxmox_mount_path }}"
+        path: "{{ legacy_ingest_mount_path }}"
         state: absent_from_fstab
-      when: copyparty_ingest_device.rc != 0
 
-    - name: Ensure removable ingest mount root remains harmless when disk is absent
+    - name: Remove legacy removable ingest mountpoint on Proxmox
       ansible.builtin.file:
-        path: "{{ homelab_effective.storage.copyparty_ingest.proxmox_mount_path }}"
-        state: directory
-        mode: "0755"
-      when: copyparty_ingest_device.rc != 0
+        path: "{{ legacy_ingest_mount_path }}"
+        state: absent
+
+    - name: Read current worker VM config
+      ansible.builtin.command: "qm config {{ homelab_effective.k3s.worker.vmid }}"
+      register: legacy_worker_vm_config
+      changed_when: false
+
+    - name: Detach the legacy dedicated Copyparty SSD from the worker VM
+      ansible.builtin.command:
+        cmd: "qm set {{ homelab_effective.k3s.worker.vmid }} --delete scsi1"
+      when:
+        - "'scsi1:' in legacy_worker_vm_config.stdout"
+        - legacy_copyparty_share_device_by_id in legacy_worker_vm_config.stdout

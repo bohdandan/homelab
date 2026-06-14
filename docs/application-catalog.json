@@ -29,12 +29,6 @@
       "homepage_href": "https://{{ homelab_effective.domain.zigbee }}"
     },
     {
-      "id": "copyparty",
-      "homepage_entry_required": true,
-      "homepage_title": "Copyparty",
-      "homepage_href": "https://{{ homelab_effective.domain.share_internal }}"
-    },
-    {
       "id": "vaultwarden",
       "homepage_entry_required": true,
       "homepage_title": "Vaultwarden",
