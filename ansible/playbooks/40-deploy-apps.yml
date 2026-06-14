@@ -220,7 +220,7 @@
       ansible.builtin.debug:
         msg: >-
           MetalLB and cert-manager are installed. Skipping ClusterIssuer, homepage, ChangeDetection,
-          Uptime Kuma, ntfy, Glances ingress, Vaultwarden, CloudBeaver, astro-docs, n8n,
+          Uptime Kuma, ntfy, Glances ingress, Vaultwarden, CloudBeaver, astro-docs, kiosk, n8n,
           Home Assistant proxy, and cloudflared
           until real Cloudflare and application secrets are present in ansible/group_vars/all/secrets.sops.yaml.
       when: not (hostvars['localhost'].homelab_app_secrets_ready | bool)
@@ -367,6 +367,18 @@
         cmd: kubectl apply -f /tmp/astro-docs.yaml
       when: hostvars['localhost'].homelab_app_secrets_ready | bool
 
+    - name: Render kiosk manifest
+      ansible.builtin.template:
+        src: ../../kubernetes/base/kiosk/manifests.yaml.j2
+        dest: /tmp/kiosk.yaml
+        mode: "0644"
+      when: hostvars['localhost'].homelab_app_secrets_ready | bool
+
+    - name: Apply kiosk manifest
+      ansible.builtin.command:
+        cmd: kubectl apply -f /tmp/kiosk.yaml
+      when: hostvars['localhost'].homelab_app_secrets_ready | bool
+
     - name: Render n8n manifest
       ansible.builtin.template:
         src: ../../kubernetes/base/n8n/manifests.yaml.j2
@@ -500,9 +512,19 @@
         cmd: kubectl rollout status deployment/astro-docs -n {{ homelab_effective.apps.astro_docs.namespace }} --timeout=240s
       when: hostvars['localhost'].homelab_app_secrets_ready | bool
 
+    - name: Wait for kiosk deployment
+      ansible.builtin.command:
+        cmd: kubectl rollout status deployment/kiosk -n {{ homelab_effective.apps.kiosk.namespace }} --timeout=240s
+      when: hostvars['localhost'].homelab_app_secrets_ready | bool
+
     - name: Wait for n8n deployment
       ansible.builtin.command:
         cmd: kubectl rollout status deployment/n8n -n {{ homelab_effective.apps.n8n.namespace }} --timeout=240s
+      when: hostvars['localhost'].homelab_app_secrets_ready | bool
+
+    - name: Wait for cloudflared deployment
+      ansible.builtin.command:
+        cmd: kubectl rollout status deployment/cloudflared -n {{ homelab_effective.apps.cloudflared.namespace }} --timeout=240s
       when: hostvars['localhost'].homelab_app_secrets_ready | bool
 
 - name: Reconcile Uptime Kuma desired state

@@ -11,6 +11,12 @@
       "homepage_href": "https://{{ homelab_effective.domain.docs_internal }}"
     },
     {
+      "id": "kiosk",
+      "homepage_entry_required": true,
+      "homepage_title": "Kiosk",
+      "homepage_href": "https://{{ homelab_effective.domain.kiosk }}"
+    },
+    {
       "id": "n8n",
       "homepage_entry_required": true,
       "homepage_title": "n8n",

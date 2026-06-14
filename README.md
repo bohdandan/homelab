@@ -81,6 +81,7 @@ Current homelab placement:
 Use `apps/<app>/` for app-owned content and configuration.
 
 - `apps/astro-docs/` is the current example.
+- `apps/kiosk/` stores the LAN-only kids routine dashboard source and tracked schedule config.
 - `apps/home-assistant/` stores the repo-managed HAOS YAML config scaffold and sync workflow.
 - `apps/uptime-kuma/` stores the repo-managed Kuma desired state and reconciliation script.
 - `apps/vaultwarden/` stores the LAN-only password vault operator notes.

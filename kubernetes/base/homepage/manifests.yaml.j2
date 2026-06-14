@@ -26,6 +26,12 @@ data:
             description: Homelab documentation
             namespace: {{ homelab_effective.apps.astro_docs.namespace }}
             podSelector: app=astro-docs
+        - Kiosk:
+            href: https://{{ homelab_effective.domain.kiosk }}
+            siteMonitor: https://{{ homelab_effective.domain.kiosk }}/
+            description: Kids routine dashboard
+            namespace: {{ homelab_effective.apps.kiosk.namespace }}
+            podSelector: app=kiosk
         - Vaultwarden:
             href: https://{{ homelab_effective.domain.vaultwarden }}
             siteMonitor: https://{{ homelab_effective.domain.vaultwarden }}/

@@ -4,6 +4,7 @@ homelab:
     subzone: homelab.magnetic-marten.com
     docs: docs.magnetic-marten.com
     docs_internal: docs.homelab.magnetic-marten.com
+    kiosk: kiosk.homelab.magnetic-marten.com
     homepage: homepage.magnetic-marten.com
     homepage_internal: homepage.homelab.magnetic-marten.com
     n8n: n8n.magnetic-marten.com
@@ -155,6 +156,9 @@ homelab:
     astro_docs:
       namespace: astro-docs
       image: ghcr.io/bohdandan/homelab/astro-docs:0.1.0
+    kiosk:
+      namespace: kiosk
+      image: ghcr.io/bohdandan/homelab/kiosk:0.1.0
     changedetection:
       namespace: changedetection
       image: dgtlmoon/changedetection.io:0.52.4
@@ -177,7 +181,8 @@ homelab:
     n8n:
       namespace: n8n
       image: n8nio/n8n:2.2.6
-      data_storage: 10Gi    vaultwarden:
+      data_storage: 10Gi
+    vaultwarden:
       namespace: vaultwarden
       image: vaultwarden/server:1.35.4
       data_storage: 10Gi

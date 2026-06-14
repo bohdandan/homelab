@@ -1,0 +1,9 @@
+services:
+  kiosk:
+    build: .
+    container_name: kiosk
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    volumes:
+      - ./config/dashboard.json:/usr/share/nginx/html/config/dashboard.json:ro

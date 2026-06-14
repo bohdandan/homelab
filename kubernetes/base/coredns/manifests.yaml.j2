@@ -33,6 +33,7 @@ data:
     ns1 3600 IN A {{ homelab_effective.apps.coredns.service_ip }}
     ha 300 IN A {{ homelab_effective.network.traefik_lb_ip }}
     docs 300 IN A {{ homelab_effective.network.traefik_lb_ip }}
+    kiosk 300 IN A {{ homelab_effective.network.traefik_lb_ip }}
     homepage 300 IN A {{ homelab_effective.network.traefik_lb_ip }}
     n8n 300 IN A {{ homelab_effective.network.traefik_lb_ip }}
     vaultwarden 300 IN A {{ homelab_effective.network.traefik_lb_ip }}
