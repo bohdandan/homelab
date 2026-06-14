@@ -67,6 +67,7 @@ spec:
             - /bin/sh
             - -ec
             - |
+              rm -f /mosquitto/generated/passwordfile
               mosquitto_passwd -b -c /mosquitto/generated/passwordfile "$MQTT_USERNAME" "$MQTT_PASSWORD"
               chown mosquitto:mosquitto /mosquitto/generated/passwordfile
               chmod 0600 /mosquitto/generated/passwordfile

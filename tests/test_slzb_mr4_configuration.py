@@ -50,6 +50,7 @@ class SlzbMr4ConfigurationTest(unittest.TestCase):
         self.assertIn("name: mosquitto", mosquitto_text)
         self.assertIn("loadBalancerIP: {{ homelab_effective.apps.mosquitto.service_ip }}", mosquitto_text)
         self.assertIn("containerPort: 1883", mosquitto_text)
+        self.assertIn("rm -f /mosquitto/generated/passwordfile", mosquitto_text)
         self.assertIn("name: zigbee2mqtt", zigbee_text)
         self.assertIn("host: {{ homelab_effective.domain.zigbee }}", zigbee_text)
         self.assertIn("tcp://{{ homelab_effective.iot.slzb_mr4.ip }}:{{ homelab_effective.iot.slzb_mr4.zigbee_port }}", zigbee_text)
