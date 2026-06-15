@@ -256,12 +256,11 @@ export function getCalendarMonth(
   date: Date,
   majorEvents: MajorEvent[] | undefined = []
 ): CalendarMonth {
-  const year = date.getUTCFullYear();
-  const month = date.getUTCMonth();
-  const firstOfMonth = new Date(Date.UTC(year, month, 1));
-  const mondayFirstOffset = (firstOfMonth.getUTCDay() + 6) % 7;
-  const start = new Date(firstOfMonth);
-  start.setUTCDate(firstOfMonth.getUTCDate() - mondayFirstOffset);
+  const mondayFirstOffset = (date.getUTCDay() + 6) % 7;
+  const start = utcDateFromIso(toIsoDate(date));
+  start.setUTCDate(start.getUTCDate() - mondayFirstOffset);
+  const end = new Date(start);
+  end.setUTCDate(start.getUTCDate() + 41);
   const todayIso = toIsoDate(date);
   const eventsByDate = new Map<string, MajorEvent[]>();
 
@@ -269,7 +268,7 @@ export function getCalendarMonth(
     eventsByDate.set(event.date, [...(eventsByDate.get(event.date) ?? []), event]);
   }
 
-  const cells = Array.from({ length: 35 }, (_, index) => {
+  const cells = Array.from({ length: 42 }, (_, index) => {
     const cellDate = new Date(start);
     cellDate.setUTCDate(start.getUTCDate() + index);
     const isoDate = toIsoDate(cellDate);
@@ -277,18 +276,22 @@ export function getCalendarMonth(
     return {
       date: isoDate,
       day: cellDate.getUTCDate(),
-      isCurrentMonth: cellDate.getUTCMonth() === month,
+      isCurrentMonth: true,
       isToday: isoDate === todayIso,
       majorEvents: eventsByDate.get(isoDate) ?? []
     };
   });
 
   return {
-    label: new Intl.DateTimeFormat("uk-UA", {
+    label: `${new Intl.DateTimeFormat("uk-UA", {
+      day: "numeric",
       month: "long",
-      year: "numeric",
       timeZone: "UTC"
-    }).format(firstOfMonth).replace(" р.", ""),
+    }).format(start)} - ${new Intl.DateTimeFormat("uk-UA", {
+      day: "numeric",
+      month: "long",
+      timeZone: "UTC"
+    }).format(end)}`,
     cells
   };
 }

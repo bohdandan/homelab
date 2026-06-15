@@ -147,6 +147,9 @@ export function Dashboard() {
   const calendarMonth = getCalendarMonth(now ?? new Date(), majorEvents);
   const nextMajorEvent = getNextMajorEvent(majorEvents, now ?? new Date());
   const nextMajorEventDays = nextMajorEvent && now ? majorEventDaysUntil(nextMajorEvent, now) : null;
+  const upcomingMajorEvents = [...majorEvents]
+    .filter((event) => event.date >= (now ?? new Date()).toISOString().slice(0, 10))
+    .sort((a, b) => a.date.localeCompare(b.date));
 
   return (
     <main
@@ -180,8 +183,9 @@ export function Dashboard() {
 
           <div className="flex flex-col items-start gap-6 pb-2">
             {chineseCard ? (
-              <div
-                className={`mr-auto min-w-[22rem] rounded-3xl border ${theme.border} ${theme.card} px-7 py-6 text-center shadow-2xl shadow-black/25`}
+              <button
+                type="button"
+                className={`mr-auto min-w-[22rem] rounded-3xl border ${theme.border} ${theme.card} px-7 py-6 text-center shadow-2xl shadow-black/25 transition-transform active:scale-[0.98]`}
                 style={
                   toneColors
                     ? {
@@ -190,33 +194,25 @@ export function Dashboard() {
                       } as CSSProperties
                     : undefined
                 }
+                aria-label="Наступне китайське слово"
+                onClick={() => {
+                  setChineseManualOffset((offset) =>
+                    getNextChineseCardIndex(offset, chineseCards.length)
+                  );
+                }}
               >
                 <div className="space-y-3">
                   <div className="text-7xl font-black leading-none text-[var(--tone-light)]">
                     {chineseCard.hanzi}
                   </div>
-                  <div className="flex items-end justify-between gap-5">
-                    <div className="min-w-0 flex-1 text-center">
-                      <div className="text-3xl font-black text-[var(--tone-light)]">{chineseCard.pinyin}</div>
-                      <div className="mt-1 text-2xl font-black text-[#f8f8f2]">
-                        {chineseCard.meaning}
-                      </div>
+                  <div className="min-w-0 text-center">
+                    <div className="text-3xl font-black text-[var(--tone-light)]">{chineseCard.pinyin}</div>
+                    <div className="mt-1 text-2xl font-black text-[#f8f8f2]">
+                      {chineseCard.meaning}
                     </div>
-                    <button
-                      type="button"
-                      className="grid h-12 w-12 place-items-center rounded-full border border-[#6272a4]/35 bg-[#44475a]/20 text-2xl font-black text-[#f8f8f2]/35 transition hover:text-[#f8f8f2]/70 active:scale-95"
-                      aria-label="Наступне китайське слово"
-                      onClick={() => {
-                        setChineseManualOffset((offset) =>
-                          getNextChineseCardIndex(offset, chineseCards.length)
-                        );
-                      }}
-                    >
-                      →
-                    </button>
                   </div>
                 </div>
-              </div>
+              </button>
             ) : null}
           </div>
         </section>
@@ -225,6 +221,30 @@ export function Dashboard() {
           <section
             className={`h-full min-h-0 rounded-lg border ${theme.border} ${theme.card} p-6 shadow-2xl shadow-black/10`}
           >
+            <div className="mb-5 grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                className={`rounded-2xl border px-4 py-3 text-2xl font-black transition ${
+                  !isCalendarOpen
+                    ? "border-[#8be9fd] bg-[#8be9fd] text-[#282a36]"
+                    : `border-[#6272a4]/45 bg-[#44475a]/25 ${theme.secondary}`
+                }`}
+                onClick={() => setIsCalendarOpen(false)}
+              >
+                Сьогодні
+              </button>
+              <button
+                type="button"
+                className={`rounded-2xl border px-4 py-3 text-2xl font-black transition ${
+                  isCalendarOpen
+                    ? "border-[#bd93f9] bg-[#bd93f9] text-[#282a36]"
+                    : `border-[#6272a4]/45 bg-[#44475a]/25 ${theme.secondary}`
+                }`}
+                onClick={() => setIsCalendarOpen(true)}
+              >
+                Чекуньки!
+              </button>
+            </div>
             {isCalendarOpen ? (
               <div className="flex h-full min-h-0 flex-col">
                 <div className="mb-5 flex items-start justify-between gap-4">
@@ -239,13 +259,6 @@ export function Dashboard() {
                       </div>
                     ) : null}
                   </div>
-                  <button
-                    type="button"
-                    className={`rounded-full border ${theme.border} ${theme.accent} px-4 py-2 text-xl font-black`}
-                    onClick={() => setIsCalendarOpen(false)}
-                  >
-                    Сьогодні
-                  </button>
                 </div>
                 <div className="grid grid-cols-7 gap-2 text-center">
                   {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Нд"].map((day) => (
@@ -256,7 +269,7 @@ export function Dashboard() {
                   {calendarMonth.cells.map((cell) => (
                     <div
                       key={cell.date}
-                      className={`min-h-20 rounded-2xl border p-2 text-left ${
+                      className={`min-h-16 rounded-2xl border p-2 text-left ${
                         cell.isToday ? "border-[#ff79c6] bg-[#ff79c6]/15" : "border-[#6272a4]/35 bg-[#44475a]/25"
                       } ${cell.isCurrentMonth ? "" : "opacity-35"}`}
                     >
@@ -265,9 +278,10 @@ export function Dashboard() {
                         {cell.majorEvents.map((event) => (
                           <span
                             key={`${event.date}-${event.title}`}
-                            className={`rounded-full px-2 py-1 text-xs font-black ${
+                            className={`grid h-7 w-7 place-items-center rounded-full text-base font-black ${
                               majorEventColors[event.color ?? "purple"]
                             }`}
+                            title={event.title}
                           >
                             {event.icon ?? "★"}
                           </span>
@@ -276,12 +290,37 @@ export function Dashboard() {
                     </div>
                   ))}
                 </div>
+                <div className="mt-5 min-h-0 flex-1 overflow-hidden">
+                  <div className="mb-3 text-2xl font-black">Найближчі чекуньки</div>
+                  <div className="space-y-3">
+                    {upcomingMajorEvents.length > 0 ? (
+                      upcomingMajorEvents.map((event) => (
+                        <div
+                          key={`${event.date}-${event.title}`}
+                          className="grid grid-cols-[3rem_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-[#6272a4]/35 bg-[#44475a]/25 px-4 py-3"
+                        >
+                          <div className={`grid h-10 w-10 place-items-center rounded-full text-xl font-black ${majorEventColors[event.color ?? "purple"]}`}>
+                            {event.icon ?? "★"}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="truncate text-2xl font-black">{event.title}</div>
+                            <div className={`text-lg font-bold ${theme.secondary}`}>{event.date}</div>
+                          </div>
+                          <div className="text-right text-xl font-black text-[#ffb86c]">
+                            через {majorEventDaysUntil(event, now ?? new Date())} дн.
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className={`text-2xl font-bold ${theme.secondary}`}>
+                        Немає великих подій
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             ) : (
               <>
-                <div className="mb-5 text-3xl font-black tracking-normal">
-                  Сьогодні
-                </div>
                 <div className="space-y-4">
                   {upcomingList.hasHiddenPassedEvents ? (
                     <div className={`text-center text-4xl font-black ${theme.secondary}`}>…</div>

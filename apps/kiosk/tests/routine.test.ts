@@ -305,13 +305,17 @@ describe("routine calculations", () => {
   it("builds a calendar month with major event markers", () => {
     const month = getCalendarMonth(
       new Date("2026-06-15T12:00:00Z"),
-      [{ date: "2026-06-20", title: "Подорож", kind: "trip" }]
+      [
+        { date: "2026-06-20", title: "Подорож", kind: "trip", icon: "🎒" },
+        { date: "2026-07-20", title: "Legoland", kind: "trip", icon: "🎢" }
+      ]
     );
 
-    expect(month.label).toBe("червень 2026");
-    expect(month.cells).toHaveLength(35);
-    expect(month.cells.find((cell) => cell.date === "2026-06-20")?.majorEvents[0]?.title).toBe(
-      "Подорож"
-    );
+    expect(month.label).toBe("15 червня - 26 липня");
+    expect(month.cells).toHaveLength(42);
+    expect(month.cells.at(0)?.date).toBe("2026-06-15");
+    expect(month.cells.at(-1)?.date).toBe("2026-07-26");
+    expect(month.cells.find((cell) => cell.date === "2026-06-20")?.majorEvents[0]?.icon).toBe("🎒");
+    expect(month.cells.find((cell) => cell.date === "2026-07-20")?.majorEvents[0]?.icon).toBe("🎢");
   });
 });
