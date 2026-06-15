@@ -151,7 +151,7 @@ export function Dashboard() {
 
             {chineseCard ? (
               <div
-                className={`mr-auto min-w-[18rem] rounded-3xl border ${theme.border} ${theme.card} px-6 py-5 text-left shadow-2xl shadow-black/10`}
+                className={`mr-auto min-w-[18rem] rounded-3xl border ${theme.border} ${theme.card} px-6 py-5 text-center shadow-2xl shadow-black/10`}
                 style={
                   toneColors
                     ? {
@@ -163,7 +163,7 @@ export function Dashboard() {
               >
                 <button
                   type="button"
-                  className="block w-full text-left transition-transform active:scale-[0.98]"
+                  className="block w-full text-center transition-transform active:scale-[0.98]"
                   aria-label={
                     isChineseRevealed
                       ? `${chineseCard.hanzi}, ${chineseCard.pinyin}, ${chineseCard.meaning}`
@@ -177,7 +177,7 @@ export function Dashboard() {
                 </button>
                 {isChineseRevealed ? (
                   <div className="mt-3 flex items-end justify-between gap-5">
-                    <div>
+                    <div className="min-w-0 flex-1 text-center">
                       <div className="text-3xl font-black text-[var(--tone-light)] dark:text-[var(--tone-night)]">{chineseCard.pinyin}</div>
                       <div className={`mt-1 text-2xl font-bold ${theme.secondary}`}>
                         {chineseCard.meaning}
