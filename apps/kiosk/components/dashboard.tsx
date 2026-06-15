@@ -106,27 +106,6 @@ const themePalettes: Record<ThemeMode, Record<ThemeName, ThemeDefinition>> = {
   }
 };
 
-const majorEventColors: Record<ThemeMode, Record<string, string>> = {
-  alucard: {
-    cyan: "bg-[#4b9fb3] text-[#fffdfa]",
-    green: "bg-[#4f8f61] text-[#fffdfa]",
-    orange: "bg-[#c47a35] text-[#fffdfa]",
-    pink: "bg-[#b85d91] text-[#fffdfa]",
-    purple: "bg-[#8668b6] text-[#fffdfa]",
-    red: "bg-[#b14f5a] text-[#fffdfa]",
-    yellow: "bg-[#b79737] text-[#1f1f29]"
-  },
-  dracula: {
-    cyan: "bg-[#8be9fd] text-[#282a36]",
-    green: "bg-[#50fa7b] text-[#282a36]",
-    orange: "bg-[#ffb86c] text-[#282a36]",
-    pink: "bg-[#ff79c6] text-[#282a36]",
-    purple: "bg-[#bd93f9] text-[#282a36]",
-    red: "bg-[#ff5555] text-[#282a36]",
-    yellow: "bg-[#f1fa8c] text-[#282a36]"
-  }
-};
-
 export function Dashboard() {
   const [config, setConfig] = useState<DashboardConfig | null>(null);
   const [chineseConfig, setChineseConfig] = useState<ChineseCard[] | null>(null);
@@ -193,7 +172,6 @@ export function Dashboard() {
       : defaultConfig.dayRules[0];
   const themeMode: ThemeMode = isDarkThemeTime(currentMinutes) ? "dracula" : "alucard";
   const theme = themePalettes[themeMode][currentRule.theme] ?? themePalettes[themeMode].green;
-  const eventColors = majorEventColors[themeMode];
   const nextEventAccent = themeMode === "dracula" ? "text-[#ffb86c]" : "text-[#9f5d28]";
   const tabActiveToday =
     themeMode === "dracula"
@@ -247,14 +225,14 @@ export function Dashboard() {
 
   return (
     <main
-      className={`h-screen w-screen overflow-hidden ${theme.background} ${theme.primary}`}
+      className={`min-h-screen w-screen overflow-x-hidden lg:h-screen lg:overflow-hidden ${theme.background} ${theme.primary}`}
     >
-      <div className="grid h-full grid-cols-[minmax(0,1fr)_minmax(32rem,0.78fr)] gap-8 p-6 md:p-8">
-        <section className="flex min-h-0 flex-col justify-between">
+      <div className="grid min-h-screen grid-cols-1 gap-4 p-4 sm:gap-5 sm:p-5 lg:h-full lg:min-h-0 lg:grid-cols-[minmax(0,1fr)_minmax(28rem,0.82fr)] lg:gap-8 lg:p-8 xl:grid-cols-[minmax(0,1fr)_minmax(32rem,0.78fr)]">
+        <section className="flex min-h-0 flex-col gap-6 lg:justify-between">
           <div className="space-y-3">
             <button
               type="button"
-              className={`text-left text-2xl font-black uppercase tracking-[0.12em] ${theme.secondary}`}
+              className={`text-left text-base font-black uppercase tracking-[0.12em] sm:text-xl lg:text-2xl ${theme.secondary}`}
               onClick={() => setIsCalendarOpen((open) => !open)}
             >
               {displayDate}
@@ -269,7 +247,7 @@ export function Dashboard() {
               </div>
             </div>
             {visibleNextEvent ? (
-              <div className={`max-w-[48rem] text-[clamp(2rem,3.8vw,4rem)] font-black leading-tight ${nextEventAccent}`}>
+              <div className={`max-w-[48rem] text-[clamp(1.5rem,4vw,4rem)] font-black leading-tight ${nextEventAccent}`}>
                 {`${visibleNextEvent.event.title} ${minutesUntilEvent(visibleNextEvent.minutesUntil)}`}
               </div>
             ) : null}
@@ -279,7 +257,7 @@ export function Dashboard() {
             {chineseCard ? (
               <button
                 type="button"
-                className={`mr-auto min-w-[22rem] rounded-3xl border ${theme.border} ${theme.card} px-7 py-6 text-center shadow-2xl shadow-black/25 transition-transform active:scale-[0.98]`}
+                className={`w-full max-w-sm rounded-3xl border ${theme.border} ${theme.card} px-5 py-5 text-center shadow-2xl shadow-black/25 transition-transform active:scale-[0.98] sm:px-7 sm:py-6 lg:mr-auto lg:min-w-[22rem] lg:w-auto`}
                 style={
                   toneColors
                     ? {
@@ -296,12 +274,12 @@ export function Dashboard() {
                 }}
               >
                 <div className="space-y-3">
-                  <div className="text-7xl font-black leading-none text-[var(--tone-light)]">
+                  <div className="text-6xl font-black leading-none text-[var(--tone-light)] sm:text-7xl">
                     {chineseCard.hanzi}
                   </div>
                   <div className="min-w-0 text-center">
-                    <div className="text-3xl font-black text-[var(--tone-light)]">{chineseCard.pinyin}</div>
-                    <div className="mt-1 text-2xl font-black">
+                    <div className="text-2xl font-black text-[var(--tone-light)] sm:text-3xl">{chineseCard.pinyin}</div>
+                    <div className="mt-1 text-xl font-black sm:text-2xl">
                       {chineseCard.meaning}
                     </div>
                   </div>
@@ -313,12 +291,12 @@ export function Dashboard() {
 
         <aside className="min-h-0">
           <section
-            className={`h-full min-h-0 rounded-lg border ${theme.border} ${theme.card} p-6 shadow-2xl shadow-black/10`}
+            className={`min-h-[28rem] rounded-lg border ${theme.border} ${theme.card} p-4 shadow-2xl shadow-black/10 sm:p-5 lg:h-full lg:min-h-0 lg:p-6`}
           >
             <div className="mb-5 grid grid-cols-2 gap-3">
               <button
                 type="button"
-                className={`rounded-2xl border px-4 py-3 text-2xl font-black transition ${
+                className={`rounded-2xl border px-3 py-2 text-xl font-black transition sm:px-4 sm:py-3 sm:text-2xl ${
                   !isCalendarOpen
                     ? tabActiveToday
                     : tabInactive
@@ -329,7 +307,7 @@ export function Dashboard() {
               </button>
               <button
                 type="button"
-                className={`rounded-2xl border px-4 py-3 text-2xl font-black transition ${
+                className={`rounded-2xl border px-3 py-2 text-xl font-black transition sm:px-4 sm:py-3 sm:text-2xl ${
                   isCalendarOpen
                     ? tabActiveCalendar
                     : tabInactive
@@ -343,38 +321,36 @@ export function Dashboard() {
               <div className="flex h-full min-h-0 flex-col">
                 <div className="mb-5 flex items-start justify-between gap-4">
                   <div>
-                    <div className="text-3xl font-black capitalize tracking-normal">
+                    <div className="text-2xl font-black capitalize tracking-normal sm:text-3xl">
                       {calendarMonth.label}
                     </div>
                     {nextMajorEvent && nextMajorEventDays !== null ? (
-                      <div className={`mt-2 text-2xl font-black ${theme.secondary}`}>
+                      <div className={`mt-2 text-xl font-black sm:text-2xl ${theme.secondary}`}>
                         {nextMajorEvent.icon ? `${nextMajorEvent.icon} ` : ""}
                         {nextMajorEvent.title} через {nextMajorEventDays} дн.
                       </div>
                     ) : null}
                   </div>
                 </div>
-                <div className="grid grid-cols-7 gap-2 text-center">
+                <div className="grid grid-cols-7 gap-1 text-center sm:gap-2">
                   {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Нд"].map((day) => (
-                    <div key={day} className={`text-lg font-black ${theme.secondary}`}>
+                    <div key={day} className={`text-sm font-black sm:text-lg ${theme.secondary}`}>
                       {day}
                     </div>
                   ))}
                   {calendarMonth.cells.map((cell) => (
                     <div
                       key={cell.date}
-                      className={`min-h-16 rounded-2xl border p-2 text-left ${
+                      className={`min-h-12 rounded-xl border p-1.5 text-left sm:min-h-16 sm:rounded-2xl sm:p-2 ${
                         cell.isToday ? calendarTodayCell : calendarCellBase
                       } ${cell.isCurrentMonth ? "" : "opacity-35"}`}
                     >
-                      <div className="text-xl font-black">{cell.day}</div>
-                      <div className="mt-2 flex flex-wrap gap-1">
+                      <div className="text-base font-black sm:text-xl">{cell.day}</div>
+                      <div className="mt-1 flex flex-wrap gap-0.5 sm:mt-2 sm:gap-1">
                         {cell.majorEvents.map((event) => (
                           <span
                             key={`${event.date}-${event.title}`}
-                            className={`grid h-7 w-7 place-items-center rounded-full text-base font-black ${
-                              eventColors[event.color ?? "purple"]
-                            }`}
+                            className="grid h-5 w-5 place-items-center text-base font-black sm:h-7 sm:w-7 sm:text-xl"
                             title={event.title}
                           >
                             {event.icon ?? "★"}
@@ -385,22 +361,22 @@ export function Dashboard() {
                   ))}
                 </div>
                 <div className="mt-5 min-h-0 flex-1 overflow-hidden">
-                  <div className="mb-3 text-2xl font-black">Найближчі чекуньки</div>
+                  <div className="mb-3 text-xl font-black sm:text-2xl">Найближчі чекуньки</div>
                   <div className="space-y-3">
                     {upcomingMajorEvents.length > 0 ? (
                       upcomingMajorEvents.map((event) => (
                         <div
                           key={`${event.date}-${event.title}`}
-                          className={`grid grid-cols-[3rem_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border px-4 py-3 ${calendarCellBase}`}
+                          className={`grid grid-cols-[2.25rem_minmax(0,1fr)] items-center gap-3 rounded-2xl border px-3 py-3 sm:grid-cols-[3rem_minmax(0,1fr)_auto] sm:px-4 ${calendarCellBase}`}
                         >
-                          <div className={`grid h-10 w-10 place-items-center rounded-full text-xl font-black ${eventColors[event.color ?? "purple"]}`}>
+                          <div className="grid h-9 w-9 place-items-center text-2xl font-black sm:h-10 sm:w-10">
                             {event.icon ?? "★"}
                           </div>
                           <div className="min-w-0">
-                            <div className="truncate text-2xl font-black">{event.title}</div>
-                            <div className={`text-lg font-bold ${theme.secondary}`}>{event.date}</div>
+                            <div className="truncate text-xl font-black sm:text-2xl">{event.title}</div>
+                            <div className={`text-base font-bold sm:text-lg ${theme.secondary}`}>{event.date}</div>
                           </div>
-                          <div className={`text-right text-xl font-black ${nextEventAccent}`}>
+                          <div className={`col-span-2 text-left text-lg font-black sm:col-span-1 sm:text-right sm:text-xl ${nextEventAccent}`}>
                             через {majorEventDaysUntil(event, now ?? new Date())} дн.
                           </div>
                         </div>
@@ -417,18 +393,18 @@ export function Dashboard() {
               <>
                 <div className="space-y-4">
                   {upcomingList.hasHiddenPassedEvents ? (
-                    <div className={`text-center text-4xl font-black ${theme.secondary}`}>…</div>
+                    <div className={`text-center text-3xl font-black sm:text-4xl ${theme.secondary}`}>…</div>
                   ) : null}
                   {upcomingList.events.length > 0 ? (
                     upcomingList.events.map((event) => (
                       <div
                         key={`${event.time}-${event.title}`}
-                        className="grid grid-cols-[6.5rem_minmax(0,1fr)] items-center gap-4"
+                        className="grid grid-cols-[5rem_minmax(0,1fr)] items-center gap-3 sm:grid-cols-[6.5rem_minmax(0,1fr)] sm:gap-4"
                       >
-                        <div className={`text-3xl font-black tabular-nums ${listTimeColor}`}>
+                        <div className={`text-2xl font-black tabular-nums sm:text-3xl ${listTimeColor}`}>
                           {event.time}
                         </div>
-                        <div className="text-3xl font-bold leading-tight">
+                        <div className="text-2xl font-bold leading-tight sm:text-3xl">
                           {event.title}
                         </div>
                       </div>
@@ -439,7 +415,7 @@ export function Dashboard() {
                     </div>
                   )}
                   {upcomingList.hasHiddenFutureEvents ? (
-                    <div className={`text-center text-4xl font-black ${theme.secondary}`}>…</div>
+                    <div className={`text-center text-3xl font-black sm:text-4xl ${theme.secondary}`}>…</div>
                   ) : null}
                 </div>
               </>
