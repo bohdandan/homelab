@@ -29,6 +29,13 @@ export type ChineseCard = {
   meaning: string;
 };
 
+export type MandarinTone = 1 | 2 | 3 | 4 | 5;
+
+export type ToneColorScheme = {
+  light: string;
+  night: string;
+};
+
 export type DashboardConfig = {
   timezone: string;
   dayRules: DayRule[];

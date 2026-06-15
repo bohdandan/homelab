@@ -6,8 +6,10 @@ import {
   getCurrentRule,
   getEventsForDay,
   getNextEvent,
+  getToneColorScheme,
   getZonedDay,
   minutesUntilEvent,
+  pinyinToTone,
   shouldShowNextEventCountdown,
   timeToMinutes
 } from "@/lib/routine";
@@ -173,6 +175,22 @@ describe("routine calculations", () => {
       meaning: "я"
     });
     expect(defaultConfig.chinese?.some((card) => card.hanzi === "水")).toBe(true);
+  });
+
+  it("detects Mandarin tone from marked pinyin", () => {
+    expect(pinyinToTone("mā")).toBe(1);
+    expect(pinyinToTone("má")).toBe(2);
+    expect(pinyinToTone("mǎ")).toBe(3);
+    expect(pinyinToTone("mà")).toBe(4);
+    expect(pinyinToTone("ma")).toBe(5);
+  });
+
+  it("uses the Anki tone color scheme", () => {
+    expect(getToneColorScheme(1)).toEqual({ light: "#0077b6", night: "#8be9fd" });
+    expect(getToneColorScheme(2)).toEqual({ light: "#2b9348", night: "#50fa7b" });
+    expect(getToneColorScheme(3)).toEqual({ light: "#c05600", night: "#ffb86c" });
+    expect(getToneColorScheme(4)).toEqual({ light: "#b00020", night: "#ff5555" });
+    expect(getToneColorScheme(5)).toEqual({ light: "#6c757d", night: "#6272a4" });
   });
 
   it("includes the school week and activity reminders in the default kiosk schedule", () => {

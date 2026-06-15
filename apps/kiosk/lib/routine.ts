@@ -1,4 +1,12 @@
-import type { ChineseCard, DayRule, NextEvent, TimelineEvent, Weekday } from "@/lib/types";
+import type {
+  ChineseCard,
+  DayRule,
+  MandarinTone,
+  NextEvent,
+  TimelineEvent,
+  ToneColorScheme,
+  Weekday
+} from "@/lib/types";
 
 const weekdays: Weekday[] = [
   "sunday",
@@ -18,6 +26,22 @@ const weekdayLabels: Record<string, Weekday> = {
   thursday: "thursday",
   friday: "friday",
   saturday: "saturday"
+};
+
+const toneMarks: Record<MandarinTone, string> = {
+  1: "āēīōūǖĀĒĪŌŪǕ",
+  2: "áéíóúǘÁÉÍÓÚǗ",
+  3: "ǎěǐǒǔǚǍĚǏǑǓǙ",
+  4: "àèìòùǜÀÈÌÒÙǛ",
+  5: ""
+};
+
+const toneColorSchemes: Record<MandarinTone, ToneColorScheme> = {
+  1: { light: "#0077b6", night: "#8be9fd" },
+  2: { light: "#2b9348", night: "#50fa7b" },
+  3: { light: "#c05600", night: "#ffb86c" },
+  4: { light: "#b00020", night: "#ff5555" },
+  5: { light: "#6c757d", night: "#6272a4" }
 };
 
 function appliesToDay(item: { days?: Weekday[] }, day?: Weekday): boolean {
@@ -156,6 +180,20 @@ export function getCardForTime(
 
   const index = Math.floor(currentMinutes / 5) % cards.length;
   return cards[index];
+}
+
+export function pinyinToTone(pinyin: string): MandarinTone {
+  for (const tone of [1, 2, 3, 4] as const) {
+    if ([...pinyin].some((character) => toneMarks[tone].includes(character))) {
+      return tone;
+    }
+  }
+
+  return 5;
+}
+
+export function getToneColorScheme(tone: MandarinTone): ToneColorScheme {
+  return toneColorSchemes[tone];
 }
 
 export function getZonedMinutes(date: Date, timezone: string): number {

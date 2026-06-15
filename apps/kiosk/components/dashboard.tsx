@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { defaultConfig } from "@/lib/default-config";
 import {
   formatZonedTime,
@@ -9,9 +9,11 @@ import {
   getEventsForDay,
   getNextEvent,
   getNextWeekday,
+  getToneColorScheme,
   getZonedDay,
   getZonedMinutes,
   minutesUntilEvent,
+  pinyinToTone,
   shouldShowNextEventCountdown
 } from "@/lib/routine";
 import type { DashboardConfig, ThemeName } from "@/lib/types";
@@ -114,6 +116,9 @@ export function Dashboard() {
     () => getCardForTime(chineseCards, currentMinutes),
     [chineseCards, currentMinutes]
   );
+  const toneColors = chineseCard
+    ? getToneColorScheme(pinyinToTone(chineseCard.pinyin))
+    : null;
   const timeline = getEventsForDay(config?.events, currentDay).slice(0, 6);
 
   useEffect(() => {
@@ -147,6 +152,14 @@ export function Dashboard() {
               <button
                 type="button"
                 className={`ml-auto min-w-[18rem] rounded-3xl border ${theme.border} ${theme.card} px-6 py-5 text-left shadow-2xl shadow-black/10 transition-transform active:scale-[0.98]`}
+                style={
+                  toneColors
+                    ? {
+                        "--tone-light": toneColors.light,
+                        "--tone-night": toneColors.night
+                      } as CSSProperties
+                    : undefined
+                }
                 aria-label={
                   isChineseRevealed
                     ? `${chineseCard.hanzi}, ${chineseCard.pinyin}, ${chineseCard.meaning}`
@@ -154,12 +167,12 @@ export function Dashboard() {
                 }
                 onClick={() => setIsChineseRevealed((revealed) => !revealed)}
               >
-                <div className="text-7xl font-black leading-none">
+                <div className="text-7xl font-black leading-none text-[var(--tone-light)] dark:text-[var(--tone-night)]">
                   {chineseCard.hanzi}
                 </div>
                 {isChineseRevealed ? (
                   <div className="mt-3">
-                    <div className="text-3xl font-black">{chineseCard.pinyin}</div>
+                    <div className="text-3xl font-black text-[var(--tone-light)] dark:text-[var(--tone-night)]">{chineseCard.pinyin}</div>
                     <div className={`mt-1 text-2xl font-bold ${theme.secondary}`}>
                       {chineseCard.meaning}
                     </div>
