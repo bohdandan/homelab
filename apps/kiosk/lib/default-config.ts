@@ -137,6 +137,22 @@ export const defaultConfig: DashboardConfig = {
     },
     { time: "20:00", title: "Час спати" }
   ],
+  majorEvents: [
+    {
+      date: "2026-07-20",
+      title: "Legoland",
+      kind: "trip",
+      icon: "🎢",
+      color: "purple"
+    },
+    {
+      date: "2026-12-25",
+      title: "Різдво",
+      kind: "holiday",
+      icon: "🎄",
+      color: "green"
+    }
+  ],
   chinese: [
     { hanzi: "我", pinyin: "wǒ", meaning: "я" },
     { hanzi: "你", pinyin: "nǐ", meaning: "ти" },

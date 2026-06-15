@@ -3,13 +3,16 @@ import dashboardConfig from "@/config/dashboard.json";
 import { defaultConfig } from "@/lib/default-config";
 import {
   getCardForTime,
+  getCalendarMonth,
   getNextChineseCardIndex,
-  getRevealedToneColorScheme,
   getCurrentRule,
   getEventsForDay,
   getNextEvent,
+  getUpcomingEventList,
+  getNextMajorEvent,
   getToneColorScheme,
   getZonedDay,
+  majorEventDaysUntil,
   minutesUntilEvent,
   pinyinToTone,
   shouldShowNextEventCountdown,
@@ -187,20 +190,12 @@ describe("routine calculations", () => {
     expect(pinyinToTone("ma")).toBe(5);
   });
 
-  it("uses the Anki tone color scheme", () => {
-    expect(getToneColorScheme(1)).toEqual({ light: "#0077b6", night: "#8be9fd" });
-    expect(getToneColorScheme(2)).toEqual({ light: "#2b9348", night: "#50fa7b" });
-    expect(getToneColorScheme(3)).toEqual({ light: "#c05600", night: "#ffb86c" });
-    expect(getToneColorScheme(4)).toEqual({ light: "#b00020", night: "#ff5555" });
-    expect(getToneColorScheme(5)).toEqual({ light: "#6c757d", night: "#6272a4" });
-  });
-
-  it("only exposes tone colors after the Chinese card is revealed", () => {
-    expect(getRevealedToneColorScheme("mā", false)).toBeNull();
-    expect(getRevealedToneColorScheme("mā", true)).toEqual({
-      light: "#0077b6",
-      night: "#8be9fd"
-    });
+  it("uses the Dracula tone color scheme", () => {
+    expect(getToneColorScheme(1)).toEqual({ light: "#8be9fd", night: "#8be9fd" });
+    expect(getToneColorScheme(2)).toEqual({ light: "#50fa7b", night: "#50fa7b" });
+    expect(getToneColorScheme(3)).toEqual({ light: "#ffb86c", night: "#ffb86c" });
+    expect(getToneColorScheme(4)).toEqual({ light: "#ff5555", night: "#ff5555" });
+    expect(getToneColorScheme(5)).toEqual({ light: "#bd93f9", night: "#bd93f9" });
   });
 
   it("includes the school week and activity reminders in the default kiosk schedule", () => {
@@ -277,5 +272,46 @@ describe("routine calculations", () => {
   it("handles missing optional lists", () => {
     expect(getNextEvent([], timeToMinutes("12:00"))).toBeNull();
     expect(getCardForTime(undefined, timeToMinutes("12:00"))).toBeNull();
+  });
+
+  it("returns only upcoming events and marks hidden passed or truncated events", () => {
+    const result = getUpcomingEventList(config.events, timeToMinutes("10:30"), "monday", 2);
+
+    expect(result.events.map((event) => event.title)).toEqual(["Reading", "Bedtime"]);
+    expect(result.hasHiddenPassedEvents).toBe(true);
+    expect(result.hasHiddenFutureEvents).toBe(false);
+  });
+
+  it("marks hidden future events when the visible upcoming list is capped", () => {
+    const result = getUpcomingEventList(config.events, timeToMinutes("07:00"), "monday", 2);
+
+    expect(result.events.map((event) => event.title)).toEqual(["School", "Reading"]);
+    expect(result.hasHiddenPassedEvents).toBe(false);
+    expect(result.hasHiddenFutureEvents).toBe(true);
+  });
+
+  it("finds the next major event by exact date", () => {
+    const majorEvents = [
+      { date: "2026-06-10", title: "Минуле свято", kind: "holiday" as const },
+      { date: "2026-07-20", title: "Legoland", kind: "trip" as const }
+    ];
+
+    expect(getNextMajorEvent(majorEvents, new Date("2026-06-15T12:00:00Z"))?.title).toBe(
+      "Legoland"
+    );
+    expect(majorEventDaysUntil(majorEvents[1], new Date("2026-06-15T12:00:00Z"))).toBe(35);
+  });
+
+  it("builds a calendar month with major event markers", () => {
+    const month = getCalendarMonth(
+      new Date("2026-06-15T12:00:00Z"),
+      [{ date: "2026-06-20", title: "Подорож", kind: "trip" }]
+    );
+
+    expect(month.label).toBe("червень 2026");
+    expect(month.cells).toHaveLength(35);
+    expect(month.cells.find((cell) => cell.date === "2026-06-20")?.majorEvents[0]?.title).toBe(
+      "Подорож"
+    );
   });
 });

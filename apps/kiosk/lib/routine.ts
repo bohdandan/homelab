@@ -1,6 +1,8 @@
 import type {
+  CalendarMonth,
   ChineseCard,
   DayRule,
+  MajorEvent,
   MandarinTone,
   NextEvent,
   TimelineEvent,
@@ -37,11 +39,11 @@ const toneMarks: Record<MandarinTone, string> = {
 };
 
 const toneColorSchemes: Record<MandarinTone, ToneColorScheme> = {
-  1: { light: "#0077b6", night: "#8be9fd" },
-  2: { light: "#2b9348", night: "#50fa7b" },
-  3: { light: "#c05600", night: "#ffb86c" },
-  4: { light: "#b00020", night: "#ff5555" },
-  5: { light: "#6c757d", night: "#6272a4" }
+  1: { light: "#8be9fd", night: "#8be9fd" },
+  2: { light: "#50fa7b", night: "#50fa7b" },
+  3: { light: "#ffb86c", night: "#ffb86c" },
+  4: { light: "#ff5555", night: "#ff5555" },
+  5: { light: "#bd93f9", night: "#bd93f9" }
 };
 
 function appliesToDay(item: { days?: Weekday[] }, day?: Weekday): boolean {
@@ -146,6 +148,23 @@ export function getEventsForDay(
     .sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
 }
 
+export function getUpcomingEventList(
+  events: TimelineEvent[] | undefined,
+  currentMinutes: number,
+  currentDay?: Weekday,
+  limit = 6
+) {
+  const todaysEvents = getEventsForDay(events, currentDay);
+  const upcomingEvents = todaysEvents.filter((event) => timeToMinutes(event.time) >= currentMinutes);
+  const visibleEvents = upcomingEvents.slice(0, limit);
+
+  return {
+    events: visibleEvents,
+    hasHiddenPassedEvents: todaysEvents.length > upcomingEvents.length,
+    hasHiddenFutureEvents: upcomingEvents.length > visibleEvents.length
+  };
+}
+
 export function getNextWeekday(day: Weekday): Weekday {
   const index = weekdays.indexOf(day);
   return weekdays[(index + 1) % weekdays.length];
@@ -205,15 +224,73 @@ export function getToneColorScheme(tone: MandarinTone): ToneColorScheme {
   return toneColorSchemes[tone];
 }
 
-export function getRevealedToneColorScheme(
-  pinyin: string,
-  isRevealed: boolean
-): ToneColorScheme | null {
-  if (!isRevealed) {
-    return null;
+function toIsoDate(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+function utcDateFromIso(date: string): Date {
+  return new Date(`${date}T00:00:00Z`);
+}
+
+export function getNextMajorEvent(
+  majorEvents: MajorEvent[] | undefined,
+  today: Date
+): MajorEvent | null {
+  const todayIso = toIsoDate(today);
+
+  return (
+    [...(majorEvents ?? [])]
+      .filter((event) => event.date >= todayIso)
+      .sort((a, b) => a.date.localeCompare(b.date))[0] ?? null
+  );
+}
+
+export function majorEventDaysUntil(event: MajorEvent, today: Date): number {
+  const start = utcDateFromIso(toIsoDate(today));
+  const end = utcDateFromIso(event.date);
+
+  return Math.round((end.getTime() - start.getTime()) / 86_400_000);
+}
+
+export function getCalendarMonth(
+  date: Date,
+  majorEvents: MajorEvent[] | undefined = []
+): CalendarMonth {
+  const year = date.getUTCFullYear();
+  const month = date.getUTCMonth();
+  const firstOfMonth = new Date(Date.UTC(year, month, 1));
+  const mondayFirstOffset = (firstOfMonth.getUTCDay() + 6) % 7;
+  const start = new Date(firstOfMonth);
+  start.setUTCDate(firstOfMonth.getUTCDate() - mondayFirstOffset);
+  const todayIso = toIsoDate(date);
+  const eventsByDate = new Map<string, MajorEvent[]>();
+
+  for (const event of majorEvents) {
+    eventsByDate.set(event.date, [...(eventsByDate.get(event.date) ?? []), event]);
   }
 
-  return getToneColorScheme(pinyinToTone(pinyin));
+  const cells = Array.from({ length: 35 }, (_, index) => {
+    const cellDate = new Date(start);
+    cellDate.setUTCDate(start.getUTCDate() + index);
+    const isoDate = toIsoDate(cellDate);
+
+    return {
+      date: isoDate,
+      day: cellDate.getUTCDate(),
+      isCurrentMonth: cellDate.getUTCMonth() === month,
+      isToday: isoDate === todayIso,
+      majorEvents: eventsByDate.get(isoDate) ?? []
+    };
+  });
+
+  return {
+    label: new Intl.DateTimeFormat("uk-UA", {
+      month: "long",
+      year: "numeric",
+      timeZone: "UTC"
+    }).format(firstOfMonth).replace(" р.", ""),
+    cells
+  };
 }
 
 export function getZonedMinutes(date: Date, timezone: string): number {

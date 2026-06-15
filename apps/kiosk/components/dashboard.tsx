@@ -4,16 +4,20 @@ import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { defaultConfig } from "@/lib/default-config";
 import {
   formatZonedTime,
+  getCalendarMonth,
   getCardForTime,
   getCurrentRule,
-  getEventsForDay,
   getNextEvent,
   getNextChineseCardIndex,
+  getNextMajorEvent,
   getNextWeekday,
-  getRevealedToneColorScheme,
+  getToneColorScheme,
+  getUpcomingEventList,
   getZonedDay,
   getZonedMinutes,
+  majorEventDaysUntil,
   minutesUntilEvent,
+  pinyinToTone,
   shouldShowNextEventCountdown
 } from "@/lib/routine";
 import type { DashboardConfig, ThemeName } from "@/lib/types";
@@ -29,44 +33,54 @@ type ThemeDefinition = {
 
 const themes: Record<ThemeName, ThemeDefinition> = {
   green: {
-    background: "bg-[#d9e8d4]",
-    primary: "text-[#26392f]",
-    secondary: "text-[#52675a]",
-    card: "bg-white/42",
-    border: "border-[#8ea996]",
-    accent: "bg-[#edf6ea] text-[#26392f]"
+    background: "bg-[#242631]",
+    primary: "text-[#f8f8f2]",
+    secondary: "text-[#c7c4d9]",
+    card: "bg-[#282a36]/92",
+    border: "border-[#6272a4]",
+    accent: "bg-[#44475a]/70 text-[#f8f8f2]"
   },
   blue: {
-    background: "bg-[#d7e5ee]",
-    primary: "text-[#253746]",
-    secondary: "text-[#526879]",
-    card: "bg-white/44",
-    border: "border-[#8ca7b8]",
-    accent: "bg-[#edf5f9] text-[#253746]"
+    background: "bg-[#1f2230]",
+    primary: "text-[#f8f8f2]",
+    secondary: "text-[#c7c4d9]",
+    card: "bg-[#282a36]/92",
+    border: "border-[#8be9fd]",
+    accent: "bg-[#44475a]/70 text-[#f8f8f2]"
   },
   orange: {
-    background: "bg-[#f1ddc7]",
-    primary: "text-[#463526]",
-    secondary: "text-[#765f48]",
-    card: "bg-white/44",
-    border: "border-[#c4a783]",
-    accent: "bg-[#fff4e6] text-[#463526]"
+    background: "bg-[#2a2430]",
+    primary: "text-[#f8f8f2]",
+    secondary: "text-[#d7c7b8]",
+    card: "bg-[#282a36]/92",
+    border: "border-[#ffb86c]",
+    accent: "bg-[#44475a]/70 text-[#f8f8f2]"
   },
   red: {
-    background: "bg-[#ead8dc]",
-    primary: "text-[#442f36]",
-    secondary: "text-[#775d66]",
-    card: "bg-white/42",
-    border: "border-[#b997a1]",
-    accent: "bg-[#f8edf0] text-[#442f36]"
+    background: "bg-[#2b2029]",
+    primary: "text-[#f8f8f2]",
+    secondary: "text-[#d8c2cc]",
+    card: "bg-[#282a36]/92",
+    border: "border-[#ff5555]",
+    accent: "bg-[#44475a]/70 text-[#f8f8f2]"
   }
 };
+
+const majorEventColors = {
+  cyan: "bg-[#8be9fd] text-[#282a36]",
+  green: "bg-[#50fa7b] text-[#282a36]",
+  orange: "bg-[#ffb86c] text-[#282a36]",
+  pink: "bg-[#ff79c6] text-[#282a36]",
+  purple: "bg-[#bd93f9] text-[#282a36]",
+  red: "bg-[#ff5555] text-[#282a36]",
+  yellow: "bg-[#f1fa8c] text-[#282a36]"
+} as const;
 
 export function Dashboard() {
   const [config, setConfig] = useState<DashboardConfig | null>(null);
   const [now, setNow] = useState<Date | null>(null);
-  const [isChineseRevealed, setIsChineseRevealed] = useState(false);
   const [chineseManualOffset, setChineseManualOffset] = useState(0);
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -106,6 +120,14 @@ export function Dashboard() {
       : defaultConfig.dayRules[0];
   const theme = themes[currentRule.theme] ?? themes.green;
   const displayTime = now ? formatZonedTime(now, timezone) : "--:--";
+  const displayDate = now
+    ? new Intl.DateTimeFormat("uk-UA", {
+        timeZone: timezone,
+        weekday: "long",
+        day: "numeric",
+        month: "long"
+      }).format(now)
+    : "";
 
   const nextEvent = useMemo(
     () => getNextEvent(config?.events, currentMinutes, currentDay, nextDay),
@@ -118,13 +140,13 @@ export function Dashboard() {
     [chineseCards, chineseManualOffset, currentMinutes]
   );
   const toneColors = chineseCard
-    ? getRevealedToneColorScheme(chineseCard.pinyin, isChineseRevealed)
+    ? getToneColorScheme(pinyinToTone(chineseCard.pinyin))
     : null;
-  const timeline = getEventsForDay(config?.events, currentDay).slice(0, 6);
-
-  useEffect(() => {
-    setIsChineseRevealed(false);
-  }, [chineseCard?.hanzi]);
+  const upcomingList = getUpcomingEventList(config?.events, currentMinutes, currentDay, 6);
+  const majorEvents = config?.majorEvents ?? defaultConfig.majorEvents ?? [];
+  const calendarMonth = getCalendarMonth(now ?? new Date(), majorEvents);
+  const nextMajorEvent = getNextMajorEvent(majorEvents, now ?? new Date());
+  const nextMajorEventDays = nextMajorEvent && now ? majorEventDaysUntil(nextMajorEvent, now) : null;
 
   return (
     <main
@@ -132,26 +154,34 @@ export function Dashboard() {
     >
       <div className="grid h-full grid-cols-[minmax(0,1fr)_minmax(32rem,0.78fr)] gap-8 p-6 md:p-8">
         <section className="flex min-h-0 flex-col justify-between">
-          <div>
-            <div
-              className="max-w-full overflow-hidden whitespace-nowrap font-black leading-none tracking-[-0.06em]"
-              style={{ fontSize: "clamp(7rem, 18vw, 14rem)" }}
-              suppressHydrationWarning
+          <div className="space-y-3">
+            <button
+              type="button"
+              className={`text-left text-2xl font-black uppercase tracking-[0.12em] ${theme.secondary}`}
+              onClick={() => setIsCalendarOpen((open) => !open)}
             >
-              {displayTime}
+              {displayDate}
+            </button>
+            <div>
+              <div
+                className="max-w-full overflow-hidden whitespace-nowrap font-black leading-none tracking-[-0.06em]"
+                style={{ fontSize: "clamp(7rem, 18vw, 14rem)" }}
+                suppressHydrationWarning
+              >
+                {displayTime}
+              </div>
             </div>
-          </div>
-
-          <div className="flex flex-col items-start gap-6 pb-2">
             {visibleNextEvent ? (
-              <div className={`max-w-[48rem] text-[clamp(2rem,3.8vw,4rem)] font-bold leading-tight ${theme.secondary}`}>
+              <div className="max-w-[48rem] text-[clamp(2rem,3.8vw,4rem)] font-black leading-tight text-[#ffb86c]">
                 {`${visibleNextEvent.event.title} ${minutesUntilEvent(visibleNextEvent.minutesUntil)}`}
               </div>
             ) : null}
+          </div>
 
+          <div className="flex flex-col items-start gap-6 pb-2">
             {chineseCard ? (
               <div
-                className={`mr-auto min-w-[18rem] rounded-3xl border ${theme.border} ${theme.card} px-6 py-5 text-center shadow-2xl shadow-black/10`}
+                className={`mr-auto min-w-[22rem] rounded-3xl border ${theme.border} ${theme.card} px-7 py-6 text-center shadow-2xl shadow-black/25`}
                 style={
                   toneColors
                     ? {
@@ -161,43 +191,31 @@ export function Dashboard() {
                     : undefined
                 }
               >
-                <button
-                  type="button"
-                  className="block w-full text-center transition-transform active:scale-[0.98]"
-                  aria-label={
-                    isChineseRevealed
-                      ? `${chineseCard.hanzi}, ${chineseCard.pinyin}, ${chineseCard.meaning}`
-                      : `Показати підказку для ${chineseCard.hanzi}`
-                  }
-                  onClick={() => setIsChineseRevealed((revealed) => !revealed)}
-                >
-                  <div className={`text-7xl font-black leading-none ${isChineseRevealed ? "text-[var(--tone-light)] dark:text-[var(--tone-night)]" : theme.primary}`}>
+                <div className="space-y-3">
+                  <div className="text-7xl font-black leading-none text-[var(--tone-light)]">
                     {chineseCard.hanzi}
                   </div>
-                </button>
-                {isChineseRevealed ? (
-                  <div className="mt-3 flex items-end justify-between gap-5">
+                  <div className="flex items-end justify-between gap-5">
                     <div className="min-w-0 flex-1 text-center">
-                      <div className="text-3xl font-black text-[var(--tone-light)] dark:text-[var(--tone-night)]">{chineseCard.pinyin}</div>
-                      <div className={`mt-1 text-2xl font-bold ${theme.secondary}`}>
+                      <div className="text-3xl font-black text-[var(--tone-light)]">{chineseCard.pinyin}</div>
+                      <div className="mt-1 text-2xl font-black text-[#f8f8f2]">
                         {chineseCard.meaning}
                       </div>
                     </div>
                     <button
                       type="button"
-                      className={`grid h-14 w-14 place-items-center rounded-full border ${theme.border} ${theme.accent} text-3xl font-black shadow-lg shadow-black/10 transition-transform active:scale-95`}
+                      className="grid h-12 w-12 place-items-center rounded-full border border-[#6272a4]/35 bg-[#44475a]/20 text-2xl font-black text-[#f8f8f2]/35 transition hover:text-[#f8f8f2]/70 active:scale-95"
                       aria-label="Наступне китайське слово"
                       onClick={() => {
                         setChineseManualOffset((offset) =>
                           getNextChineseCardIndex(offset, chineseCards.length)
                         );
-                        setIsChineseRevealed(false);
                       }}
                     >
                       →
                     </button>
                   </div>
-                ) : null}
+                </div>
               </div>
             ) : null}
           </div>
@@ -207,30 +225,92 @@ export function Dashboard() {
           <section
             className={`h-full min-h-0 rounded-lg border ${theme.border} ${theme.card} p-6 shadow-2xl shadow-black/10`}
           >
-            <div className="mb-5 text-3xl font-black tracking-normal">
-              Сьогодні
-            </div>
-            <div className="space-y-4">
-              {timeline.length > 0 ? (
-                timeline.map((event) => (
-                  <div
-                    key={`${event.time}-${event.title}`}
-                    className="grid grid-cols-[6.5rem_minmax(0,1fr)] items-center gap-4"
-                  >
-                    <div className="text-3xl font-black tabular-nums">
-                      {event.time}
+            {isCalendarOpen ? (
+              <div className="flex h-full min-h-0 flex-col">
+                <div className="mb-5 flex items-start justify-between gap-4">
+                  <div>
+                    <div className="text-3xl font-black capitalize tracking-normal">
+                      {calendarMonth.label}
                     </div>
-                    <div className="text-3xl font-bold leading-tight">
-                      {event.title}
-                    </div>
+                    {nextMajorEvent && nextMajorEventDays !== null ? (
+                      <div className={`mt-2 text-2xl font-black ${theme.secondary}`}>
+                        {nextMajorEvent.icon ? `${nextMajorEvent.icon} ` : ""}
+                        {nextMajorEvent.title} через {nextMajorEventDays} дн.
+                      </div>
+                    ) : null}
                   </div>
-                ))
-              ) : (
-                <div className={`text-3xl font-bold ${theme.secondary}`}>
-                  Немає запланованих справ
+                  <button
+                    type="button"
+                    className={`rounded-full border ${theme.border} ${theme.accent} px-4 py-2 text-xl font-black`}
+                    onClick={() => setIsCalendarOpen(false)}
+                  >
+                    Сьогодні
+                  </button>
                 </div>
-              )}
-            </div>
+                <div className="grid grid-cols-7 gap-2 text-center">
+                  {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Нд"].map((day) => (
+                    <div key={day} className={`text-lg font-black ${theme.secondary}`}>
+                      {day}
+                    </div>
+                  ))}
+                  {calendarMonth.cells.map((cell) => (
+                    <div
+                      key={cell.date}
+                      className={`min-h-20 rounded-2xl border p-2 text-left ${
+                        cell.isToday ? "border-[#ff79c6] bg-[#ff79c6]/15" : "border-[#6272a4]/35 bg-[#44475a]/25"
+                      } ${cell.isCurrentMonth ? "" : "opacity-35"}`}
+                    >
+                      <div className="text-xl font-black">{cell.day}</div>
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {cell.majorEvents.map((event) => (
+                          <span
+                            key={`${event.date}-${event.title}`}
+                            className={`rounded-full px-2 py-1 text-xs font-black ${
+                              majorEventColors[event.color ?? "purple"]
+                            }`}
+                          >
+                            {event.icon ?? "★"}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="mb-5 text-3xl font-black tracking-normal">
+                  Сьогодні
+                </div>
+                <div className="space-y-4">
+                  {upcomingList.hasHiddenPassedEvents ? (
+                    <div className={`text-center text-4xl font-black ${theme.secondary}`}>…</div>
+                  ) : null}
+                  {upcomingList.events.length > 0 ? (
+                    upcomingList.events.map((event) => (
+                      <div
+                        key={`${event.time}-${event.title}`}
+                        className="grid grid-cols-[6.5rem_minmax(0,1fr)] items-center gap-4"
+                      >
+                        <div className="text-3xl font-black tabular-nums text-[#8be9fd]">
+                          {event.time}
+                        </div>
+                        <div className="text-3xl font-bold leading-tight">
+                          {event.title}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className={`text-3xl font-bold ${theme.secondary}`}>
+                      Немає запланованих справ
+                    </div>
+                  )}
+                  {upcomingList.hasHiddenFutureEvents ? (
+                    <div className={`text-center text-4xl font-black ${theme.secondary}`}>…</div>
+                  ) : null}
+                </div>
+              </>
+            )}
           </section>
         </aside>
       </div>
