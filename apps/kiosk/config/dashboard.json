@@ -57,7 +57,7 @@
     },
     {
       "time": "08:35",
-      "title": "Школа",
+      "title": "📚 Школа",
       "days": ["monday", "tuesday", "wednesday", "thursday", "friday"]
     },
     {
@@ -77,27 +77,27 @@
     },
     {
       "time": "16:00",
-      "title": "汉语",
+      "title": "🍊 汉语",
       "days": ["tuesday"]
     },
     {
       "time": "16:30",
-      "title": "Забрати Мeланку з балету",
+      "title": "🩰 Забрати Мeланку з балету",
       "days": ["wednesday"]
     },
     {
       "time": "16:30",
-      "title": "Забрати Мeланку з шахів",
+      "title": "♟️ Забрати Мeланку з шахів",
       "days": ["thursday"]
     },
     {
       "time": "09:00",
-      "title": "汉语 Іванки",
+      "title": "🍊 汉语 Іванки",
       "days": ["saturday"]
     },
     {
       "time": "10:20",
-      "title": "汉语 Міланки",
+      "title": "🍊 汉语 Міланки",
       "days": ["saturday"]
     },
     {
@@ -107,19 +107,49 @@
     },
     {
       "time": "19:00",
-      "title": "Душ",
+      "title": "🚿 Душ",
       "days": ["monday", "tuesday", "wednesday", "thursday", "friday"]
     },
     {
-      "time": "10:00",
-      "title": "Домашка",
+      "time": "20:00",
+      "title": "🧘‍♀️ Медитація",
+      "days": [
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday",
+        "saturday",
+        "sunday"
+      ]
+    },
+    {
+      "time": "17:00",
+      "title": "📚 Домашка",
       "days": ["saturday", "sunday"]
     },
-    { "time": "20:00", "title": "Час спати" }
+    {
+      "time": "20:00",
+      "title": "Час спати"
+    }
   ],
   "majorEvents": [
     {
-      "date": "2026-07-20",
+      "date": "2026-07-03",
+      "title": "🎉 Канкули!",
+      "kind": "holidays",
+      "icon": "🎢",
+      "color": "red"
+    },
+    {
+      "date": "2026-08-21",
+      "title": "🥳 День народження Меланки",
+      "kind": "birthday",
+      "icon": "🥳",
+      "color": "red"
+    },
+    {
+      "date": "2026-07-07",
       "title": "Legoland",
       "kind": "trip",
       "icon": "🎢",
@@ -131,158 +161,6 @@
       "kind": "holiday",
       "icon": "🎄",
       "color": "green"
-    }
-  ],
-  "chinese": [
-    {
-      "hanzi": "它们",
-      "pinyin": "tā men",
-      "meaning": "вони; їх (про речі)"
-    },
-    {
-      "hanzi": "她们",
-      "pinyin": "tā men",
-      "meaning": "вони; їх (жінки)"
-    },
-    {
-      "hanzi": "听",
-      "pinyin": "tīng",
-      "meaning": "слухати; чути"
-    },
-    {
-      "hanzi": "听见",
-      "pinyin": "tīng jiàn",
-      "meaning": "почути"
-    },
-    {
-      "hanzi": "晚",
-      "pinyin": "wǎn",
-      "meaning": "пізній; вечір"
-    },
-    {
-      "hanzi": "小学",
-      "pinyin": "xiǎo xué",
-      "meaning": "початкова школа"
-    },
-    {
-      "hanzi": "小学生",
-      "pinyin": "xiǎo xué shēng",
-      "meaning": "учень початкової школи"
-    },
-    {
-      "hanzi": "写",
-      "pinyin": "xiě",
-      "meaning": "писати"
-    },
-    {
-      "hanzi": "有的",
-      "pinyin": "yǒu de",
-      "meaning": "деякі"
-    },
-    {
-      "hanzi": "有些",
-      "pinyin": "yǒu xiē",
-      "meaning": "деякі; трохи"
-    },
-    {
-      "hanzi": "中午",
-      "pinyin": "zhōng wǔ",
-      "meaning": "полудень"
-    },
-    {
-      "hanzi": "中学",
-      "pinyin": "zhōng xué",
-      "meaning": "середня школа"
-    },
-    {
-      "hanzi": "中学生",
-      "pinyin": "zhōng xué shēng",
-      "meaning": "учень середньої школи"
-    },
-    {
-      "hanzi": "字",
-      "pinyin": "zì",
-      "meaning": "ієрогліф; слово"
-    },
-    {
-      "hanzi": "汉语",
-      "pinyin": "Hànyǔ",
-      "meaning": "китайська мова"
-    },
-    {
-      "hanzi": "汉字",
-      "pinyin": "Hànzì",
-      "meaning": "китайський ієрогліф"
-    },
-    {
-      "hanzi": "爱",
-      "pinyin": "ài",
-      "meaning": "любити"
-    },
-    {
-      "hanzi": "飞机",
-      "pinyin": "fēi jī",
-      "meaning": "літак"
-    },
-    {
-      "hanzi": "好玩儿",
-      "pinyin": "hǎo wánr",
-      "meaning": "цікавий; веселий"
-    },
-    {
-      "hanzi": "家人",
-      "pinyin": "jiā rén",
-      "meaning": "член сім'ї"
-    },
-    {
-      "hanzi": "接",
-      "pinyin": "jiē",
-      "meaning": "приймати; відповідати; зустрічати"
-    },
-    {
-      "hanzi": "哪个",
-      "pinyin": "nǎ ge",
-      "meaning": "який саме"
-    },
-    {
-      "hanzi": "男朋友",
-      "pinyin": "nán péng yǒu",
-      "meaning": "хлопець; бойфренд"
-    },
-    {
-      "hanzi": "年",
-      "pinyin": "nián",
-      "meaning": "рік"
-    },
-    {
-      "hanzi": "去年",
-      "pinyin": "qù nián",
-      "meaning": "минулого року"
-    },
-    {
-      "hanzi": "时间",
-      "pinyin": "shí jiān",
-      "meaning": "час"
-    },
-    {
-      "hanzi": "小时",
-      "pinyin": "xiǎo shí",
-      "meaning": "година"
-    },
-    {
-      "hanzi": "早",
-      "pinyin": "zǎo",
-      "meaning": "рано; ранок"
-    },
-    {
-      "hanzi": "住",
-      "pinyin": "zhù",
-      "meaning": "жити; зупинятися"
-    },
-    {
-      "hanzi": "北京",
-      "pinyin": "Běijīng",
-      "meaning": "Пекін"
     }
   ]
 }

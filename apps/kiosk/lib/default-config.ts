@@ -152,23 +152,5 @@ export const defaultConfig: DashboardConfig = {
       icon: "🎄",
       color: "green"
     }
-  ],
-  chinese: [
-    { hanzi: "我", pinyin: "wǒ", meaning: "я" },
-    { hanzi: "你", pinyin: "nǐ", meaning: "ти" },
-    { hanzi: "他", pinyin: "tā", meaning: "він" },
-    { hanzi: "她", pinyin: "tā", meaning: "вона" },
-    { hanzi: "好", pinyin: "hǎo", meaning: "добре" },
-    { hanzi: "爱", pinyin: "ài", meaning: "любити" },
-    { hanzi: "家", pinyin: "jiā", meaning: "дім / сім'я" },
-    { hanzi: "水", pinyin: "shuǐ", meaning: "вода" },
-    { hanzi: "茶", pinyin: "chá", meaning: "чай" },
-    { hanzi: "饭", pinyin: "fàn", meaning: "їжа / рис" },
-    { hanzi: "书", pinyin: "shū", meaning: "книга" },
-    { hanzi: "月", pinyin: "yuè", meaning: "місяць" },
-    { hanzi: "日", pinyin: "rì", meaning: "день / сонце" },
-    { hanzi: "大", pinyin: "dà", meaning: "великий" },
-    { hanzi: "小", pinyin: "xiǎo", meaning: "малий" },
-    { hanzi: "学", pinyin: "xué", meaning: "вчитися" }
   ]
 };

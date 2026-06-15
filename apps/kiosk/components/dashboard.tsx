@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { defaultChinese } from "@/lib/default-chinese";
 import { defaultConfig } from "@/lib/default-config";
 import {
   formatZonedTime,
@@ -20,7 +21,7 @@ import {
   pinyinToTone,
   shouldShowNextEventCountdown
 } from "@/lib/routine";
-import type { DashboardConfig, ThemeName } from "@/lib/types";
+import type { ChineseCard, DashboardConfig, ThemeName } from "@/lib/types";
 
 type ThemeDefinition = {
   background: string;
@@ -78,6 +79,7 @@ const majorEventColors = {
 
 export function Dashboard() {
   const [config, setConfig] = useState<DashboardConfig | null>(null);
+  const [chineseConfig, setChineseConfig] = useState<ChineseCard[] | null>(null);
   const [now, setNow] = useState<Date | null>(null);
   const [chineseManualOffset, setChineseManualOffset] = useState(0);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
@@ -95,6 +97,27 @@ export function Dashboard() {
       .catch(() => {
         if (!cancelled) {
           setConfig(defaultConfig);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetch("/config/chinese.json", { cache: "no-store" })
+      .then((response) => response.json())
+      .then((data: ChineseCard[]) => {
+        if (!cancelled) {
+          setChineseConfig(data);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setChineseConfig(defaultChinese);
         }
       });
 
@@ -134,7 +157,7 @@ export function Dashboard() {
     [config?.events, currentDay, currentMinutes, nextDay]
   );
   const visibleNextEvent = shouldShowNextEventCountdown(nextEvent) ? nextEvent : null;
-  const chineseCards = config?.chinese ?? defaultConfig.chinese ?? [];
+  const chineseCards = chineseConfig ?? defaultChinese;
   const chineseCard = useMemo(
     () => getCardForTime(chineseCards, currentMinutes, chineseManualOffset),
     [chineseCards, chineseManualOffset, currentMinutes]

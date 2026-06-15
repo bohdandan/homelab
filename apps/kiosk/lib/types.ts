@@ -70,7 +70,6 @@ export type DashboardConfig = {
   dayRules: DayRule[];
   events?: TimelineEvent[];
   majorEvents?: MajorEvent[];
-  chinese?: ChineseCard[];
 };
 
 export type NextEvent = {

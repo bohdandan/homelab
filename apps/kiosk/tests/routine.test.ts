@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import dashboardConfig from "@/config/dashboard.json";
+import chineseConfig from "@/config/chinese.json";
+import { defaultChinese } from "@/lib/default-chinese";
 import { defaultConfig } from "@/lib/default-config";
 import {
   getCardForTime,
@@ -51,12 +53,13 @@ const config: DashboardConfig = {
     { time: "10:00", title: "Homework", days: ["saturday", "sunday"] },
     { time: "19:30", title: "Reading" },
     { time: "20:00", title: "Bedtime" }
-  ],
-  chinese: [
-    { hanzi: "水", pinyin: "shuǐ", meaning: "water" },
-    { hanzi: "月", pinyin: "yuè", meaning: "moon / month" }
   ]
 };
+
+const testChineseCards = [
+  { hanzi: "水", pinyin: "shuǐ", meaning: "water" },
+  { hanzi: "月", pinyin: "yuè", meaning: "moon / month" }
+];
 
 describe("routine calculations", () => {
   it("selects a normal daytime rule", () => {
@@ -171,15 +174,20 @@ describe("routine calculations", () => {
   it("keeps the deployed JSON schedule valid while allowing local schedule edits", () => {
     expect(dashboardConfig.timezone).toBe(defaultConfig.timezone);
     expect(dashboardConfig.events?.length).toBeGreaterThan(0);
+    expect("chinese" in dashboardConfig).toBe(false);
   });
 
-  it("includes HSK1 Chinese cards in the default kiosk schedule", () => {
-    expect(defaultConfig.chinese?.[0]).toEqual({
-      hanzi: "我",
-      pinyin: "wǒ",
-      meaning: "я"
+  it("keeps Mandarin cards in a dedicated JSON file", () => {
+    expect(chineseConfig.length).toBeGreaterThan(0);
+    expect(chineseConfig[0]).toEqual({
+      hanzi: "它们",
+      pinyin: "tā men",
+      meaning: "вони; їх (про речі)"
     });
-    expect(defaultConfig.chinese?.some((card) => card.hanzi === "水")).toBe(true);
+  });
+
+  it("uses the dedicated Mandarin JSON as the default card fallback", () => {
+    expect(defaultChinese).toEqual(chineseConfig);
   });
 
   it("detects Mandarin tone from marked pinyin", () => {
@@ -255,10 +263,10 @@ describe("routine calculations", () => {
   });
 
   it("rotates chinese cards every two minutes", () => {
-    expect(getCardForTime(config.chinese, timeToMinutes("07:01"))?.hanzi).toBe(
+    expect(getCardForTime(testChineseCards, timeToMinutes("07:01"))?.hanzi).toBe(
       "水"
     );
-    expect(getCardForTime(config.chinese, timeToMinutes("07:02"))?.hanzi).toBe(
+    expect(getCardForTime(testChineseCards, timeToMinutes("07:02"))?.hanzi).toBe(
       "月"
     );
   });
