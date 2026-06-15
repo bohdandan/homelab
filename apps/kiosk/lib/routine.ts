@@ -142,6 +142,10 @@ export function minutesUntilEvent(minutes: number): string {
   return `через ${hours} год ${remainingMinutes} хв`;
 }
 
+export function shouldShowNextEventCountdown(nextEvent: NextEvent | null): boolean {
+  return nextEvent !== null && nextEvent.dayOffset === 0 && nextEvent.minutesUntil <= 60;
+}
+
 export function getCardForTime(
   cards: ChineseCard[] | undefined,
   currentMinutes: number

@@ -8,6 +8,7 @@ import {
   getNextEvent,
   getZonedDay,
   minutesUntilEvent,
+  shouldShowNextEventCountdown,
   timeToMinutes
 } from "@/lib/routine";
 import type { DashboardConfig } from "@/lib/types";
@@ -102,6 +103,37 @@ describe("routine calculations", () => {
   it("formats minutes until an event", () => {
     expect(minutesUntilEvent(48)).toBe("через 48 хв");
     expect(minutesUntilEvent(75)).toBe("через 1 год 15 хв");
+  });
+
+  it("shows the next-event countdown only for events within the next hour today", () => {
+    expect(
+      shouldShowNextEventCountdown({
+        event: { time: "15:15", title: "Pickup" },
+        dayOffset: 0,
+        minutesUntil: 59
+      })
+    ).toBe(true);
+    expect(
+      shouldShowNextEventCountdown({
+        event: { time: "15:15", title: "Pickup" },
+        dayOffset: 0,
+        minutesUntil: 60
+      })
+    ).toBe(true);
+    expect(
+      shouldShowNextEventCountdown({
+        event: { time: "15:15", title: "Pickup" },
+        dayOffset: 0,
+        minutesUntil: 61
+      })
+    ).toBe(false);
+    expect(
+      shouldShowNextEventCountdown({
+        event: { time: "07:30", title: "Wake up" },
+        dayOffset: 1,
+        minutesUntil: 30
+      })
+    ).toBe(false);
   });
 
   it("returns the weekday for a zoned date", () => {

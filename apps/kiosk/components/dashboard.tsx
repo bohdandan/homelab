@@ -11,7 +11,8 @@ import {
   getNextWeekday,
   getZonedDay,
   getZonedMinutes,
-  minutesUntilEvent
+  minutesUntilEvent,
+  shouldShowNextEventCountdown
 } from "@/lib/routine";
 import type { DashboardConfig, ThemeName } from "@/lib/types";
 
@@ -26,36 +27,36 @@ type ThemeDefinition = {
 
 const themes: Record<ThemeName, ThemeDefinition> = {
   green: {
-    background: "bg-emerald-700",
-    primary: "text-white",
-    secondary: "text-emerald-50",
-    card: "bg-white/16",
-    border: "border-white/22",
-    accent: "bg-emerald-100 text-emerald-950"
+    background: "bg-[#d9e8d4]",
+    primary: "text-[#26392f]",
+    secondary: "text-[#52675a]",
+    card: "bg-white/42",
+    border: "border-[#8ea996]",
+    accent: "bg-[#edf6ea] text-[#26392f]"
   },
   blue: {
-    background: "bg-sky-800",
-    primary: "text-white",
-    secondary: "text-sky-50",
-    card: "bg-white/15",
-    border: "border-white/22",
-    accent: "bg-sky-100 text-sky-950"
+    background: "bg-[#d7e5ee]",
+    primary: "text-[#253746]",
+    secondary: "text-[#526879]",
+    card: "bg-white/44",
+    border: "border-[#8ca7b8]",
+    accent: "bg-[#edf5f9] text-[#253746]"
   },
   orange: {
-    background: "bg-amber-600",
-    primary: "text-white",
-    secondary: "text-amber-50",
-    card: "bg-white/18",
-    border: "border-white/26",
-    accent: "bg-amber-100 text-amber-950"
+    background: "bg-[#f1ddc7]",
+    primary: "text-[#463526]",
+    secondary: "text-[#765f48]",
+    card: "bg-white/44",
+    border: "border-[#c4a783]",
+    accent: "bg-[#fff4e6] text-[#463526]"
   },
   red: {
-    background: "bg-rose-900",
-    primary: "text-white",
-    secondary: "text-rose-50",
-    card: "bg-white/14",
-    border: "border-white/22",
-    accent: "bg-rose-100 text-rose-950"
+    background: "bg-[#ead8dc]",
+    primary: "text-[#442f36]",
+    secondary: "text-[#775d66]",
+    card: "bg-white/42",
+    border: "border-[#b997a1]",
+    accent: "bg-[#f8edf0] text-[#442f36]"
   }
 };
 
@@ -106,6 +107,7 @@ export function Dashboard() {
     () => getNextEvent(config?.events, currentMinutes, currentDay, nextDay),
     [config?.events, currentDay, currentMinutes, nextDay]
   );
+  const visibleNextEvent = shouldShowNextEventCountdown(nextEvent) ? nextEvent : null;
   const chineseCard = useMemo(
     () => getCardForTime(config?.chinese, currentMinutes),
     [config?.chinese, currentMinutes]
@@ -116,39 +118,24 @@ export function Dashboard() {
     <main
       className={`h-screen w-screen overflow-hidden ${theme.background} ${theme.primary}`}
     >
-      <div className="grid h-full grid-cols-[minmax(0,1.4fr)_minmax(300px,0.8fr)] gap-6 p-6 md:p-8">
+      <div className="grid h-full grid-cols-[minmax(0,1fr)_minmax(32rem,0.78fr)] gap-8 p-6 md:p-8">
         <section className="flex min-h-0 flex-col justify-between">
           <div>
             <div
-              className="font-black leading-none tracking-normal"
-              style={{ fontSize: "clamp(8rem, 21vw, 17rem)" }}
+              className="max-w-full overflow-hidden whitespace-nowrap font-black leading-none tracking-[-0.06em]"
+              style={{ fontSize: "clamp(7rem, 18vw, 14rem)" }}
               suppressHydrationWarning
             >
               {displayTime}
             </div>
-            <div className="mt-2 flex flex-wrap items-center gap-4">
-              <div
-                className={`rounded px-5 py-3 text-4xl font-black tracking-normal ${theme.accent}`}
-              >
-                {currentRule.label}
-              </div>
-              <div className={`text-3xl font-bold ${theme.secondary}`}>
-                Час у Лондоні
-              </div>
-            </div>
           </div>
 
           <div className="pb-2">
-            <div className="text-[clamp(2.8rem,6vw,5.8rem)] font-black leading-tight tracking-normal">
-              {currentRule.instruction}
-            </div>
-            <div className={`mt-6 text-[clamp(2rem,3.8vw,4rem)] font-bold ${theme.secondary}`}>
-              {nextEvent
-                ? `${nextEvent.event.title}${
-                    nextEvent.dayOffset === 1 ? " завтра" : ""
-                  } ${minutesUntilEvent(nextEvent.minutesUntil)}`
-                : "Сьогодні більше нічого"}
-            </div>
+            {visibleNextEvent ? (
+              <div className={`text-[clamp(2rem,3.8vw,4rem)] font-bold leading-tight ${theme.secondary}`}>
+                {`${visibleNextEvent.event.title} ${minutesUntilEvent(visibleNextEvent.minutesUntil)}`}
+              </div>
+            ) : null}
           </div>
         </section>
 
@@ -169,7 +156,7 @@ export function Dashboard() {
                     <div className="text-3xl font-black tabular-nums">
                       {event.time}
                     </div>
-                    <div className="truncate text-4xl font-bold">
+                    <div className="text-3xl font-bold leading-tight">
                       {event.title}
                     </div>
                   </div>
