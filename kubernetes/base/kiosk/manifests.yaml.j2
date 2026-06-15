@@ -35,7 +35,7 @@ spec:
               name: http
           volumeMounts:
             - name: config
-              mountPath: /app/config/dashboard.json
+              mountPath: /usr/share/nginx/html/config/dashboard.json
               subPath: dashboard.json
               readOnly: true
           readinessProbe:

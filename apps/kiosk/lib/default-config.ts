@@ -61,6 +61,61 @@ export const defaultConfig: DashboardConfig = {
   ],
   events: [
     {
+      time: "07:30",
+      title: "Прокидатися",
+      days: ["monday", "tuesday", "wednesday", "thursday", "friday"]
+    },
+    {
+      time: "08:25",
+      title: "Вихід до школи",
+      days: ["monday", "tuesday", "wednesday", "thursday", "friday"]
+    },
+    {
+      time: "08:35",
+      title: "Початок уроків",
+      days: ["monday", "tuesday", "wednesday", "thursday", "friday"]
+    },
+    {
+      time: "15:15",
+      title: "Забрати Іванку зі школи",
+      days: ["monday", "tuesday", "wednesday", "thursday", "friday"]
+    },
+    {
+      time: "15:30",
+      title: "Забрати Міланку зі школи",
+      days: ["monday", "tuesday", "friday"]
+    },
+    {
+      time: "16:15",
+      title: "Кікбоксинг Іванки і Міланки 16:15-17:00",
+      days: ["monday"]
+    },
+    {
+      time: "16:00",
+      title: "Китайська Іванки і Міланки 16:00-16:30",
+      days: ["tuesday"]
+    },
+    {
+      time: "16:30",
+      title: "Забрати Міланку з балету",
+      days: ["wednesday"]
+    },
+    {
+      time: "16:30",
+      title: "Забрати Міланку з шахів",
+      days: ["thursday"]
+    },
+    {
+      time: "09:00",
+      title: "Китайська Іванки",
+      days: ["saturday"]
+    },
+    {
+      time: "10:20",
+      title: "Китайська Міланки",
+      days: ["saturday"]
+    },
+    {
       time: "18:00",
       title: "Вечеря",
       days: ["monday", "tuesday", "wednesday", "thursday", "friday"]

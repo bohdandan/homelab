@@ -36,6 +36,7 @@ class KioskConfigurationTest(unittest.TestCase):
         self.assertIn("deployment/kiosk", playbook)
         self.assertIn("lookup('ansible.builtin.file'", manifest)
         self.assertIn("config/dashboard.json", manifest)
+        self.assertIn("mountPath: /usr/share/nginx/html/config/dashboard.json", manifest)
 
         entry = next((app for app in catalog["applications"] if app["id"] == "kiosk"), None)
         self.assertIsNotNone(entry)

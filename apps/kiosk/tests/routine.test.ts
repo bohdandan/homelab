@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import dashboardConfig from "@/config/dashboard.json";
 import { defaultConfig } from "@/lib/default-config";
 import {
   getCardForTime,
@@ -120,7 +121,69 @@ describe("routine calculations", () => {
       "ЗАВДАННЯ"
     );
     expect(getEventsForDay(defaultConfig.events, "saturday").map((event) => event.title)).toEqual([
+      "Китайська Іванки",
       "Домашнє завдання на наступний тиждень",
+      "Китайська Міланки",
+      "Перевірити домашнє завдання",
+      "Час спати"
+    ]);
+  });
+
+  it("keeps the deployed JSON schedule aligned with the TypeScript fallback", () => {
+    expect(dashboardConfig.events).toEqual(defaultConfig.events);
+  });
+
+  it("includes the school week and activity reminders in the default kiosk schedule", () => {
+    expect(getEventsForDay(defaultConfig.events, "monday").map((event) => event.title)).toEqual([
+      "Прокидатися",
+      "Вихід до школи",
+      "Початок уроків",
+      "Забрати Іванку зі школи",
+      "Забрати Міланку зі школи",
+      "Кікбоксинг Іванки і Міланки 16:15-17:00",
+      "Вечеря",
+      "Душ",
+      "Час спати"
+    ]);
+
+    expect(getEventsForDay(defaultConfig.events, "tuesday").map((event) => event.title)).toEqual([
+      "Прокидатися",
+      "Вихід до школи",
+      "Початок уроків",
+      "Забрати Іванку зі школи",
+      "Забрати Міланку зі школи",
+      "Китайська Іванки і Міланки 16:00-16:30",
+      "Вечеря",
+      "Душ",
+      "Час спати"
+    ]);
+
+    expect(getEventsForDay(defaultConfig.events, "wednesday").map((event) => event.title)).toEqual([
+      "Прокидатися",
+      "Вихід до школи",
+      "Початок уроків",
+      "Забрати Іванку зі школи",
+      "Забрати Міланку з балету",
+      "Вечеря",
+      "Душ",
+      "Час спати"
+    ]);
+
+    expect(getEventsForDay(defaultConfig.events, "thursday").map((event) => event.title)).toEqual([
+      "Прокидатися",
+      "Вихід до школи",
+      "Початок уроків",
+      "Забрати Іванку зі школи",
+      "Забрати Міланку з шахів",
+      "Вечеря",
+      "Душ",
+      "Час спати"
+    ]);
+
+    expect(getEventsForDay(defaultConfig.events, "saturday").map((event) => event.title)).toEqual([
+      "Китайська Іванки",
+      "Домашнє завдання на наступний тиждень",
+      "Китайська Міланки",
       "Перевірити домашнє завдання",
       "Час спати"
     ]);
