@@ -4,6 +4,7 @@ import { defaultConfig } from "@/lib/default-config";
 import {
   getCardForTime,
   getNextChineseCardIndex,
+  getRevealedToneColorScheme,
   getCurrentRule,
   getEventsForDay,
   getNextEvent,
@@ -192,6 +193,14 @@ describe("routine calculations", () => {
     expect(getToneColorScheme(3)).toEqual({ light: "#c05600", night: "#ffb86c" });
     expect(getToneColorScheme(4)).toEqual({ light: "#b00020", night: "#ff5555" });
     expect(getToneColorScheme(5)).toEqual({ light: "#6c757d", night: "#6272a4" });
+  });
+
+  it("only exposes tone colors after the Chinese card is revealed", () => {
+    expect(getRevealedToneColorScheme("mā", false)).toBeNull();
+    expect(getRevealedToneColorScheme("mā", true)).toEqual({
+      light: "#0077b6",
+      night: "#8be9fd"
+    });
   });
 
   it("includes the school week and activity reminders in the default kiosk schedule", () => {

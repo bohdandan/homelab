@@ -205,6 +205,17 @@ export function getToneColorScheme(tone: MandarinTone): ToneColorScheme {
   return toneColorSchemes[tone];
 }
 
+export function getRevealedToneColorScheme(
+  pinyin: string,
+  isRevealed: boolean
+): ToneColorScheme | null {
+  if (!isRevealed) {
+    return null;
+  }
+
+  return getToneColorScheme(pinyinToTone(pinyin));
+}
+
 export function getZonedMinutes(date: Date, timezone: string): number {
   const parts = new Intl.DateTimeFormat("en-GB", {
     timeZone: timezone,

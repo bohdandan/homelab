@@ -10,11 +10,10 @@ import {
   getNextEvent,
   getNextChineseCardIndex,
   getNextWeekday,
-  getToneColorScheme,
+  getRevealedToneColorScheme,
   getZonedDay,
   getZonedMinutes,
   minutesUntilEvent,
-  pinyinToTone,
   shouldShowNextEventCountdown
 } from "@/lib/routine";
 import type { DashboardConfig, ThemeName } from "@/lib/types";
@@ -119,7 +118,7 @@ export function Dashboard() {
     [chineseCards, chineseManualOffset, currentMinutes]
   );
   const toneColors = chineseCard
-    ? getToneColorScheme(pinyinToTone(chineseCard.pinyin))
+    ? getRevealedToneColorScheme(chineseCard.pinyin, isChineseRevealed)
     : null;
   const timeline = getEventsForDay(config?.events, currentDay).slice(0, 6);
 
@@ -172,7 +171,7 @@ export function Dashboard() {
                   }
                   onClick={() => setIsChineseRevealed((revealed) => !revealed)}
                 >
-                  <div className="text-7xl font-black leading-none text-[var(--tone-light)] dark:text-[var(--tone-night)]">
+                  <div className={`text-7xl font-black leading-none ${isChineseRevealed ? "text-[var(--tone-light)] dark:text-[var(--tone-night)]" : theme.primary}`}>
                     {chineseCard.hanzi}
                   </div>
                 </button>
