@@ -189,6 +189,10 @@ export function shouldShowNextEventCountdown(nextEvent: NextEvent | null): boole
   return nextEvent !== null && nextEvent.dayOffset === 0 && nextEvent.minutesUntil <= 60;
 }
 
+export function isDarkThemeTime(currentMinutes: number): boolean {
+  return currentMinutes >= timeToMinutes("20:00") || currentMinutes < timeToMinutes("08:00");
+}
+
 export function getCardForTime(
   cards: ChineseCard[] | undefined,
   currentMinutes: number,

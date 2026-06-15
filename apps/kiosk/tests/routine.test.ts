@@ -14,6 +14,7 @@ import {
   getNextMajorEvent,
   getToneColorScheme,
   getZonedDay,
+  isDarkThemeTime,
   majorEventDaysUntil,
   minutesUntilEvent,
   pinyinToTone,
@@ -204,6 +205,13 @@ describe("routine calculations", () => {
     expect(getToneColorScheme(3)).toEqual({ light: "#ffb86c", night: "#ffb86c" });
     expect(getToneColorScheme(4)).toEqual({ light: "#ff5555", night: "#ff5555" });
     expect(getToneColorScheme(5)).toEqual({ light: "#bd93f9", night: "#bd93f9" });
+  });
+
+  it("uses dark mode from 20:00 until 08:00", () => {
+    expect(isDarkThemeTime(timeToMinutes("19:59"))).toBe(false);
+    expect(isDarkThemeTime(timeToMinutes("20:00"))).toBe(true);
+    expect(isDarkThemeTime(timeToMinutes("07:59"))).toBe(true);
+    expect(isDarkThemeTime(timeToMinutes("08:00"))).toBe(false);
   });
 
   it("includes the school week and activity reminders in the default kiosk schedule", () => {
