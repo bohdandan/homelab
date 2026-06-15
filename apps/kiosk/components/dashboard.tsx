@@ -8,6 +8,7 @@ import {
   getCurrentRule,
   getEventsForDay,
   getNextEvent,
+  getNextChineseCardIndex,
   getNextWeekday,
   getToneColorScheme,
   getZonedDay,
@@ -66,6 +67,7 @@ export function Dashboard() {
   const [config, setConfig] = useState<DashboardConfig | null>(null);
   const [now, setNow] = useState<Date | null>(null);
   const [isChineseRevealed, setIsChineseRevealed] = useState(false);
+  const [chineseManualOffset, setChineseManualOffset] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -111,10 +113,10 @@ export function Dashboard() {
     [config?.events, currentDay, currentMinutes, nextDay]
   );
   const visibleNextEvent = shouldShowNextEventCountdown(nextEvent) ? nextEvent : null;
-  const chineseCards = config?.chinese ?? defaultConfig.chinese;
+  const chineseCards = config?.chinese ?? defaultConfig.chinese ?? [];
   const chineseCard = useMemo(
-    () => getCardForTime(chineseCards, currentMinutes),
-    [chineseCards, currentMinutes]
+    () => getCardForTime(chineseCards, currentMinutes, chineseManualOffset),
+    [chineseCards, chineseManualOffset, currentMinutes]
   );
   const toneColors = chineseCard
     ? getToneColorScheme(pinyinToTone(chineseCard.pinyin))
@@ -141,7 +143,7 @@ export function Dashboard() {
             </div>
           </div>
 
-          <div className="flex items-end justify-between gap-6 pb-2">
+          <div className="flex flex-col items-start gap-6 pb-2">
             {visibleNextEvent ? (
               <div className={`max-w-[48rem] text-[clamp(2rem,3.8vw,4rem)] font-bold leading-tight ${theme.secondary}`}>
                 {`${visibleNextEvent.event.title} ${minutesUntilEvent(visibleNextEvent.minutesUntil)}`}
@@ -149,9 +151,8 @@ export function Dashboard() {
             ) : null}
 
             {chineseCard ? (
-              <button
-                type="button"
-                className={`ml-auto min-w-[18rem] rounded-3xl border ${theme.border} ${theme.card} px-6 py-5 text-left shadow-2xl shadow-black/10 transition-transform active:scale-[0.98]`}
+              <div
+                className={`mr-auto min-w-[18rem] rounded-3xl border ${theme.border} ${theme.card} px-6 py-5 text-left shadow-2xl shadow-black/10`}
                 style={
                   toneColors
                     ? {
@@ -160,29 +161,45 @@ export function Dashboard() {
                       } as CSSProperties
                     : undefined
                 }
-                aria-label={
-                  isChineseRevealed
-                    ? `${chineseCard.hanzi}, ${chineseCard.pinyin}, ${chineseCard.meaning}`
-                    : `Показати підказку для ${chineseCard.hanzi}`
-                }
-                onClick={() => setIsChineseRevealed((revealed) => !revealed)}
               >
-                <div className="text-7xl font-black leading-none text-[var(--tone-light)] dark:text-[var(--tone-night)]">
-                  {chineseCard.hanzi}
-                </div>
+                <button
+                  type="button"
+                  className="block w-full text-left transition-transform active:scale-[0.98]"
+                  aria-label={
+                    isChineseRevealed
+                      ? `${chineseCard.hanzi}, ${chineseCard.pinyin}, ${chineseCard.meaning}`
+                      : `Показати підказку для ${chineseCard.hanzi}`
+                  }
+                  onClick={() => setIsChineseRevealed((revealed) => !revealed)}
+                >
+                  <div className="text-7xl font-black leading-none text-[var(--tone-light)] dark:text-[var(--tone-night)]">
+                    {chineseCard.hanzi}
+                  </div>
+                </button>
                 {isChineseRevealed ? (
-                  <div className="mt-3">
-                    <div className="text-3xl font-black text-[var(--tone-light)] dark:text-[var(--tone-night)]">{chineseCard.pinyin}</div>
-                    <div className={`mt-1 text-2xl font-bold ${theme.secondary}`}>
-                      {chineseCard.meaning}
+                  <div className="mt-3 flex items-end justify-between gap-5">
+                    <div>
+                      <div className="text-3xl font-black text-[var(--tone-light)] dark:text-[var(--tone-night)]">{chineseCard.pinyin}</div>
+                      <div className={`mt-1 text-2xl font-bold ${theme.secondary}`}>
+                        {chineseCard.meaning}
+                      </div>
                     </div>
+                    <button
+                      type="button"
+                      className={`grid h-14 w-14 place-items-center rounded-full border ${theme.border} ${theme.accent} text-3xl font-black shadow-lg shadow-black/10 transition-transform active:scale-95`}
+                      aria-label="Наступне китайське слово"
+                      onClick={() => {
+                        setChineseManualOffset((offset) =>
+                          getNextChineseCardIndex(offset, chineseCards.length)
+                        );
+                        setIsChineseRevealed(false);
+                      }}
+                    >
+                      →
+                    </button>
                   </div>
-                ) : (
-                  <div className={`mt-3 text-xl font-bold ${theme.secondary}`}>
-                    Торкнись, щоб побачити
-                  </div>
-                )}
-              </button>
+                ) : null}
+              </div>
             ) : null}
           </div>
         </section>

@@ -172,14 +172,23 @@ export function shouldShowNextEventCountdown(nextEvent: NextEvent | null): boole
 
 export function getCardForTime(
   cards: ChineseCard[] | undefined,
-  currentMinutes: number
+  currentMinutes: number,
+  manualOffset = 0
 ): ChineseCard | null {
   if (!cards || cards.length === 0) {
     return null;
   }
 
-  const index = Math.floor(currentMinutes / 5) % cards.length;
+  const index = (Math.floor(currentMinutes / 2) + manualOffset) % cards.length;
   return cards[index];
+}
+
+export function getNextChineseCardIndex(currentIndex: number, cardCount: number): number {
+  if (cardCount <= 0) {
+    return 0;
+  }
+
+  return (currentIndex + 1) % cardCount;
 }
 
 export function pinyinToTone(pinyin: string): MandarinTone {

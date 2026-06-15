@@ -3,6 +3,7 @@ import dashboardConfig from "@/config/dashboard.json";
 import { defaultConfig } from "@/lib/default-config";
 import {
   getCardForTime,
+  getNextChineseCardIndex,
   getCurrentRule,
   getEventsForDay,
   getNextEvent,
@@ -249,13 +250,19 @@ describe("routine calculations", () => {
     ]);
   });
 
-  it("rotates chinese cards every five minutes", () => {
-    expect(getCardForTime(config.chinese, timeToMinutes("07:04"))?.hanzi).toBe(
+  it("rotates chinese cards every two minutes", () => {
+    expect(getCardForTime(config.chinese, timeToMinutes("07:01"))?.hanzi).toBe(
       "水"
     );
-    expect(getCardForTime(config.chinese, timeToMinutes("07:05"))?.hanzi).toBe(
+    expect(getCardForTime(config.chinese, timeToMinutes("07:02"))?.hanzi).toBe(
       "月"
     );
+  });
+
+  it("wraps the manual Chinese next button through available cards", () => {
+    expect(getNextChineseCardIndex(0, 2)).toBe(1);
+    expect(getNextChineseCardIndex(1, 2)).toBe(0);
+    expect(getNextChineseCardIndex(4, 0)).toBe(0);
   });
 
   it("handles missing optional lists", () => {
