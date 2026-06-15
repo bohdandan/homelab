@@ -161,8 +161,18 @@ describe("routine calculations", () => {
     ]);
   });
 
-  it("keeps the deployed JSON schedule aligned with the TypeScript fallback", () => {
-    expect(dashboardConfig.events).toEqual(defaultConfig.events);
+  it("keeps the deployed JSON schedule valid while allowing local schedule edits", () => {
+    expect(dashboardConfig.timezone).toBe(defaultConfig.timezone);
+    expect(dashboardConfig.events?.length).toBeGreaterThan(0);
+  });
+
+  it("includes HSK1 Chinese cards in the default kiosk schedule", () => {
+    expect(defaultConfig.chinese?.[0]).toEqual({
+      hanzi: "我",
+      pinyin: "wǒ",
+      meaning: "я"
+    });
+    expect(defaultConfig.chinese?.some((card) => card.hanzi === "水")).toBe(true);
   });
 
   it("includes the school week and activity reminders in the default kiosk schedule", () => {

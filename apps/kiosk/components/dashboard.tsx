@@ -63,6 +63,7 @@ const themes: Record<ThemeName, ThemeDefinition> = {
 export function Dashboard() {
   const [config, setConfig] = useState<DashboardConfig | null>(null);
   const [now, setNow] = useState<Date | null>(null);
+  const [isChineseRevealed, setIsChineseRevealed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -108,11 +109,16 @@ export function Dashboard() {
     [config?.events, currentDay, currentMinutes, nextDay]
   );
   const visibleNextEvent = shouldShowNextEventCountdown(nextEvent) ? nextEvent : null;
+  const chineseCards = config?.chinese ?? defaultConfig.chinese;
   const chineseCard = useMemo(
-    () => getCardForTime(config?.chinese, currentMinutes),
-    [config?.chinese, currentMinutes]
+    () => getCardForTime(chineseCards, currentMinutes),
+    [chineseCards, currentMinutes]
   );
   const timeline = getEventsForDay(config?.events, currentDay).slice(0, 6);
+
+  useEffect(() => {
+    setIsChineseRevealed(false);
+  }, [chineseCard?.hanzi]);
 
   return (
     <main
@@ -130,18 +136,47 @@ export function Dashboard() {
             </div>
           </div>
 
-          <div className="pb-2">
+          <div className="flex items-end justify-between gap-6 pb-2">
             {visibleNextEvent ? (
-              <div className={`text-[clamp(2rem,3.8vw,4rem)] font-bold leading-tight ${theme.secondary}`}>
+              <div className={`max-w-[48rem] text-[clamp(2rem,3.8vw,4rem)] font-bold leading-tight ${theme.secondary}`}>
                 {`${visibleNextEvent.event.title} ${minutesUntilEvent(visibleNextEvent.minutesUntil)}`}
               </div>
+            ) : null}
+
+            {chineseCard ? (
+              <button
+                type="button"
+                className={`ml-auto min-w-[18rem] rounded-3xl border ${theme.border} ${theme.card} px-6 py-5 text-left shadow-2xl shadow-black/10 transition-transform active:scale-[0.98]`}
+                aria-label={
+                  isChineseRevealed
+                    ? `${chineseCard.hanzi}, ${chineseCard.pinyin}, ${chineseCard.meaning}`
+                    : `Показати підказку для ${chineseCard.hanzi}`
+                }
+                onClick={() => setIsChineseRevealed((revealed) => !revealed)}
+              >
+                <div className="text-7xl font-black leading-none">
+                  {chineseCard.hanzi}
+                </div>
+                {isChineseRevealed ? (
+                  <div className="mt-3">
+                    <div className="text-3xl font-black">{chineseCard.pinyin}</div>
+                    <div className={`mt-1 text-2xl font-bold ${theme.secondary}`}>
+                      {chineseCard.meaning}
+                    </div>
+                  </div>
+                ) : (
+                  <div className={`mt-3 text-xl font-bold ${theme.secondary}`}>
+                    Торкнись, щоб побачити
+                  </div>
+                )}
+              </button>
             ) : null}
           </div>
         </section>
 
-        <aside className="grid min-h-0 grid-rows-[1fr_auto] gap-6">
+        <aside className="min-h-0">
           <section
-            className={`min-h-0 rounded-lg border ${theme.border} ${theme.card} p-6 shadow-2xl shadow-black/10`}
+            className={`h-full min-h-0 rounded-lg border ${theme.border} ${theme.card} p-6 shadow-2xl shadow-black/10`}
           >
             <div className="mb-5 text-3xl font-black tracking-normal">
               Сьогодні
@@ -168,25 +203,6 @@ export function Dashboard() {
               )}
             </div>
           </section>
-
-          {chineseCard ? (
-            <section
-              key={chineseCard.hanzi}
-              className={`rounded-lg border ${theme.border} ${theme.card} p-6 shadow-2xl shadow-black/10 transition-opacity duration-700`}
-            >
-              <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-6">
-                <div className="text-8xl font-black leading-none">
-                  {chineseCard.hanzi}
-                </div>
-                <div>
-                  <div className="text-4xl font-black">{chineseCard.pinyin}</div>
-                  <div className={`mt-2 text-3xl font-bold ${theme.secondary}`}>
-                    {chineseCard.meaning}
-                  </div>
-                </div>
-              </div>
-            </section>
-          ) : null}
         </aside>
       </div>
     </main>
