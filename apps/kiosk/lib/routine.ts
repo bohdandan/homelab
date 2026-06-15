@@ -206,6 +206,42 @@ export function getCardForTime(
   return cards[index];
 }
 
+function hashSeed(seed: string): number {
+  let hash = 2_166_136_261;
+
+  for (const character of seed) {
+    hash ^= character.charCodeAt(0);
+    hash = Math.imul(hash, 16_777_619);
+  }
+
+  return hash >>> 0;
+}
+
+function seededRandom(seed: number): () => number {
+  let state = seed || 1;
+
+  return () => {
+    state = Math.imul(state ^ (state >>> 15), 1 | state);
+    state ^= state + Math.imul(state ^ (state >>> 7), 61 | state);
+    return ((state ^ (state >>> 14)) >>> 0) / 4_294_967_296;
+  };
+}
+
+export function getShuffledChineseCards(
+  cards: ChineseCard[] | undefined,
+  seed: string
+): ChineseCard[] {
+  const shuffled = [...(cards ?? [])];
+  const random = seededRandom(hashSeed(seed));
+
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(random() * (index + 1));
+    [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
+  }
+
+  return shuffled;
+}
+
 export function getNextChineseCardIndex(currentIndex: number, cardCount: number): number {
   if (cardCount <= 0) {
     return 0;

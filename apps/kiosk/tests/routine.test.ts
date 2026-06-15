@@ -10,6 +10,7 @@ import {
   getCurrentRule,
   getEventsForDay,
   getNextEvent,
+  getShuffledChineseCards,
   getUpcomingEventList,
   getNextMajorEvent,
   getToneColorScheme,
@@ -277,6 +278,22 @@ describe("routine calculations", () => {
     expect(getCardForTime(testChineseCards, timeToMinutes("07:02"))?.hanzi).toBe(
       "月"
     );
+  });
+
+  it("shuffles chinese cards in a stable seed-based order", () => {
+    const cards = [
+      { hanzi: "一", pinyin: "yī", meaning: "one" },
+      { hanzi: "二", pinyin: "èr", meaning: "two" },
+      { hanzi: "三", pinyin: "sān", meaning: "three" },
+      { hanzi: "四", pinyin: "sì", meaning: "four" }
+    ];
+
+    const shuffled = getShuffledChineseCards(cards, "2026-06-15");
+
+    expect(shuffled.map((card) => card.hanzi)).not.toEqual(cards.map((card) => card.hanzi));
+    expect(shuffled.map((card) => card.hanzi).sort()).toEqual(["一", "三", "二", "四"].sort());
+    expect(getShuffledChineseCards(cards, "2026-06-15")).toEqual(shuffled);
+    expect(getShuffledChineseCards(cards, "2026-06-16")).not.toEqual(shuffled);
   });
 
   it("wraps the manual Chinese next button through available cards", () => {

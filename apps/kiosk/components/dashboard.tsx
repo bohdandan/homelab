@@ -12,6 +12,7 @@ import {
   getNextChineseCardIndex,
   getNextMajorEvent,
   getNextWeekday,
+  getShuffledChineseCards,
   getToneColorScheme,
   getUpcomingEventList,
   getZonedDay,
@@ -200,13 +201,24 @@ export function Dashboard() {
         month: "long"
       }).format(now)
     : "";
+  const chineseShuffleSeed = now
+    ? new Intl.DateTimeFormat("en-CA", {
+        timeZone: timezone,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit"
+      }).format(now)
+    : "kiosk";
 
   const nextEvent = useMemo(
     () => getNextEvent(config?.events, currentMinutes, currentDay, nextDay),
     [config?.events, currentDay, currentMinutes, nextDay]
   );
   const visibleNextEvent = shouldShowNextEventCountdown(nextEvent) ? nextEvent : null;
-  const chineseCards = chineseConfig ?? defaultChinese;
+  const chineseCards = useMemo(
+    () => getShuffledChineseCards(chineseConfig ?? defaultChinese, chineseShuffleSeed),
+    [chineseConfig, chineseShuffleSeed]
+  );
   const chineseCard = useMemo(
     () => getCardForTime(chineseCards, currentMinutes, chineseManualOffset),
     [chineseCards, chineseManualOffset, currentMinutes]
