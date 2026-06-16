@@ -60,6 +60,11 @@ export type ChineseCard = {
 
 export type MandarinTone = 1 | 2 | 3 | 4 | 5;
 
+export type ChineseCharacterTonePart = {
+  character: string;
+  tone: MandarinTone;
+};
+
 export type ToneColorScheme = {
   light: string;
   night: string;

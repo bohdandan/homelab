@@ -10,6 +10,7 @@ import {
   getCurrentRule,
   getEventsForDay,
   getNextEvent,
+  getChineseCharacterToneParts,
   getShuffledChineseCards,
   getUpcomingEventList,
   getNextMajorEvent,
@@ -206,6 +207,30 @@ describe("routine calculations", () => {
     expect(getToneColorScheme(3)).toEqual({ light: "#ffb86c", night: "#ffb86c" });
     expect(getToneColorScheme(4)).toEqual({ light: "#ff5555", night: "#ff5555" });
     expect(getToneColorScheme(5)).toEqual({ light: "#bd93f9", night: "#bd93f9" });
+  });
+
+  it("maps each Chinese character to the matching pinyin tone", () => {
+    expect(
+      getChineseCharacterToneParts({
+        hanzi: "听见",
+        pinyin: "tīng jiàn",
+        meaning: "hear"
+      })
+    ).toEqual([
+      { character: "听", tone: 1 },
+      { character: "见", tone: 4 }
+    ]);
+
+    expect(
+      getChineseCharacterToneParts({
+        hanzi: "它们",
+        pinyin: "tā men",
+        meaning: "they"
+      })
+    ).toEqual([
+      { character: "它", tone: 1 },
+      { character: "们", tone: 5 }
+    ]);
   });
 
   it("uses dark mode from 20:00 until 08:00", () => {

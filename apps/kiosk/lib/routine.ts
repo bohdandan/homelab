@@ -1,6 +1,7 @@
 import type {
   CalendarMonth,
   ChineseCard,
+  ChineseCharacterTonePart,
   DayRule,
   MajorEvent,
   MandarinTone,
@@ -258,6 +259,16 @@ export function pinyinToTone(pinyin: string): MandarinTone {
   }
 
   return 5;
+}
+
+export function getChineseCharacterToneParts(card: ChineseCard): ChineseCharacterTonePart[] {
+  const characters = [...card.hanzi];
+  const syllables = card.pinyin.trim().split(/\s+/).filter(Boolean);
+
+  return characters.map((character, index) => ({
+    character,
+    tone: pinyinToTone(syllables[Math.min(index, syllables.length - 1)] ?? card.pinyin)
+  }));
 }
 
 export function getToneColorScheme(tone: MandarinTone): ToneColorScheme {

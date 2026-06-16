@@ -7,6 +7,7 @@ import {
   formatZonedTime,
   getCalendarMonth,
   getCardForTime,
+  getChineseCharacterToneParts,
   getCurrentRule,
   getNextEvent,
   getNextChineseCardIndex,
@@ -223,9 +224,7 @@ export function Dashboard() {
     () => getCardForTime(chineseCards, currentMinutes, chineseManualOffset),
     [chineseCards, chineseManualOffset, currentMinutes]
   );
-  const toneColors = chineseCard
-    ? getToneColorScheme(pinyinToTone(chineseCard.pinyin))
-    : null;
+  const chineseToneParts = chineseCard ? getChineseCharacterToneParts(chineseCard) : [];
   const upcomingList = getUpcomingEventList(config?.events, currentMinutes, currentDay, 6);
   const majorEvents = config?.majorEvents ?? defaultConfig.majorEvents ?? [];
   const calendarMonth = getCalendarMonth(now ?? new Date(), majorEvents);
@@ -270,14 +269,6 @@ export function Dashboard() {
               <button
                 type="button"
                 className={`w-full max-w-sm rounded-3xl border ${theme.border} ${theme.card} px-5 py-5 text-center shadow-2xl shadow-black/25 transition-transform active:scale-[0.98] sm:px-7 sm:py-6 lg:mr-auto lg:min-w-[22rem] lg:w-auto`}
-                style={
-                  toneColors
-                    ? {
-                        "--tone-light": toneColors.light,
-                        "--tone-night": toneColors.night
-                      } as CSSProperties
-                    : undefined
-                }
                 aria-label="Наступне китайське слово"
                 onClick={() => {
                   setChineseManualOffset((offset) =>
@@ -286,11 +277,22 @@ export function Dashboard() {
                 }}
               >
                 <div className="space-y-3">
-                  <div className="text-6xl font-black leading-none text-[var(--tone-light)] sm:text-7xl">
-                    {chineseCard.hanzi}
+                  <div className="text-6xl font-black leading-none sm:text-7xl">
+                    {chineseToneParts.map((part, index) => {
+                      const colors = getToneColorScheme(part.tone);
+
+                      return (
+                        <span
+                          key={`${part.character}-${index}`}
+                          style={{ color: colors.light } as CSSProperties}
+                        >
+                          {part.character}
+                        </span>
+                      );
+                    })}
                   </div>
                   <div className="min-w-0 text-center">
-                    <div className="text-2xl font-black text-[var(--tone-light)] sm:text-3xl">{chineseCard.pinyin}</div>
+                    <div className="text-2xl font-black sm:text-3xl">{chineseCard.pinyin}</div>
                     <div className="mt-1 text-xl font-black sm:text-2xl">
                       {chineseCard.meaning}
                     </div>
