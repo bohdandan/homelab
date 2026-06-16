@@ -136,31 +136,38 @@
   "majorEvents": [
     {
       "date": "2026-07-03",
-      "title": "🎉 Канкули!",
-      "kind": "holidays",
-      "icon": "🎢",
-      "color": "red"
+      "title": "Канкули!",
+      "icon": "🎉"
     },
     {
       "date": "2026-08-21",
-      "title": "🥳 День народження Меланки",
-      "kind": "birthday",
-      "icon": "🥳",
-      "color": "red"
+      "title": "ДН Меланки",
+      "icon": "🥳"
+    },
+    {
+      "date": "2026-09-19",
+      "title": "ДН Альони",
+      "icon": "🥳"
+    },
+    {
+      "date": "2026-12-13",
+      "title": "ДН Іванки",
+      "icon": "🥳"
+    },
+    {
+      "date": "2027-05-06",
+      "title": "ДН Ясі",
+      "icon": "🥳"
     },
     {
       "date": "2026-07-07",
       "title": "Legoland",
-      "kind": "trip",
-      "icon": "🎢",
-      "color": "purple"
+      "icon": "🎢"
     },
     {
       "date": "2026-12-25",
       "title": "Різдво",
-      "kind": "holiday",
-      "icon": "🎄",
-      "color": "green"
+      "icon": "🎄"
     }
   ]
 }

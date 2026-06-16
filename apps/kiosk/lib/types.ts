@@ -23,20 +23,14 @@ export type TimelineEvent = {
   days?: Weekday[];
 };
 
-export type MajorEventKind = "holiday" | "trip" | "birthday" | "school" | "other";
-
 export type MajorEvent = {
   date: string;
   title: string;
-  kind?: MajorEventKind;
   icon?: string;
-  color?: "cyan" | "green" | "orange" | "pink" | "purple" | "red" | "yellow";
 };
 
 export type UpcomingEventList = {
   events: TimelineEvent[];
-  hasHiddenPassedEvents: boolean;
-  hasHiddenFutureEvents: boolean;
 };
 
 export type CalendarCell = {

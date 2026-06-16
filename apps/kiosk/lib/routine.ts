@@ -162,9 +162,7 @@ export function getUpcomingEventList(
   const visibleEvents = upcomingEvents.slice(0, limit);
 
   return {
-    events: visibleEvents,
-    hasHiddenPassedEvents: todaysEvents.length > upcomingEvents.length,
-    hasHiddenFutureEvents: upcomingEvents.length > visibleEvents.length
+    events: visibleEvents
   };
 }
 

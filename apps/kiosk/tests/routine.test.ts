@@ -404,26 +404,22 @@ describe("routine calculations", () => {
     expect(getCardForTime(undefined, 0)).toBeNull();
   });
 
-  it("returns only upcoming events and marks hidden passed or truncated events", () => {
+  it("returns only upcoming events", () => {
     const result = getUpcomingEventList(config.events, timeToMinutes("10:30"), "monday", 2);
 
     expect(result.events.map((event) => event.title)).toEqual(["Reading", "Bedtime"]);
-    expect(result.hasHiddenPassedEvents).toBe(true);
-    expect(result.hasHiddenFutureEvents).toBe(false);
   });
 
-  it("marks hidden future events when the visible upcoming list is capped", () => {
+  it("caps the visible upcoming list", () => {
     const result = getUpcomingEventList(config.events, timeToMinutes("07:00"), "monday", 2);
 
     expect(result.events.map((event) => event.title)).toEqual(["School", "Reading"]);
-    expect(result.hasHiddenPassedEvents).toBe(false);
-    expect(result.hasHiddenFutureEvents).toBe(true);
   });
 
   it("finds the next major event by exact date", () => {
     const majorEvents = [
-      { date: "2026-06-10", title: "Минуле свято", kind: "holiday" as const },
-      { date: "2026-07-20", title: "Legoland", kind: "trip" as const }
+      { date: "2026-06-10", title: "Минуле свято" },
+      { date: "2026-07-20", title: "Legoland" }
     ];
 
     expect(getNextMajorEvent(majorEvents, new Date("2026-06-15T12:00:00Z"))?.title).toBe(
@@ -436,8 +432,8 @@ describe("routine calculations", () => {
     const month = getCalendarMonth(
       new Date("2026-06-15T12:00:00Z"),
       [
-        { date: "2026-06-20", title: "Подорож", kind: "trip", icon: "🎒" },
-        { date: "2026-07-20", title: "Legoland", kind: "trip", icon: "🎢" }
+        { date: "2026-06-20", title: "Подорож", icon: "🎒" },
+        { date: "2026-07-20", title: "Legoland", icon: "🎢" }
       ]
     );
 
