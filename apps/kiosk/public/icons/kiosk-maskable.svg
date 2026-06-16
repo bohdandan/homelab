@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Кіоск">
+  <rect width="512" height="512" fill="#f2eadf"/>
+  <circle cx="395" cy="116" r="54" fill="#8b6fc0"/>
+  <path fill="#272631" d="M64 366c0-106 86-192 192-192s192 86 192 192v70H64v-70z"/>
+  <path fill="#f9f4ea" d="M132 360c0-68 56-124 124-124s124 56 124 124v20H132v-20z"/>
+  <circle cx="256" cy="143" r="68" fill="#8b6fc0"/>
+  <path fill="#e96b5f" d="M139 107h70v48h-70z"/>
+  <path fill="#68d8ee" d="M303 107h70v48h-70z"/>
+</svg>
