@@ -7,6 +7,7 @@ import type {
   MandarinTone,
   NextEvent,
   TimelineEvent,
+  TimerState,
   ToneColorScheme,
   Weekday
 } from "@/lib/types";
@@ -184,6 +185,27 @@ export function minutesUntilEvent(minutes: number): string {
   }
 
   return `через ${hours} год ${remainingMinutes} хв`;
+}
+
+export function getTimerRemainingMs(timer: TimerState, nowMs: number): number {
+  return Math.max(0, timer.durationMs - (nowMs - timer.startedAtMs));
+}
+
+export function getTimerProgressRatio(timer: TimerState, nowMs: number): number {
+  if (timer.durationMs <= 0) {
+    return 1;
+  }
+
+  const elapsedMs = timer.durationMs - getTimerRemainingMs(timer, nowMs);
+  return Math.min(1, Math.max(0, elapsedMs / timer.durationMs));
+}
+
+export function formatTimerRemaining(remainingMs: number): string {
+  const safeRemainingSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
+  const minutes = Math.floor(safeRemainingSeconds / 60);
+  const seconds = safeRemainingSeconds % 60;
+
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
 export function shouldShowNextEventCountdown(nextEvent: NextEvent | null): boolean {

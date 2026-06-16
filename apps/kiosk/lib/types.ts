@@ -70,6 +70,11 @@ export type ToneColorScheme = {
   night: string;
 };
 
+export type TimerState = {
+  durationMs: number;
+  startedAtMs: number;
+};
+
 export type DashboardConfig = {
   timezone: string;
   dayRules: DayRule[];

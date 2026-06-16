@@ -5,26 +5,26 @@ import { defaultChinese } from "@/lib/default-chinese";
 import { defaultConfig } from "@/lib/default-config";
 import {
   formatZonedTime,
+  formatTimerRemaining,
   getCalendarMonth,
   getCardForTime,
   getChineseCharacterToneParts,
   getCurrentRule,
   getNextEvent,
   getNextChineseCardIndex,
-  getNextMajorEvent,
   getNextWeekday,
   getShuffledChineseCards,
+  getTimerProgressRatio,
+  getTimerRemainingMs,
   getToneColorScheme,
   getUpcomingEventList,
   getZonedDay,
   getZonedMinutes,
   isDarkThemeTime,
-  majorEventDaysUntil,
   minutesUntilEvent,
-  pinyinToTone,
   shouldShowNextEventCountdown
 } from "@/lib/routine";
-import type { ChineseCard, DashboardConfig, ThemeName } from "@/lib/types";
+import type { ChineseCard, DashboardConfig, ThemeName, TimerState } from "@/lib/types";
 
 type ThemeDefinition = {
   background: string;
@@ -36,6 +36,10 @@ type ThemeDefinition = {
 };
 
 type ThemeMode = "alucard" | "dracula";
+
+const timerPresets = [1, 5, 10, 20];
+const timerCircleRadius = 148;
+const timerCircleCircumference = 2 * Math.PI * timerCircleRadius;
 
 const themePalettes: Record<ThemeMode, Record<ThemeName, ThemeDefinition>> = {
   alucard: {
@@ -114,6 +118,8 @@ export function Dashboard() {
   const [now, setNow] = useState<Date | null>(null);
   const [chineseManualOffset, setChineseManualOffset] = useState(0);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [timer, setTimer] = useState<TimerState | null>(null);
+  const [isTimerOpen, setIsTimerOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -225,20 +231,42 @@ export function Dashboard() {
     [chineseCards, chineseManualOffset, currentMinutes]
   );
   const chineseToneParts = chineseCard ? getChineseCharacterToneParts(chineseCard) : [];
+  const timerNowMs = now?.getTime() ?? Date.now();
+  const timerRemainingMs = timer ? getTimerRemainingMs(timer, timerNowMs) : 0;
+  const timerProgressRatio = timer ? getTimerProgressRatio(timer, timerNowMs) : 0;
+  const timerProgressOffset = timerCircleCircumference * (1 - timerProgressRatio);
+  const timerLabel = formatTimerRemaining(timerRemainingMs);
   const upcomingList = getUpcomingEventList(config?.events, currentMinutes, currentDay, 6);
   const majorEvents = config?.majorEvents ?? defaultConfig.majorEvents ?? [];
   const calendarMonth = getCalendarMonth(now ?? new Date(), majorEvents);
-  const nextMajorEvent = getNextMajorEvent(majorEvents, now ?? new Date());
-  const nextMajorEventDays = nextMajorEvent && now ? majorEventDaysUntil(nextMajorEvent, now) : null;
   const upcomingMajorEvents = [...majorEvents]
     .filter((event) => event.date >= (now ?? new Date()).toISOString().slice(0, 10))
     .sort((a, b) => a.date.localeCompare(b.date));
 
+  const startTimer = (minutes: number) => {
+    setTimer({
+      durationMs: minutes * 60_000,
+      startedAtMs: Date.now()
+    });
+    setIsTimerOpen(true);
+  };
+
+  const resetTimer = () => {
+    setTimer((currentTimer) =>
+      currentTimer
+        ? {
+            durationMs: currentTimer.durationMs,
+            startedAtMs: Date.now()
+          }
+        : currentTimer
+    );
+  };
+
   return (
     <main
-      className={`min-h-screen w-screen overflow-x-hidden lg:h-screen lg:overflow-hidden ${theme.background} ${theme.primary}`}
+      className={`min-h-screen w-screen overflow-x-hidden xl:h-screen xl:overflow-hidden ${theme.background} ${theme.primary}`}
     >
-      <div className="grid min-h-screen grid-cols-1 gap-4 p-4 sm:gap-5 sm:p-5 lg:h-full lg:min-h-0 lg:grid-cols-[minmax(0,1fr)_minmax(28rem,0.82fr)] lg:gap-8 lg:p-8 xl:grid-cols-[minmax(0,1fr)_minmax(32rem,0.78fr)]">
+      <div className="grid min-h-screen grid-cols-1 gap-4 p-4 sm:gap-5 sm:p-5 lg:grid-cols-[minmax(0,1fr)_minmax(26rem,0.72fr)] lg:gap-6 lg:p-6 xl:h-full xl:min-h-0 xl:grid-cols-[minmax(0,1fr)_minmax(32rem,0.78fr)] xl:gap-8 xl:p-8">
         <section className="flex min-h-0 flex-col gap-6 lg:justify-between">
           <div className="space-y-3">
             <button
@@ -251,7 +279,7 @@ export function Dashboard() {
             <div>
               <div
                 className="max-w-full overflow-hidden whitespace-nowrap font-black leading-none tracking-[-0.06em]"
-                style={{ fontSize: "clamp(7rem, 18vw, 14rem)" }}
+                style={{ fontSize: "clamp(5rem, 10vw, 13rem)" }}
                 suppressHydrationWarning
               >
                 {displayTime}
@@ -264,11 +292,43 @@ export function Dashboard() {
             ) : null}
           </div>
 
-          <div className="flex flex-col items-start gap-6 pb-2">
+          <div className="grid w-full max-w-5xl grid-cols-1 gap-4 pb-2 sm:grid-cols-2 lg:max-w-3xl">
+            <div
+              className={`w-full rounded-3xl border ${theme.border} ${theme.card} px-5 py-5 shadow-2xl shadow-black/20 sm:px-6 sm:py-6`}
+            >
+              <button
+                type="button"
+                className="mb-4 w-full text-left"
+                onClick={() => {
+                  if (timer) {
+                    setIsTimerOpen(true);
+                  }
+                }}
+              >
+                <div className={`text-lg font-black uppercase tracking-[0.12em] ${theme.secondary}`}>
+                  Таймер
+                </div>
+                <div className="mt-1 text-4xl font-black tabular-nums sm:text-5xl">
+                  {timer ? timerLabel : "00:00"}
+                </div>
+              </button>
+              <div className="grid grid-cols-4 gap-2">
+                {timerPresets.map((minutes) => (
+                  <button
+                    key={minutes}
+                    type="button"
+                    className={`rounded-2xl border ${theme.border} ${theme.accent} px-2 py-3 text-xl font-black transition active:scale-[0.98]`}
+                    onClick={() => startTimer(minutes)}
+                  >
+                    {minutes}
+                  </button>
+                ))}
+              </div>
+            </div>
             {chineseCard ? (
               <button
                 type="button"
-                className={`w-full max-w-sm rounded-3xl border ${theme.border} ${theme.card} px-5 py-5 text-center shadow-2xl shadow-black/25 transition-transform active:scale-[0.98] sm:px-7 sm:py-6 lg:mr-auto lg:min-w-[22rem] lg:w-auto`}
+                className={`w-full rounded-3xl border ${theme.border} ${theme.card} px-5 py-5 text-center shadow-2xl shadow-black/25 transition-transform active:scale-[0.98] sm:px-7 sm:py-6`}
                 aria-label="Наступне китайське слово"
                 onClick={() => {
                   setChineseManualOffset((offset) =>
@@ -305,7 +365,7 @@ export function Dashboard() {
 
         <aside className="min-h-0">
           <section
-            className={`min-h-[28rem] rounded-lg border ${theme.border} ${theme.card} p-4 shadow-2xl shadow-black/10 sm:p-5 lg:h-full lg:min-h-0 lg:p-6`}
+            className={`min-h-[28rem] rounded-lg border ${theme.border} ${theme.card} p-4 shadow-2xl shadow-black/10 sm:p-5 lg:h-[calc(100vh-3rem)] lg:min-h-0 lg:p-5 xl:h-full xl:p-6`}
           >
             <div className="mb-5 grid grid-cols-2 gap-3">
               <button
@@ -338,12 +398,6 @@ export function Dashboard() {
                     <div className="text-2xl font-black capitalize tracking-normal sm:text-3xl">
                       {calendarMonth.label}
                     </div>
-                    {nextMajorEvent && nextMajorEventDays !== null ? (
-                      <div className={`mt-2 text-xl font-black sm:text-2xl ${theme.secondary}`}>
-                        {nextMajorEvent.icon ? `${nextMajorEvent.icon} ` : ""}
-                        {nextMajorEvent.title} через {nextMajorEventDays} дн.
-                      </div>
-                    ) : null}
                   </div>
                 </div>
                 <div className="grid grid-cols-7 gap-1 text-center sm:gap-2">
@@ -376,12 +430,12 @@ export function Dashboard() {
                 </div>
                 <div className="mt-5 min-h-0 flex-1 overflow-hidden">
                   <div className="mb-3 text-xl font-black sm:text-2xl">Найближчі чекуньки</div>
-                  <div className="space-y-3">
+                  <div className="h-full max-h-72 space-y-3 overflow-y-auto pr-1 lg:max-h-none">
                     {upcomingMajorEvents.length > 0 ? (
                       upcomingMajorEvents.map((event) => (
                         <div
                           key={`${event.date}-${event.title}`}
-                          className={`grid grid-cols-[2.25rem_minmax(0,1fr)] items-center gap-3 rounded-2xl border px-3 py-3 sm:grid-cols-[3rem_minmax(0,1fr)_auto] sm:px-4 ${calendarCellBase}`}
+                          className={`grid grid-cols-[2.25rem_minmax(0,1fr)] items-center gap-3 rounded-2xl border px-3 py-3 sm:grid-cols-[3rem_minmax(0,1fr)] sm:px-4 ${calendarCellBase}`}
                         >
                           <div className="grid h-9 w-9 place-items-center text-2xl font-black sm:h-10 sm:w-10">
                             {event.icon ?? "★"}
@@ -389,9 +443,6 @@ export function Dashboard() {
                           <div className="min-w-0">
                             <div className="truncate text-xl font-black sm:text-2xl">{event.title}</div>
                             <div className={`text-base font-bold sm:text-lg ${theme.secondary}`}>{event.date}</div>
-                          </div>
-                          <div className={`col-span-2 text-left text-lg font-black sm:col-span-1 sm:text-right sm:text-xl ${nextEventAccent}`}>
-                            через {majorEventDaysUntil(event, now ?? new Date())} дн.
                           </div>
                         </div>
                       ))
@@ -437,6 +488,64 @@ export function Dashboard() {
           </section>
         </aside>
       </div>
+      {isTimerOpen && timer ? (
+        <div className={`fixed inset-0 z-50 grid place-items-center ${theme.background} ${theme.primary}`}>
+          <div className="absolute right-4 top-4 flex gap-2 sm:right-6 sm:top-6">
+            <button
+              type="button"
+              className={`rounded-full border ${theme.border} ${theme.card} px-4 py-2 text-sm font-black sm:text-base`}
+              onClick={() => setIsTimerOpen(false)}
+            >
+              Вийти
+            </button>
+            <button
+              type="button"
+              className={`rounded-full border ${theme.border} ${theme.card} px-4 py-2 text-sm font-black sm:text-base`}
+              onClick={resetTimer}
+            >
+              Скинути
+            </button>
+          </div>
+          <div className="relative grid place-items-center">
+            <svg
+              className="-rotate-90"
+              width="min(78vw, 560px)"
+              height="min(78vw, 560px)"
+              viewBox="0 0 340 340"
+              aria-hidden="true"
+            >
+              <circle
+                cx="170"
+                cy="170"
+                r={timerCircleRadius}
+                fill="none"
+                stroke="currentColor"
+                strokeOpacity="0.16"
+                strokeWidth="22"
+              />
+              <circle
+                cx="170"
+                cy="170"
+                r={timerCircleRadius}
+                fill="none"
+                stroke={themeMode === "dracula" ? "#ff79c6" : "#8668b6"}
+                strokeLinecap="round"
+                strokeWidth="22"
+                strokeDasharray={timerCircleCircumference}
+                strokeDashoffset={timerProgressOffset}
+              />
+            </svg>
+            <div className="absolute text-center">
+              <div className="text-[clamp(4.5rem,18vw,11rem)] font-black leading-none tabular-nums">
+                {timerLabel}
+              </div>
+              <div className={`mt-4 text-2xl font-black sm:text-4xl ${theme.secondary}`}>
+                {timerRemainingMs === 0 ? "Готово!" : "Таймер"}
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }

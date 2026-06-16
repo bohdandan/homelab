@@ -9,6 +9,8 @@ import {
   getNextChineseCardIndex,
   getCurrentRule,
   getEventsForDay,
+  getTimerProgressRatio,
+  getTimerRemainingMs,
   getNextEvent,
   getChineseCharacterToneParts,
   getShuffledChineseCards,
@@ -16,6 +18,7 @@ import {
   getNextMajorEvent,
   getToneColorScheme,
   getZonedDay,
+  formatTimerRemaining,
   isDarkThemeTime,
   majorEventDaysUntil,
   minutesUntilEvent,
@@ -116,6 +119,24 @@ describe("routine calculations", () => {
   it("formats minutes until an event", () => {
     expect(minutesUntilEvent(48)).toBe("через 48 хв");
     expect(minutesUntilEvent(75)).toBe("через 1 год 15 хв");
+  });
+
+  it("formats timer remaining time as minutes and seconds", () => {
+    expect(formatTimerRemaining(65_000)).toBe("01:05");
+    expect(formatTimerRemaining(3_599_000)).toBe("59:59");
+    expect(formatTimerRemaining(-1_000)).toBe("00:00");
+  });
+
+  it("calculates active timer remaining time and progress", () => {
+    const timer = {
+      durationMs: 5 * 60_000,
+      startedAtMs: 1_000
+    };
+
+    expect(getTimerRemainingMs(timer, 61_000)).toBe(4 * 60_000);
+    expect(getTimerProgressRatio(timer, 61_000)).toBeCloseTo(0.2);
+    expect(getTimerRemainingMs(timer, 601_000)).toBe(0);
+    expect(getTimerProgressRatio(timer, 601_000)).toBe(1);
   });
 
   it("shows the next-event countdown only for events within the next hour today", () => {
