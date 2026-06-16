@@ -5,15 +5,18 @@ import { defaultChinese } from "@/lib/default-chinese";
 import { defaultConfig } from "@/lib/default-config";
 import {
   formatZonedTime,
+  formatMajorEventDateLabel,
   formatTimerRemaining,
   getCalendarMonth,
   getCardForTime,
+  getChineseCardCycleProgress,
   getChineseCharacterToneParts,
   getCurrentRule,
   getNextEvent,
   getNextChineseCardIndex,
   getNextWeekday,
   getPinyinToneParts,
+  majorEventDaysUntil,
   pauseTimer,
   resumeTimer,
   getShuffledChineseCards,
@@ -202,6 +205,7 @@ export function Dashboard() {
       ? "border-[#ff79c6] bg-[#ff79c6]/15"
       : "border-[#b85d91] bg-[#f4d7e7]/60";
   const listTimeColor = themeMode === "dracula" ? "text-[#8be9fd]" : "text-[#4b7894]";
+  const chineseDotColor = themeMode === "dracula" ? "#f8f8f2" : "#2a2d39";
   const displayTime = now ? formatZonedTime(now, timezone) : "--:--";
   const displayDate = now
     ? new Intl.DateTimeFormat("uk-UA", {
@@ -233,6 +237,7 @@ export function Dashboard() {
     () => getCardForTime(chineseCards, now?.getTime() ?? 0, chineseManualOffset),
     [chineseCards, chineseManualOffset, now]
   );
+  const chineseCardCycleProgress = getChineseCardCycleProgress(now?.getTime() ?? 0);
   const chineseToneParts = chineseCard ? getChineseCharacterToneParts(chineseCard) : [];
   const pinyinToneParts = chineseCard ? getPinyinToneParts(chineseCard) : [];
   const timerNowMs = now?.getTime() ?? Date.now();
@@ -353,7 +358,7 @@ export function Dashboard() {
             {chineseCard ? (
               <button
                 type="button"
-                className={`w-full rounded-3xl border ${theme.border} ${theme.card} px-5 py-5 text-center shadow-2xl shadow-black/25 transition-transform active:scale-[0.98] sm:px-7 sm:py-6`}
+                className={`relative w-full rounded-3xl border ${theme.border} ${theme.card} px-5 py-5 text-center shadow-2xl shadow-black/25 transition-transform active:scale-[0.98] sm:px-7 sm:py-6`}
                 aria-label="Наступне китайське слово"
                 onClick={() => {
                   setChineseManualOffset((offset) =>
@@ -361,6 +366,23 @@ export function Dashboard() {
                   );
                 }}
               >
+                <div
+                  aria-hidden="true"
+                  className="absolute right-4 top-4 flex items-center gap-1 sm:right-5 sm:top-5"
+                >
+                  {Array.from({ length: 4 }).map((_, index) => {
+                    const remainingDotLevel = (1 - chineseCardCycleProgress) * 4 - index;
+                    const dotOpacity = 0.12 + Math.max(0, Math.min(1, remainingDotLevel)) * 0.28;
+
+                    return (
+                      <span
+                        key={index}
+                        className="h-1.5 w-1.5 rounded-full"
+                        style={{ backgroundColor: chineseDotColor, opacity: dotOpacity } as CSSProperties}
+                      />
+                    );
+                  })}
+                </div>
                 <div className="space-y-3">
                   <div className="text-6xl font-black leading-none sm:text-7xl">
                     {chineseToneParts.map((part, index) => {
@@ -481,7 +503,12 @@ export function Dashboard() {
                           </div>
                           <div className="min-w-0">
                             <div className="truncate text-xl font-black sm:text-2xl">{event.title}</div>
-                            <div className={`text-base font-bold sm:text-lg ${theme.secondary}`}>{event.date}</div>
+                            <div className={`text-base font-bold sm:text-lg ${theme.secondary}`}>
+                              {formatMajorEventDateLabel(
+                                event.date,
+                                majorEventDaysUntil(event, now ?? new Date())
+                              )}
+                            </div>
                           </div>
                         </div>
                       ))

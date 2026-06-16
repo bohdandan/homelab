@@ -248,6 +248,14 @@ export function getCardForTime(
   return cards[index];
 }
 
+export function getChineseCardCycleProgress(currentTimeMs: number, cycleMs = 30_000): number {
+  if (cycleMs <= 0) {
+    return 0;
+  }
+
+  return (currentTimeMs % cycleMs) / cycleMs;
+}
+
 function hashSeed(seed: string): number {
   let hash = 2_166_136_261;
 
@@ -353,6 +361,10 @@ export function majorEventDaysUntil(event: MajorEvent, today: Date): number {
   const end = utcDateFromIso(event.date);
 
   return Math.round((end.getTime() - start.getTime()) / 86_400_000);
+}
+
+export function formatMajorEventDateLabel(date: string, daysUntil: number): string {
+  return `${date} · через ${daysUntil} дн.`;
 }
 
 export function getCalendarMonth(

@@ -5,6 +5,7 @@ import { defaultChinese } from "@/lib/default-chinese";
 import { defaultConfig } from "@/lib/default-config";
 import {
   getCardForTime,
+  getChineseCardCycleProgress,
   getCalendarMonth,
   getNextChineseCardIndex,
   getCurrentRule,
@@ -22,6 +23,7 @@ import {
   getToneColorScheme,
   getZonedDay,
   formatTimerRemaining,
+  formatMajorEventDateLabel,
   isDarkThemeTime,
   majorEventDaysUntil,
   minutesUntilEvent,
@@ -128,6 +130,10 @@ describe("routine calculations", () => {
     expect(formatTimerRemaining(65_000)).toBe("01:05");
     expect(formatTimerRemaining(3_599_000)).toBe("59:59");
     expect(formatTimerRemaining(-1_000)).toBe("00:00");
+  });
+
+  it("formats the major event date label with days remaining", () => {
+    expect(formatMajorEventDateLabel("2026-07-03", 17)).toBe("2026-07-03 · через 17 дн.");
   });
 
   it("calculates active timer remaining time and progress", () => {
@@ -375,6 +381,13 @@ describe("routine calculations", () => {
       "月"
     );
     expect(getCardForTime(testChineseCards, 60_000)?.hanzi).toBe("水");
+  });
+
+  it("tracks progress within the thirty-second Chinese card cycle", () => {
+    expect(getChineseCardCycleProgress(0)).toBe(0);
+    expect(getChineseCardCycleProgress(7_500)).toBe(0.25);
+    expect(getChineseCardCycleProgress(29_999)).toBeCloseTo(0.9999666667, 6);
+    expect(getChineseCardCycleProgress(30_000)).toBe(0);
   });
 
   it("shuffles chinese cards in a stable seed-based order", () => {
