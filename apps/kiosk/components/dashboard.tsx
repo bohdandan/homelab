@@ -14,6 +14,8 @@ import {
   getNextChineseCardIndex,
   getNextWeekday,
   getPinyinToneParts,
+  pauseTimer,
+  resumeTimer,
   getShuffledChineseCards,
   getTimerProgressRatio,
   getTimerRemainingMs,
@@ -238,6 +240,15 @@ export function Dashboard() {
   const timerProgressRatio = timer ? getTimerProgressRatio(timer, timerNowMs) : 0;
   const timerProgressOffset = timerCircleCircumference * (1 - timerProgressRatio);
   const timerLabel = formatTimerRemaining(timerRemainingMs);
+  const isTimerDone = timer !== null && timerRemainingMs === 0;
+  const isTimerPaused = timer?.pausedRemainingMs !== undefined && !isTimerDone;
+  const timerRingColor = isTimerDone
+    ? themeMode === "dracula"
+      ? "#50fa7b"
+      : "#2b9348"
+    : themeMode === "dracula"
+      ? "#ff79c6"
+      : "#8668b6";
   const upcomingList = getUpcomingEventList(config?.events, currentMinutes, currentDay, 6);
   const majorEvents = config?.majorEvents ?? defaultConfig.majorEvents ?? [];
   const calendarMonth = getCalendarMonth(now ?? new Date(), majorEvents);
@@ -262,6 +273,18 @@ export function Dashboard() {
           }
         : currentTimer
     );
+  };
+
+  const toggleTimerPaused = () => {
+    setTimer((currentTimer) => {
+      if (!currentTimer || getTimerRemainingMs(currentTimer, Date.now()) === 0) {
+        return currentTimer;
+      }
+
+      return currentTimer.pausedRemainingMs === undefined
+        ? pauseTimer(currentTimer, Date.now())
+        : resumeTimer(currentTimer, Date.now());
+    });
   };
 
   return (
@@ -381,9 +404,9 @@ export function Dashboard() {
 
         <aside className="min-h-0">
           <section
-            className={`min-h-[28rem] rounded-lg border ${theme.border} ${theme.card} p-4 shadow-2xl shadow-black/10 sm:p-5 lg:h-[calc(100vh-3rem)] lg:min-h-0 lg:p-5 xl:h-full xl:p-6`}
+            className={`flex min-h-[28rem] flex-col overflow-hidden rounded-lg border ${theme.border} ${theme.card} p-4 shadow-2xl shadow-black/10 sm:p-5 lg:h-[calc(100vh-3rem)] lg:min-h-0 lg:p-5 xl:h-full xl:p-6`}
           >
-            <div className="mb-5 grid grid-cols-2 gap-3">
+            <div className="mb-5 grid shrink-0 grid-cols-2 gap-3">
               <button
                 type="button"
                 className={`rounded-2xl border px-3 py-2 text-xl font-black transition sm:px-4 sm:py-3 sm:text-2xl ${
@@ -408,15 +431,15 @@ export function Dashboard() {
               </button>
             </div>
             {isCalendarOpen ? (
-              <div className="flex h-full min-h-0 flex-col">
-                <div className="mb-5 flex items-start justify-between gap-4">
+              <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                <div className="mb-5 flex shrink-0 items-start justify-between gap-4">
                   <div>
                     <div className="text-2xl font-black capitalize tracking-normal sm:text-3xl">
                       {calendarMonth.label}
                     </div>
                   </div>
                 </div>
-                <div className="grid grid-cols-7 gap-1 text-center sm:gap-2">
+                <div className="grid shrink-0 grid-cols-7 gap-1 text-center sm:gap-2">
                   {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Нд"].map((day) => (
                     <div key={day} className={`text-sm font-black sm:text-lg ${theme.secondary}`}>
                       {day}
@@ -425,16 +448,16 @@ export function Dashboard() {
                   {calendarMonth.cells.map((cell) => (
                     <div
                       key={cell.date}
-                      className={`min-h-12 rounded-xl border p-1.5 text-left sm:min-h-16 sm:rounded-2xl sm:p-2 ${
+                      className={`aspect-square min-h-0 overflow-hidden rounded-xl border p-1.5 text-left sm:rounded-2xl sm:p-2 ${
                         cell.isToday ? calendarTodayCell : calendarCellBase
                       } ${cell.isCurrentMonth ? "" : "opacity-35"}`}
                     >
                       <div className="text-base font-black sm:text-xl">{cell.day}</div>
-                      <div className="mt-1 flex flex-wrap gap-0.5 sm:mt-2 sm:gap-1">
+                      <div className="mt-0.5 flex flex-wrap gap-0.5 overflow-hidden sm:mt-1 sm:gap-1">
                         {cell.majorEvents.map((event) => (
                           <span
                             key={`${event.date}-${event.title}`}
-                            className="grid h-5 w-5 place-items-center text-base font-black sm:h-7 sm:w-7 sm:text-xl"
+                            className="grid h-4 w-4 shrink-0 place-items-center text-sm font-black sm:h-6 sm:w-6 sm:text-lg"
                             title={event.title}
                           >
                             {event.icon ?? "★"}
@@ -446,7 +469,7 @@ export function Dashboard() {
                 </div>
                 <div className="mt-5 min-h-0 flex-1 overflow-hidden">
                   <div className="mb-3 text-xl font-black sm:text-2xl">Найближчі чекуньки</div>
-                  <div className="h-full max-h-72 space-y-3 overflow-y-auto pr-1 lg:max-h-none">
+                  <div className="max-h-[28vh] space-y-3 overflow-y-auto pr-1 lg:max-h-full">
                     {upcomingMajorEvents.length > 0 ? (
                       upcomingMajorEvents.map((event) => (
                         <div
@@ -517,6 +540,14 @@ export function Dashboard() {
             <button
               type="button"
               className={`rounded-full border ${theme.border} ${theme.card} px-4 py-2 text-sm font-black sm:text-base`}
+              onClick={toggleTimerPaused}
+              disabled={isTimerDone}
+            >
+              {isTimerPaused ? "Далі" : "Стоп"}
+            </button>
+            <button
+              type="button"
+              className={`rounded-full border ${theme.border} ${theme.card} px-4 py-2 text-sm font-black sm:text-base`}
               onClick={resetTimer}
             >
               Скинути
@@ -544,7 +575,7 @@ export function Dashboard() {
                 cy="170"
                 r={timerCircleRadius}
                 fill="none"
-                stroke={themeMode === "dracula" ? "#ff79c6" : "#8668b6"}
+                stroke={timerRingColor}
                 strokeLinecap="round"
                 strokeWidth="22"
                 strokeDasharray={timerCircleCircumference}
@@ -556,7 +587,7 @@ export function Dashboard() {
                 {timerLabel}
               </div>
               <div className={`mt-4 text-2xl font-black sm:text-4xl ${theme.secondary}`}>
-                {timerRemainingMs === 0 ? "Готово!" : "Таймер"}
+                {isTimerDone ? "Готово!" : isTimerPaused ? "Пауза" : "Таймер"}
               </div>
             </div>
           </div>

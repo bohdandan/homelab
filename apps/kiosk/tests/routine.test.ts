@@ -9,6 +9,8 @@ import {
   getNextChineseCardIndex,
   getCurrentRule,
   getEventsForDay,
+  pauseTimer,
+  resumeTimer,
   getTimerProgressRatio,
   getTimerRemainingMs,
   getNextEvent,
@@ -134,10 +136,30 @@ describe("routine calculations", () => {
       startedAtMs: 1_000
     };
 
+    expect(getTimerRemainingMs(timer, 500)).toBe(5 * 60_000);
     expect(getTimerRemainingMs(timer, 61_000)).toBe(4 * 60_000);
     expect(getTimerProgressRatio(timer, 61_000)).toBeCloseTo(0.2);
     expect(getTimerRemainingMs(timer, 601_000)).toBe(0);
     expect(getTimerProgressRatio(timer, 601_000)).toBe(1);
+  });
+
+  it("pauses and resumes a timer without losing remaining time", () => {
+    const timer = {
+      durationMs: 60_000,
+      startedAtMs: 1_000
+    };
+
+    const pausedTimer = pauseTimer(timer, 21_000);
+
+    expect(pausedTimer.pausedRemainingMs).toBe(40_000);
+    expect(getTimerRemainingMs(pausedTimer, 45_000)).toBe(40_000);
+    expect(getTimerProgressRatio(pausedTimer, 45_000)).toBeCloseTo(1 / 3);
+
+    const resumedTimer = resumeTimer(pausedTimer, 50_000);
+
+    expect(resumedTimer.pausedRemainingMs).toBeUndefined();
+    expect(getTimerRemainingMs(resumedTimer, 50_000)).toBe(40_000);
+    expect(getTimerRemainingMs(resumedTimer, 70_000)).toBe(20_000);
   });
 
   it("shows the next-event countdown only for events within the next hour today", () => {

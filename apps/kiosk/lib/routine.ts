@@ -189,7 +189,11 @@ export function minutesUntilEvent(minutes: number): string {
 }
 
 export function getTimerRemainingMs(timer: TimerState, nowMs: number): number {
-  return Math.max(0, timer.durationMs - (nowMs - timer.startedAtMs));
+  if (timer.pausedRemainingMs !== undefined) {
+    return Math.min(timer.durationMs, Math.max(0, timer.pausedRemainingMs));
+  }
+
+  return Math.min(timer.durationMs, Math.max(0, timer.durationMs - (nowMs - timer.startedAtMs)));
 }
 
 export function getTimerProgressRatio(timer: TimerState, nowMs: number): number {
@@ -207,6 +211,22 @@ export function formatTimerRemaining(remainingMs: number): string {
   const seconds = safeRemainingSeconds % 60;
 
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
+export function pauseTimer(timer: TimerState, nowMs: number): TimerState {
+  return {
+    ...timer,
+    pausedRemainingMs: getTimerRemainingMs(timer, nowMs)
+  };
+}
+
+export function resumeTimer(timer: TimerState, nowMs: number): TimerState {
+  const remainingMs = getTimerRemainingMs(timer, nowMs);
+
+  return {
+    durationMs: timer.durationMs,
+    startedAtMs: nowMs - (timer.durationMs - remainingMs)
+  };
 }
 
 export function shouldShowNextEventCountdown(nextEvent: NextEvent | null): boolean {

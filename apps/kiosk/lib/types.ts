@@ -78,6 +78,7 @@ export type ToneColorScheme = {
 export type TimerState = {
   durationMs: number;
   startedAtMs: number;
+  pausedRemainingMs?: number;
 };
 
 export type DashboardConfig = {
