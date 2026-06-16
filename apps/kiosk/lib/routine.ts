@@ -239,14 +239,14 @@ export function isDarkThemeTime(currentMinutes: number): boolean {
 
 export function getCardForTime(
   cards: ChineseCard[] | undefined,
-  currentMinutes: number,
+  currentTimeMs: number,
   manualOffset = 0
 ): ChineseCard | null {
   if (!cards || cards.length === 0) {
     return null;
   }
 
-  const index = (Math.floor(currentMinutes / 2) + manualOffset) % cards.length;
+  const index = (Math.floor(currentTimeMs / 30_000) + manualOffset) % cards.length;
   return cards[index];
 }
 

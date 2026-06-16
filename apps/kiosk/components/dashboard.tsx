@@ -230,8 +230,8 @@ export function Dashboard() {
     [chineseConfig, chineseShuffleSeed]
   );
   const chineseCard = useMemo(
-    () => getCardForTime(chineseCards, currentMinutes, chineseManualOffset),
-    [chineseCards, chineseManualOffset, currentMinutes]
+    () => getCardForTime(chineseCards, now?.getTime() ?? 0, chineseManualOffset),
+    [chineseCards, chineseManualOffset, now]
   );
   const chineseToneParts = chineseCard ? getChineseCharacterToneParts(chineseCard) : [];
   const pinyinToneParts = chineseCard ? getPinyinToneParts(chineseCard) : [];
@@ -249,7 +249,7 @@ export function Dashboard() {
     : themeMode === "dracula"
       ? "#ff79c6"
       : "#8668b6";
-  const upcomingList = getUpcomingEventList(config?.events, currentMinutes, currentDay, 6);
+  const upcomingList = getUpcomingEventList(config?.events, currentMinutes, currentDay, 100);
   const majorEvents = config?.majorEvents ?? defaultConfig.majorEvents ?? [];
   const calendarMonth = getCalendarMonth(now ?? new Date(), majorEvents);
   const upcomingMajorEvents = [...majorEvents]
@@ -448,12 +448,12 @@ export function Dashboard() {
                   {calendarMonth.cells.map((cell) => (
                     <div
                       key={cell.date}
-                      className={`aspect-square min-h-0 overflow-hidden rounded-xl border p-1.5 text-left sm:rounded-2xl sm:p-2 ${
+                      className={`relative aspect-square min-h-0 overflow-hidden rounded-xl border p-1.5 text-left sm:rounded-2xl sm:p-2 ${
                         cell.isToday ? calendarTodayCell : calendarCellBase
                       } ${cell.isCurrentMonth ? "" : "opacity-35"}`}
                     >
                       <div className="text-base font-black sm:text-xl">{cell.day}</div>
-                      <div className="mt-0.5 flex flex-wrap gap-0.5 overflow-hidden sm:mt-1 sm:gap-1">
+                      <div className="absolute bottom-1.5 right-1.5 flex max-w-[70%] flex-row-reverse flex-wrap gap-0.5 overflow-hidden sm:bottom-2 sm:right-2 sm:gap-1">
                         {cell.majorEvents.map((event) => (
                           <span
                             key={`${event.date}-${event.title}`}
@@ -494,11 +494,8 @@ export function Dashboard() {
                 </div>
               </div>
             ) : (
-              <>
-                <div className="space-y-4">
-                  {upcomingList.hasHiddenPassedEvents ? (
-                    <div className={`text-center text-3xl font-black sm:text-4xl ${theme.secondary}`}>…</div>
-                  ) : null}
+              <div className="min-h-0 flex-1 overflow-hidden">
+                <div className="h-full max-h-[calc(100vh-12rem)] space-y-4 overflow-y-auto pr-1 lg:max-h-full">
                   {upcomingList.events.length > 0 ? (
                     upcomingList.events.map((event) => (
                       <div
@@ -518,11 +515,8 @@ export function Dashboard() {
                       Немає запланованих справ
                     </div>
                   )}
-                  {upcomingList.hasHiddenFutureEvents ? (
-                    <div className={`text-center text-3xl font-black sm:text-4xl ${theme.secondary}`}>…</div>
-                  ) : null}
                 </div>
-              </>
+              </div>
             )}
           </section>
         </aside>

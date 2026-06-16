@@ -364,13 +364,17 @@ describe("routine calculations", () => {
     ]);
   });
 
-  it("rotates chinese cards every two minutes", () => {
-    expect(getCardForTime(testChineseCards, timeToMinutes("07:01"))?.hanzi).toBe(
+  it("rotates chinese cards every thirty seconds", () => {
+    expect(getCardForTime(testChineseCards, 0)?.hanzi).toBe(
       "水"
     );
-    expect(getCardForTime(testChineseCards, timeToMinutes("07:02"))?.hanzi).toBe(
+    expect(getCardForTime(testChineseCards, 29_999)?.hanzi).toBe(
+      "水"
+    );
+    expect(getCardForTime(testChineseCards, 30_000)?.hanzi).toBe(
       "月"
     );
+    expect(getCardForTime(testChineseCards, 60_000)?.hanzi).toBe("水");
   });
 
   it("shuffles chinese cards in a stable seed-based order", () => {
@@ -397,7 +401,7 @@ describe("routine calculations", () => {
 
   it("handles missing optional lists", () => {
     expect(getNextEvent([], timeToMinutes("12:00"))).toBeNull();
-    expect(getCardForTime(undefined, timeToMinutes("12:00"))).toBeNull();
+    expect(getCardForTime(undefined, 0)).toBeNull();
   });
 
   it("returns only upcoming events and marks hidden passed or truncated events", () => {
