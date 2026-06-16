@@ -6,6 +6,7 @@ import type {
   MajorEvent,
   MandarinTone,
   NextEvent,
+  PinyinTonePart,
   TimelineEvent,
   TimerState,
   ToneColorScheme,
@@ -291,6 +292,17 @@ export function getChineseCharacterToneParts(card: ChineseCard): ChineseCharacte
     character,
     tone: pinyinToTone(syllables[Math.min(index, syllables.length - 1)] ?? card.pinyin)
   }));
+}
+
+export function getPinyinToneParts(card: ChineseCard): PinyinTonePart[] {
+  return card.pinyin
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((syllable) => ({
+      syllable,
+      tone: pinyinToTone(syllable)
+    }));
 }
 
 export function getToneColorScheme(tone: MandarinTone): ToneColorScheme {

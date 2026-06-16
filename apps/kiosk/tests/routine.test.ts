@@ -13,6 +13,7 @@ import {
   getTimerRemainingMs,
   getNextEvent,
   getChineseCharacterToneParts,
+  getPinyinToneParts,
   getShuffledChineseCards,
   getUpcomingEventList,
   getNextMajorEvent,
@@ -251,6 +252,30 @@ describe("routine calculations", () => {
     ).toEqual([
       { character: "它", tone: 1 },
       { character: "们", tone: 5 }
+    ]);
+  });
+
+  it("maps each pinyin syllable to its tone", () => {
+    expect(
+      getPinyinToneParts({
+        hanzi: "飞机",
+        pinyin: "fēi jī",
+        meaning: "plane"
+      })
+    ).toEqual([
+      { syllable: "fēi", tone: 1 },
+      { syllable: "jī", tone: 1 }
+    ]);
+
+    expect(
+      getPinyinToneParts({
+        hanzi: "中国",
+        pinyin: "zhōng guó",
+        meaning: "China"
+      })
+    ).toEqual([
+      { syllable: "zhōng", tone: 1 },
+      { syllable: "guó", tone: 2 }
     ]);
   });
 

@@ -65,6 +65,11 @@ export type ChineseCharacterTonePart = {
   tone: MandarinTone;
 };
 
+export type PinyinTonePart = {
+  syllable: string;
+  tone: MandarinTone;
+};
+
 export type ToneColorScheme = {
   light: string;
   night: string;

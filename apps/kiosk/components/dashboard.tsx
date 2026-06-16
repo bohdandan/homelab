@@ -13,6 +13,7 @@ import {
   getNextEvent,
   getNextChineseCardIndex,
   getNextWeekday,
+  getPinyinToneParts,
   getShuffledChineseCards,
   getTimerProgressRatio,
   getTimerRemainingMs,
@@ -231,6 +232,7 @@ export function Dashboard() {
     [chineseCards, chineseManualOffset, currentMinutes]
   );
   const chineseToneParts = chineseCard ? getChineseCharacterToneParts(chineseCard) : [];
+  const pinyinToneParts = chineseCard ? getPinyinToneParts(chineseCard) : [];
   const timerNowMs = now?.getTime() ?? Date.now();
   const timerRemainingMs = timer ? getTimerRemainingMs(timer, timerNowMs) : 0;
   const timerProgressRatio = timer ? getTimerProgressRatio(timer, timerNowMs) : 0;
@@ -352,7 +354,21 @@ export function Dashboard() {
                     })}
                   </div>
                   <div className="min-w-0 text-center">
-                    <div className="text-2xl font-black sm:text-3xl">{chineseCard.pinyin}</div>
+                    <div className="text-2xl font-black sm:text-3xl">
+                      {pinyinToneParts.map((part, index) => {
+                        const colors = getToneColorScheme(part.tone);
+
+                        return (
+                          <span
+                            key={`${part.syllable}-${index}`}
+                            style={{ color: colors.light } as CSSProperties}
+                          >
+                            {index > 0 ? " " : ""}
+                            {part.syllable}
+                          </span>
+                        );
+                      })}
+                    </div>
                     <div className="mt-1 text-xl font-black sm:text-2xl">
                       {chineseCard.meaning}
                     </div>
