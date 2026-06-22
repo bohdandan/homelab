@@ -158,7 +158,7 @@ homelab:
       image: ghcr.io/bohdandan/homelab/astro-docs:0.1.0
     kiosk:
       namespace: kiosk
-      image: ghcr.io/bohdandan/homelab/kiosk:sha-c627e30689749d29b513dd9b67c80970ea315cc4
+      image: ghcr.io/bohdandan/homelab/kiosk:sha-b540ef81c676386a87ca00bbd24a2b3a72055f3e
     changedetection:
       namespace: changedetection
       image: dgtlmoon/changedetection.io:0.52.4
