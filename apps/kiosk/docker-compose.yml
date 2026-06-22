@@ -6,4 +6,6 @@ services:
     ports:
       - "3000:80"
     volumes:
-      - ./config/dashboard.json:/usr/share/nginx/html/config/dashboard.json:ro
+      - ./config/routine.json:/usr/share/nginx/html/config/routine.json:ro
+      - ./config/major-events.json:/usr/share/nginx/html/config/major-events.json:ro
+      - ./config/chinese.json:/usr/share/nginx/html/config/chinese.json:ro

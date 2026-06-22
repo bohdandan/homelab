@@ -8,16 +8,19 @@ A simple fullscreen family routine dashboard for an Android tablet running Fully
 - Current routine label and instruction
 - Next upcoming event from today's schedule
 - Simple timeline of up to six events
-- Optional Chinese learning card that rotates every five minutes
-- Time-based colour theme from `config/dashboard.json`
+- Optional Chinese learning card that rotates every thirty seconds
+- Time-based colour theme from `config/routine.json`
 
 ## Configuration
 
-Edit `config/dashboard.json`.
+Edit:
+- `config/routine.json` for timezone, day rules, and recurring events
+- `config/major-events.json` for birthdays, holidays, and trips
+- `config/chinese.json` for the Mandarin card deck
 
-The app reads this file at runtime through `/config/dashboard.json`, so a Docker volume mount can update the dashboard configuration without changing the app code.
+The app reads these files at runtime through `/config/routine.json`, `/config/major-events.json`, and `/config/chinese.json`, so a Docker volume mount can update the dashboard configuration without changing the app code.
 
-In the homelab deployment, this file is rendered into a Kubernetes ConfigMap and mounted read-only into the container. Keep schedule and task defaults here so they remain tracked in git.
+In the homelab deployment, these files are rendered into a Kubernetes ConfigMap and mounted read-only into the container. Keep schedule and task defaults here so they remain tracked in git.
 
 ## Local Development
 

@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
-import dashboardConfig from "@/config/dashboard.json";
+import majorEventsConfig from "@/config/major-events.json";
+import routineConfig from "@/config/routine.json";
 import chineseConfig from "@/config/chinese.json";
 import { defaultChinese } from "@/lib/default-chinese";
 import { defaultConfig } from "@/lib/default-config";
 import {
   getCardForTime,
+  getChineseCardTimeOffset,
   getChineseCardCycleProgress,
   getCalendarMonth,
   getNextChineseCardIndex,
@@ -29,6 +31,7 @@ import {
   minutesUntilEvent,
   pinyinToTone,
   shouldShowNextEventCountdown,
+  shouldPlayTimerDoneChime,
   timeToMinutes
 } from "@/lib/routine";
 import type { DashboardConfig } from "@/lib/types";
@@ -168,6 +171,13 @@ describe("routine calculations", () => {
     expect(getTimerRemainingMs(resumedTimer, 70_000)).toBe(20_000);
   });
 
+  it("plays the timer chime only when the timer crosses to done", () => {
+    expect(shouldPlayTimerDoneChime(null, 60_000)).toBe(false);
+    expect(shouldPlayTimerDoneChime(1_000, 0)).toBe(true);
+    expect(shouldPlayTimerDoneChime(0, 0)).toBe(false);
+    expect(shouldPlayTimerDoneChime(0, 60_000)).toBe(false);
+  });
+
   it("shows the next-event countdown only for events within the next hour today", () => {
     expect(
       shouldShowNextEventCountdown({
@@ -216,18 +226,27 @@ describe("routine calculations", () => {
       "ЗАВДАННЯ"
     );
     expect(getEventsForDay(defaultConfig.events, "saturday").map((event) => event.title)).toEqual([
-      "Китайська Іванки",
-      "Домашнє завдання на наступний тиждень",
-      "Китайська Міланки",
-      "Перевірити домашнє завдання",
+      "🍊 汉语 Іванки",
+      "🍊 汉语 Міланки",
+      "📚 Домашка",
+      "🧘‍♀️ Медитація",
       "Час спати"
     ]);
   });
 
-  it("keeps the deployed JSON schedule valid while allowing local schedule edits", () => {
-    expect(dashboardConfig.timezone).toBe(defaultConfig.timezone);
-    expect(dashboardConfig.events?.length).toBeGreaterThan(0);
-    expect("chinese" in dashboardConfig).toBe(false);
+  it("keeps the routine JSON as the runtime source for schedule data", () => {
+    expect(routineConfig.timezone).toBe(defaultConfig.timezone);
+    expect(routineConfig.events?.length).toBeGreaterThan(0);
+    expect("majorEvents" in routineConfig).toBe(false);
+  });
+
+  it("keeps major events in a dedicated JSON file", () => {
+    expect(majorEventsConfig.length).toBeGreaterThan(0);
+    expect(majorEventsConfig[0]).toEqual({
+      date: "2026-07-03",
+      title: "Канкули!",
+      icon: "🎉"
+    });
   });
 
   it("keeps Mandarin cards in a dedicated JSON file", () => {
@@ -316,56 +335,56 @@ describe("routine calculations", () => {
 
   it("includes the school week and activity reminders in the default kiosk schedule", () => {
     expect(getEventsForDay(defaultConfig.events, "monday").map((event) => event.title)).toEqual([
-      "Прокидатися",
-      "Вихід до школи",
-      "Початок уроків",
+      "Прокидаємося!",
+      "📚 Школа",
       "Забрати Іванку зі школи",
-      "Забрати Міланку зі школи",
-      "Кікбоксинг Іванки і Міланки 16:15-17:00",
+      "Забрати Меланку зі школи",
+      "🥊 Кікбоксинг",
       "Вечеря",
-      "Душ",
+      "🚿 Душ",
+      "🧘‍♀️ Медитація",
       "Час спати"
     ]);
 
     expect(getEventsForDay(defaultConfig.events, "tuesday").map((event) => event.title)).toEqual([
-      "Прокидатися",
-      "Вихід до школи",
-      "Початок уроків",
+      "Прокидаємося!",
+      "📚 Школа",
       "Забрати Іванку зі школи",
-      "Забрати Міланку зі школи",
-      "Китайська Іванки і Міланки 16:00-16:30",
+      "Забрати Меланку зі школи",
+      "🍊 汉语",
       "Вечеря",
-      "Душ",
+      "🚿 Душ",
+      "🧘‍♀️ Медитація",
       "Час спати"
     ]);
 
     expect(getEventsForDay(defaultConfig.events, "wednesday").map((event) => event.title)).toEqual([
-      "Прокидатися",
-      "Вихід до школи",
-      "Початок уроків",
+      "Прокидаємося!",
+      "📚 Школа",
       "Забрати Іванку зі школи",
-      "Забрати Міланку з балету",
+      "🩰 Забрати Мeланку з балету",
       "Вечеря",
-      "Душ",
+      "🚿 Душ",
+      "🧘‍♀️ Медитація",
       "Час спати"
     ]);
 
     expect(getEventsForDay(defaultConfig.events, "thursday").map((event) => event.title)).toEqual([
-      "Прокидатися",
-      "Вихід до школи",
-      "Початок уроків",
+      "Прокидаємося!",
+      "📚 Школа",
       "Забрати Іванку зі школи",
-      "Забрати Міланку з шахів",
+      "♟️ Забрати Мeланку з шахів",
       "Вечеря",
-      "Душ",
+      "🚿 Душ",
+      "🧘‍♀️ Медитація",
       "Час спати"
     ]);
 
     expect(getEventsForDay(defaultConfig.events, "saturday").map((event) => event.title)).toEqual([
-      "Китайська Іванки",
-      "Домашнє завдання на наступний тиждень",
-      "Китайська Міланки",
-      "Перевірити домашнє завдання",
+      "🍊 汉语 Іванки",
+      "🍊 汉语 Міланки",
+      "📚 Домашка",
+      "🧘‍♀️ Медитація",
       "Час спати"
     ]);
   });
@@ -388,6 +407,12 @@ describe("routine calculations", () => {
     expect(getChineseCardCycleProgress(7_500)).toBe(0.25);
     expect(getChineseCardCycleProgress(29_999)).toBeCloseTo(0.9999666667, 6);
     expect(getChineseCardCycleProgress(30_000)).toBe(0);
+  });
+
+  it("resets Chinese card timing from a manual cycle anchor", () => {
+    expect(getChineseCardTimeOffset(75_000, null)).toBe(75_000);
+    expect(getChineseCardTimeOffset(75_000, 72_000)).toBe(3_000);
+    expect(getChineseCardTimeOffset(75_000, 75_500)).toBe(0);
   });
 
   it("shuffles chinese cards in a stable seed-based order", () => {

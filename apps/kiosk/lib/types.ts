@@ -82,6 +82,8 @@ export type DashboardConfig = {
   majorEvents?: MajorEvent[];
 };
 
+export type RoutineConfig = Omit<DashboardConfig, "majorEvents">;
+
 export type NextEvent = {
   event: TimelineEvent;
   dayOffset: 0 | 1;

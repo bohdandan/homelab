@@ -227,6 +227,13 @@ export function resumeTimer(timer: TimerState, nowMs: number): TimerState {
   };
 }
 
+export function shouldPlayTimerDoneChime(
+  previousRemainingMs: number | null,
+  currentRemainingMs: number
+): boolean {
+  return previousRemainingMs !== null && previousRemainingMs > 0 && currentRemainingMs === 0;
+}
+
 export function shouldShowNextEventCountdown(nextEvent: NextEvent | null): boolean {
   return nextEvent !== null && nextEvent.dayOffset === 0 && nextEvent.minutesUntil <= 60;
 }
@@ -246,6 +253,17 @@ export function getCardForTime(
 
   const index = (Math.floor(currentTimeMs / 30_000) + manualOffset) % cards.length;
   return cards[index];
+}
+
+export function getChineseCardTimeOffset(
+  currentTimeMs: number,
+  cycleStartedAtMs: number | null
+): number {
+  if (cycleStartedAtMs === null) {
+    return currentTimeMs;
+  }
+
+  return Math.max(0, currentTimeMs - cycleStartedAtMs);
 }
 
 export function getChineseCardCycleProgress(currentTimeMs: number, cycleMs = 30_000): number {

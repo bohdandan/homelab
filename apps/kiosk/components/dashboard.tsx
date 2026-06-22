@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { defaultChinese } from "@/lib/default-chinese";
 import { defaultConfig } from "@/lib/default-config";
 import {
@@ -10,6 +10,7 @@ import {
   getCalendarMonth,
   getCardForTime,
   getChineseCardCycleProgress,
+  getChineseCardTimeOffset,
   getChineseCharacterToneParts,
   getCurrentRule,
   getNextEvent,
@@ -28,9 +29,10 @@ import {
   getZonedMinutes,
   isDarkThemeTime,
   minutesUntilEvent,
+  shouldPlayTimerDoneChime,
   shouldShowNextEventCountdown
 } from "@/lib/routine";
-import type { ChineseCard, DashboardConfig, ThemeName, TimerState } from "@/lib/types";
+import type { ChineseCard, MajorEvent, RoutineConfig, ThemeName, TimerState } from "@/lib/types";
 
 type ThemeDefinition = {
   background: string;
@@ -46,6 +48,7 @@ type ThemeMode = "alucard" | "dracula";
 const timerPresets = [1, 5, 10, 20];
 const timerCircleRadius = 148;
 const timerCircleCircumference = 2 * Math.PI * timerCircleRadius;
+type WebkitAudioWindow = Window & { webkitAudioContext?: typeof AudioContext };
 
 const themePalettes: Record<ThemeMode, Record<ThemeName, ThemeDefinition>> = {
   alucard: {
@@ -119,27 +122,57 @@ const themePalettes: Record<ThemeMode, Record<ThemeName, ThemeDefinition>> = {
 };
 
 export function Dashboard() {
-  const [config, setConfig] = useState<DashboardConfig | null>(null);
+  const [routineConfig, setRoutineConfig] = useState<RoutineConfig | null>(null);
+  const [majorEventsConfig, setMajorEventsConfig] = useState<MajorEvent[] | null>(null);
   const [chineseConfig, setChineseConfig] = useState<ChineseCard[] | null>(null);
   const [now, setNow] = useState<Date | null>(null);
   const [chineseManualOffset, setChineseManualOffset] = useState(0);
+  const [chineseCycleStartedAtMs, setChineseCycleStartedAtMs] = useState<number | null>(null);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [timer, setTimer] = useState<TimerState | null>(null);
   const [isTimerOpen, setIsTimerOpen] = useState(false);
+  const timerAudioContextRef = useRef<AudioContext | null>(null);
+  const previousTimerRemainingMsRef = useRef<number | null>(null);
+  const chimedTimerStartedAtMsRef = useRef<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
 
-    fetch("/config/dashboard.json", { cache: "no-store" })
+    fetch("/config/routine.json", { cache: "no-store" })
       .then((response) => response.json())
-      .then((data: DashboardConfig) => {
+      .then((data: RoutineConfig) => {
         if (!cancelled) {
-          setConfig(data);
+          setRoutineConfig(data);
         }
       })
       .catch(() => {
         if (!cancelled) {
-          setConfig(defaultConfig);
+          setRoutineConfig({
+            timezone: defaultConfig.timezone,
+            dayRules: defaultConfig.dayRules,
+            events: defaultConfig.events
+          });
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetch("/config/major-events.json", { cache: "no-store" })
+      .then((response) => response.json())
+      .then((data: MajorEvent[]) => {
+        if (!cancelled) {
+          setMajorEventsConfig(data);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setMajorEventsConfig(defaultConfig.majorEvents ?? []);
         }
       });
 
@@ -176,13 +209,13 @@ export function Dashboard() {
     return () => window.clearInterval(timer);
   }, []);
 
-  const timezone = config?.timezone ?? "Europe/London";
+  const timezone = routineConfig?.timezone ?? "Europe/London";
   const currentMinutes = now ? getZonedMinutes(now, timezone) : 0;
   const currentDay = now ? getZonedDay(now, timezone) : "monday";
   const nextDay = getNextWeekday(currentDay);
   const currentRule =
-    config && now
-      ? getCurrentRule(config.dayRules, currentMinutes, currentDay) ?? defaultConfig.dayRules[0]
+    routineConfig && now
+      ? getCurrentRule(routineConfig.dayRules, currentMinutes, currentDay) ?? defaultConfig.dayRules[0]
       : defaultConfig.dayRules[0];
   const themeMode: ThemeMode = isDarkThemeTime(currentMinutes) ? "dracula" : "alucard";
   const theme = themePalettes[themeMode][currentRule.theme] ?? themePalettes[themeMode].green;
@@ -224,20 +257,29 @@ export function Dashboard() {
       }).format(now)
     : "kiosk";
 
+  useEffect(() => {
+    setChineseManualOffset(0);
+    setChineseCycleStartedAtMs(null);
+  }, [chineseShuffleSeed]);
+
   const nextEvent = useMemo(
-    () => getNextEvent(config?.events, currentMinutes, currentDay, nextDay),
-    [config?.events, currentDay, currentMinutes, nextDay]
+    () => getNextEvent(routineConfig?.events, currentMinutes, currentDay, nextDay),
+    [routineConfig?.events, currentDay, currentMinutes, nextDay]
   );
   const visibleNextEvent = shouldShowNextEventCountdown(nextEvent) ? nextEvent : null;
   const chineseCards = useMemo(
     () => getShuffledChineseCards(chineseConfig ?? defaultChinese, chineseShuffleSeed),
     [chineseConfig, chineseShuffleSeed]
   );
-  const chineseCard = useMemo(
-    () => getCardForTime(chineseCards, now?.getTime() ?? 0, chineseManualOffset),
-    [chineseCards, chineseManualOffset, now]
+  const chineseCardTimeOffset = getChineseCardTimeOffset(
+    now?.getTime() ?? 0,
+    chineseCycleStartedAtMs
   );
-  const chineseCardCycleProgress = getChineseCardCycleProgress(now?.getTime() ?? 0);
+  const chineseCard = useMemo(
+    () => getCardForTime(chineseCards, chineseCardTimeOffset, chineseManualOffset),
+    [chineseCardTimeOffset, chineseCards, chineseManualOffset]
+  );
+  const chineseCardCycleProgress = getChineseCardCycleProgress(chineseCardTimeOffset);
   const chineseToneParts = chineseCard ? getChineseCharacterToneParts(chineseCard) : [];
   const pinyinToneParts = chineseCard ? getPinyinToneParts(chineseCard) : [];
   const timerNowMs = now?.getTime() ?? Date.now();
@@ -254,14 +296,83 @@ export function Dashboard() {
     : themeMode === "dracula"
       ? "#ff79c6"
       : "#8668b6";
-  const upcomingList = getUpcomingEventList(config?.events, currentMinutes, currentDay, 100);
-  const majorEvents = config?.majorEvents ?? defaultConfig.majorEvents ?? [];
+  const upcomingList = getUpcomingEventList(routineConfig?.events, currentMinutes, currentDay, 100);
+  const majorEvents = majorEventsConfig ?? defaultConfig.majorEvents ?? [];
   const calendarMonth = getCalendarMonth(now ?? new Date(), majorEvents);
   const upcomingMajorEvents = [...majorEvents]
     .filter((event) => event.date >= (now ?? new Date()).toISOString().slice(0, 10))
     .sort((a, b) => a.date.localeCompare(b.date));
 
+  const getTimerAudioContext = () => {
+    if (typeof window === "undefined") {
+      return null;
+    }
+
+    const AudioContextConstructor =
+      window.AudioContext ?? (window as WebkitAudioWindow).webkitAudioContext;
+
+    if (!AudioContextConstructor) {
+      return null;
+    }
+
+    timerAudioContextRef.current ??= new AudioContextConstructor();
+    return timerAudioContextRef.current;
+  };
+
+  const unlockTimerChime = () => {
+    const audioContext = getTimerAudioContext();
+    void audioContext?.resume().catch(() => undefined);
+  };
+
+  const playTimerDoneChime = () => {
+    const audioContext = getTimerAudioContext();
+
+    if (!audioContext) {
+      return;
+    }
+
+    void audioContext.resume().catch(() => undefined);
+
+    const startAt = audioContext.currentTime + 0.02;
+
+    [740, 988].forEach((frequency, index) => {
+      const noteStartAt = startAt + index * 0.16;
+      const oscillator = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(frequency, noteStartAt);
+      gain.gain.setValueAtTime(0.0001, noteStartAt);
+      gain.gain.linearRampToValueAtTime(0.08, noteStartAt + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, noteStartAt + 0.18);
+
+      oscillator.connect(gain);
+      gain.connect(audioContext.destination);
+      oscillator.start(noteStartAt);
+      oscillator.stop(noteStartAt + 0.2);
+    });
+  };
+
+  useEffect(() => {
+    if (!timer) {
+      previousTimerRemainingMsRef.current = null;
+      chimedTimerStartedAtMsRef.current = null;
+      return;
+    }
+
+    if (
+      shouldPlayTimerDoneChime(previousTimerRemainingMsRef.current, timerRemainingMs) &&
+      chimedTimerStartedAtMsRef.current !== timer.startedAtMs
+    ) {
+      playTimerDoneChime();
+      chimedTimerStartedAtMsRef.current = timer.startedAtMs;
+    }
+
+    previousTimerRemainingMsRef.current = timerRemainingMs;
+  }, [timer, timerRemainingMs]);
+
   const startTimer = (minutes: number) => {
+    unlockTimerChime();
     setTimer({
       durationMs: minutes * 60_000,
       startedAtMs: Date.now()
@@ -270,6 +381,7 @@ export function Dashboard() {
   };
 
   const resetTimer = () => {
+    unlockTimerChime();
     setTimer((currentTimer) =>
       currentTimer
         ? {
@@ -361,9 +473,12 @@ export function Dashboard() {
                 className={`relative w-full rounded-3xl border ${theme.border} ${theme.card} px-5 py-5 text-center shadow-2xl shadow-black/25 transition-transform active:scale-[0.98] sm:px-7 sm:py-6`}
                 aria-label="Наступне китайське слово"
                 onClick={() => {
-                  setChineseManualOffset((offset) =>
-                    getNextChineseCardIndex(offset, chineseCards.length)
-                  );
+                    const switchedAtMs = Date.now();
+                    setChineseManualOffset((offset) =>
+                      getNextChineseCardIndex(offset, chineseCards.length)
+                    );
+                    setChineseCycleStartedAtMs(switchedAtMs);
+                    setNow(new Date(switchedAtMs));
                 }}
               >
                 <div

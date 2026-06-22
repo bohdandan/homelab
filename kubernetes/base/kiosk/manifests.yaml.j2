@@ -9,8 +9,12 @@ metadata:
   name: kiosk-config
   namespace: {{ homelab_effective.apps.kiosk.namespace }}
 data:
-  dashboard.json: |
-{{ lookup('ansible.builtin.file', playbook_dir ~ '/../../apps/kiosk/config/dashboard.json') | indent(4, true) }}
+  routine.json: |
+{{ lookup('ansible.builtin.file', playbook_dir ~ '/../../apps/kiosk/config/routine.json') | indent(4, true) }}
+  major-events.json: |
+{{ lookup('ansible.builtin.file', playbook_dir ~ '/../../apps/kiosk/config/major-events.json') | indent(4, true) }}
+  chinese.json: |
+{{ lookup('ansible.builtin.file', playbook_dir ~ '/../../apps/kiosk/config/chinese.json') | indent(4, true) }}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -35,8 +39,16 @@ spec:
               name: http
           volumeMounts:
             - name: config
-              mountPath: /usr/share/nginx/html/config/dashboard.json
-              subPath: dashboard.json
+              mountPath: /usr/share/nginx/html/config/routine.json
+              subPath: routine.json
+              readOnly: true
+            - name: config
+              mountPath: /usr/share/nginx/html/config/major-events.json
+              subPath: major-events.json
+              readOnly: true
+            - name: config
+              mountPath: /usr/share/nginx/html/config/chinese.json
+              subPath: chinese.json
               readOnly: true
           readinessProbe:
             httpGet:
