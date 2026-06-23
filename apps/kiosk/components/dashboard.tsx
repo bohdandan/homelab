@@ -21,6 +21,7 @@ import {
   pauseTimer,
   resumeTimer,
   getShuffledChineseCards,
+  getTimerDoneChimePlan,
   getTimerProgressRatio,
   getTimerRemainingMs,
   getToneColorScheme,
@@ -335,21 +336,22 @@ export function Dashboard() {
 
     const startAt = audioContext.currentTime + 0.02;
 
-    [740, 988].forEach((frequency, index) => {
-      const noteStartAt = startAt + index * 0.16;
+    getTimerDoneChimePlan().forEach((note) => {
+      const noteStartAt = startAt + note.startOffsetSeconds;
+      const noteEndAt = noteStartAt + note.durationSeconds;
       const oscillator = audioContext.createOscillator();
       const gain = audioContext.createGain();
 
       oscillator.type = "sine";
-      oscillator.frequency.setValueAtTime(frequency, noteStartAt);
+      oscillator.frequency.setValueAtTime(note.frequency, noteStartAt);
       gain.gain.setValueAtTime(0.0001, noteStartAt);
-      gain.gain.linearRampToValueAtTime(0.08, noteStartAt + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.0001, noteStartAt + 0.18);
+      gain.gain.linearRampToValueAtTime(note.volume, noteStartAt + 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.0001, noteEndAt);
 
       oscillator.connect(gain);
       gain.connect(audioContext.destination);
       oscillator.start(noteStartAt);
-      oscillator.stop(noteStartAt + 0.2);
+      oscillator.stop(noteEndAt + 0.02);
     });
   };
 

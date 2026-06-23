@@ -234,6 +234,24 @@ export function shouldPlayTimerDoneChime(
   return previousRemainingMs !== null && previousRemainingMs > 0 && currentRemainingMs === 0;
 }
 
+export type TimerDoneChimeNote = {
+  frequency: number;
+  startOffsetSeconds: number;
+  durationSeconds: number;
+  volume: number;
+};
+
+export function getTimerDoneChimePlan(): TimerDoneChimeNote[] {
+  return [
+    { frequency: 659, startOffsetSeconds: 0, durationSeconds: 0.34, volume: 0.07 },
+    { frequency: 784, startOffsetSeconds: 0.45, durationSeconds: 0.34, volume: 0.075 },
+    { frequency: 988, startOffsetSeconds: 0.9, durationSeconds: 0.38, volume: 0.08 },
+    { frequency: 880, startOffsetSeconds: 1.35, durationSeconds: 0.34, volume: 0.07 },
+    { frequency: 988, startOffsetSeconds: 1.8, durationSeconds: 0.38, volume: 0.08 },
+    { frequency: 1175, startOffsetSeconds: 2.35, durationSeconds: 0.65, volume: 0.085 }
+  ];
+}
+
 export function shouldShowNextEventCountdown(nextEvent: NextEvent | null): boolean {
   return nextEvent !== null && nextEvent.dayOffset === 0 && nextEvent.minutesUntil <= 60;
 }

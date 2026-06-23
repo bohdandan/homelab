@@ -16,6 +16,7 @@ import {
   resumeTimer,
   getTimerProgressRatio,
   getTimerRemainingMs,
+  getTimerDoneChimePlan,
   getNextEvent,
   getChineseCharacterToneParts,
   getPinyinToneParts,
@@ -176,6 +177,14 @@ describe("routine calculations", () => {
     expect(shouldPlayTimerDoneChime(1_000, 0)).toBe(true);
     expect(shouldPlayTimerDoneChime(0, 0)).toBe(false);
     expect(shouldPlayTimerDoneChime(0, 60_000)).toBe(false);
+  });
+
+  it("keeps the timer completion chime close to three seconds long", () => {
+    const chimePlan = getTimerDoneChimePlan();
+    const lastNote = chimePlan[chimePlan.length - 1];
+
+    expect(chimePlan.length).toBeGreaterThan(2);
+    expect(lastNote.startOffsetSeconds + lastNote.durationSeconds).toBeCloseTo(3, 1);
   });
 
   it("shows the next-event countdown only for events within the next hour today", () => {
