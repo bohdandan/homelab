@@ -41,6 +41,8 @@ spec:
           env:
             - name: BASE_URL
               value: "https://{{ homelab_effective.domain.changedetection }}"
+            - name: PLAYWRIGHT_DRIVER_URL
+              value: ws://browser-sockpuppet-chrome:3000
             - name: TZ
               value: UTC
           ports:
@@ -64,10 +66,44 @@ spec:
           volumeMounts:
             - name: changedetection-data
               mountPath: /datastore
+        - name: browser-sockpuppet-chrome
+          image: dgtlmoon/sockpuppetbrowser:latest
+          env:
+            - name: SCREEN_WIDTH
+              value: "1920"
+            - name: SCREEN_HEIGHT
+              value: "1024"
+            - name: SCREEN_DEPTH
+              value: "16"
+            - name: MAX_CONCURRENT_CHROME_PROCESSES
+              value: "3"
+          ports:
+            - containerPort: 3000
+              name: playwright
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
       volumes:
         - name: changedetection-data
           persistentVolumeClaim:
             claimName: changedetection-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: browser-sockpuppet-chrome
+  namespace: {{ homelab_effective.apps.changedetection.namespace }}
+spec:
+  selector:
+    app: changedetection
+  ports:
+    - name: playwright
+      port: 3000
+      targetPort: 3000
 ---
 apiVersion: v1
 kind: Service

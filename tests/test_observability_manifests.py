@@ -37,6 +37,14 @@ class ObservabilityManifestTest(unittest.TestCase):
                 for snippet in snippets:
                     self.assertIn(snippet, text)
 
+    def test_changedetection_manifest_enables_browser_fetch_backend(self) -> None:
+        manifest = Path("kubernetes/base/changedetection/manifests.yaml.j2").read_text()
+
+        self.assertIn("name: PLAYWRIGHT_DRIVER_URL", manifest)
+        self.assertIn("ws://browser-sockpuppet-chrome:3000", manifest)
+        self.assertIn("name: browser-sockpuppet-chrome", manifest)
+        self.assertIn("dgtlmoon/sockpuppetbrowser", manifest)
+
 
 if __name__ == "__main__":
     unittest.main()

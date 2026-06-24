@@ -1,0 +1,27 @@
+{
+  "fetch_backend": "html_webdriver",
+  "filter_failure_notification_send": true,
+  "filter_text_added": true,
+  "filter_text_removed": true,
+  "filter_text_replaced": true,
+  "include_filters": [
+    "div[role=\"alert\"]"
+  ],
+  "notification_body": "{{watch_url}} changed. Check passport appointment availability.\n---\n{{diff}}\n---",
+  "notification_format": "text",
+  "notification_muted": false,
+  "notification_title": "Passport queue changed",
+  "notification_urls": [
+    "ntfys://ntfy.homelab.magnetic-marten.com/passport-queue"
+  ],
+  "paused": false,
+  "time_between_check": {
+    "days": 0,
+    "hours": 0,
+    "minutes": 10,
+    "seconds": 0,
+    "weeks": 0
+  },
+  "time_between_check_use_default": false,
+  "url": "https://london.pasport.org.ua/solutions/e-queue"
+}

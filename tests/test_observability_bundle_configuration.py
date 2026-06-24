@@ -54,6 +54,15 @@ class ObservabilityBundleConfigurationTest(unittest.TestCase):
         self.assertIn('apiGroups: ["networking.k8s.io"]', homepage)
         self.assertIn('resources: ["ingresses"]', homepage)
 
+    def test_passport_queue_changedetection_watch_is_documented(self) -> None:
+        watch = json.loads(Path("apps/changedetection/config/passport-queue-watch.json").read_text())
+
+        self.assertEqual("https://london.pasport.org.ua/solutions/e-queue", watch["url"])
+        self.assertEqual("html_webdriver", watch["fetch_backend"])
+        self.assertEqual(["div[role=\"alert\"]"], watch["include_filters"])
+        self.assertEqual(["ntfys://ntfy.homelab.magnetic-marten.com/passport-queue"], watch["notification_urls"])
+        self.assertFalse(watch["paused"])
+
 
 if __name__ == "__main__":
     unittest.main()
