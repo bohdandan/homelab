@@ -13,6 +13,7 @@ data:
     base-url: "https://{{ homelab_effective.domain.ntfy }}"
     listen-http: ":80"
     behind-proxy: true
+    upstream-base-url: "https://ntfy.sh"
     cache-file: "/var/cache/ntfy/cache.db"
     attachment-cache-dir: "/var/cache/ntfy/attachments"
 ---
@@ -45,6 +46,8 @@ spec:
     metadata:
       labels:
         app: ntfy
+      annotations:
+        checksum/ntfy-config: "{{ (homelab_effective.domain.ntfy ~ '|:80|true|https://ntfy.sh|/var/cache/ntfy/cache.db|/var/cache/ntfy/attachments') | hash('sha256') }}"
     spec:
       nodeSelector:
         homelab.io/stateful: "true"

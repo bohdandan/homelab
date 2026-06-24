@@ -45,6 +45,12 @@ class ObservabilityManifestTest(unittest.TestCase):
         self.assertIn("name: browser-sockpuppet-chrome", manifest)
         self.assertIn("dgtlmoon/sockpuppetbrowser", manifest)
 
+    def test_ntfy_manifest_enables_ios_instant_notification_bridge(self) -> None:
+        manifest = Path("kubernetes/base/ntfy/manifests.yaml.j2").read_text()
+
+        self.assertIn('upstream-base-url: "https://ntfy.sh"', manifest)
+        self.assertIn("checksum/ntfy-config", manifest)
+
 
 if __name__ == "__main__":
     unittest.main()
