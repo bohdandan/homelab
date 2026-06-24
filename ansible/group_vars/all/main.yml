@@ -161,7 +161,7 @@ homelab:
       image: ghcr.io/bohdandan/homelab/kiosk:sha-53e5587f827f9ad5e11297d5b7af197c52f4b9a6
     changedetection:
       namespace: changedetection
-      image: dgtlmoon/changedetection.io:0.52.4
+      image: dgtlmoon/changedetection.io:0.55.7
       data_storage: 10Gi
     uptime_kuma:
       namespace: uptime-kuma
